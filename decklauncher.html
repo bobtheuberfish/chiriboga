@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Chiriboga Deck Launcher</title>
+		<link href="images/favicon.ico" rel="icon">
+		<link rel="stylesheet" href="style.css" />
+		<script src="jquery/jquery-3.2.1.min.js"></script>
+		<script src="deck/lz-string.min.js"></script>
+		<script src="deck/seedrandom.min.js"></script>
+		<script>
+			//create some faux variables so we can load the card definitions
+			var runner = {};
+			var corp = {};
+		</script>
+		<script src="utility.js"></script>
+		<script src="sets/systemgateway.js"></script>
+		<script>
+			var json = {};
+			var cardSet = systemGateway;
+			var uid = 0;
+		
+			function UpdateLaunchStrings()
+			{
+				//console.log(json);
+				var string = JSON.stringify(json);
+				var compressed = LZString.compressToEncodedURIComponent(string);
+				var launchAddress = "index.html?r="+compressed;
+				$("#launch").prop("href",launchAddress);
+				history.replaceState(null, "Chiriboga", "decklauncher.html?r="+compressed);			
+			}
+		
+			var mouseDownCallback = function(ev){
+				  if(ev.which == 3) //right
+				  {
+					var id = parseInt($(this).attr("data-id"));
+					var line = parseInt($(this).attr("data-line"));
+					var deckListArray = $("#deck").val().split("\n");
+					var thisLineArray = deckListArray[line].split(" ");
+					thisLineArray[0]++;
+					deckListArray[line]=thisLineArray.join(" ");
+					$("#deck").val(deckListArray.join("\n"));
+					$(this).append('<img src="images/'+systemGateway[id].imageFile+'" style="margin-left: -120px; transform:rotate('+(Math.random()*10-5)+'deg);">');
+					json.systemGateway.push(id); //just on the end is fine
+					UpdateLaunchStrings();
+				  }
+				  if(ev.which == 1) //left
+				  {
+					var id = parseInt($(this).attr("data-id"));
+					var line = parseInt($(this).attr("data-line"));
+					$(this).children().last().remove();
+					var deckListArray = $("#deck").val().split("\n");
+					var thisLineArray = deckListArray[line].split(" ");
+					thisLineArray[0]--;
+					if (thisLineArray[0] < 1) //none left, this will invalidate some data-line
+					{
+						$(".cardgroup").each(function() {
+							var thisLine = parseInt($(this).attr("data-line"));
+							if (thisLine > line) $(this).attr("data-line",thisLine-1);
+						});
+						deckListArray.splice(line,1);
+					}
+					else deckListArray[line]=thisLineArray.join(" ");
+					$("#deck").val(deckListArray.join("\n"));
+					json.systemGateway.splice(json.systemGateway.indexOf(id),1); //remove the first-found is fine
+					UpdateLaunchStrings();
+				  }
+			};	
+		
+			function GenerateDeck()
+			{				
+				var runnerCards = [2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34];
+				Shuffle(runnerCards);
+				var countSoFar = []; //of each card (by name)
+				for (var i=0; i<runnerCards.length; i++) {	countSoFar[i] = 0;	}
+
+				//LOAD Runner deck, if specified (as an LZ compressed JSON object containing .identity= and .systemGateway=[], wth cards specified by number in the set)
+				var specifiedRunnerDeck = URIParameter("r");
+				if (specifiedRunnerDeck != "")
+				{
+					json = JSON.parse(LZString.decompressFromEncodedURIComponent(specifiedRunnerDeck));
+					$('#identityselect option[value='+json.identity+']').prop('selected', 'selected');
+					$("#identity").prop('src','images/'+systemGateway[json.identity].imageFile);
+					for (var i=0; i<json.systemGateway.length; i++)
+					{
+						countSoFar[runnerCards.indexOf(json.systemGateway[i])]++;
+					}
+				}
+				else //create a random runner deck for this identity
+				{
+					var runnerFaction = cardSet[json.identity].faction;
+					var totalInfluence = 0;
+					var deckSize = 0;
+					while (deckSize < 40)
+					{
+						var randomIndex = RandomRange(0,runnerCards.length-1);
+						var cardNumber = runnerCards[randomIndex];
+						var limitPerDeck = 3;
+						if (typeof(cardSet[cardNumber].limitPerDeck) !== 'undefined') limitPerDeck = cardSet[cardNumber].limitPerDeck;
+						if (countSoFar[randomIndex] < limitPerDeck)
+						{
+							var legalCard = false;
+							if (cardSet[cardNumber].faction == runnerFaction) legalCard = true;
+							else
+							{
+								if (totalInfluence + cardSet[cardNumber].influence <= 15) //TODO use value on card
+								{
+									totalInfluence += cardSet[cardNumber].influence;
+									legalCard = true;
+								}
+							}
+							if (legalCard)
+							{
+								countSoFar[randomIndex]++;
+								deckSize++;
+							}
+						}
+					}
+				}
+				
+				//print into textarea
+				var deckText = "";
+				var numRows = 0;
+				for (var i=0; i<countSoFar.length; i++)
+				{
+					if (countSoFar[i] > 0)
+					{
+						if (numRows > 0) deckText += "\n";
+						deckText += countSoFar[i] + " " + cardSet[runnerCards[i]].title;
+						numRows++;
+					}
+				}
+				$("#deck").val(deckText);
+				$("#deck").prop("rows",numRows); //resize textarea height to fit
+				$("#deck").on('input propertychange paste',Parse);
+				Parse();
+			}
+		
+			function Init()
+			{
+				//identity select will regenerate a deck if changed
+				$('#identityselect').change(function() {
+					json.identity = $( "select#identityselect option:checked" ).val();
+					$("#identity").prop('src','images/'+systemGateway[json.identity].imageFile);
+					history.pushState(null, "Chiriboga", "decklauncher.html"); //so a random deck is generated
+					GenerateDeck();
+				});
+
+				//set up identity select
+				var runnerIdentities = [1,10,19];
+				for (var i=0; i<runnerIdentities.length; i++)
+				{
+					$("#identityselect").append('<option value='+runnerIdentities[i]+'>'+cardSet[runnerIdentities[i]].title+'</option>\n');
+				}
+				//choose an identity at random, unless a load string was specified
+				var specifiedRunnerDeck = URIParameter("r");
+				if (specifiedRunnerDeck == "")
+				{
+					var randomIdentity = runnerIdentities[RandomRange(0,runnerIdentities.length-1)];
+					$('#identityselect option[value='+randomIdentity+']').prop('selected', 'selected').change(); //calling change also means a deck will be generated
+				}
+				else GenerateDeck(); //this will recognise the input string and load it		
+			}
+			
+			function GetCardIdFromTitle(title)
+			{
+				var soughtCardTitle = title.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+				for (var i=0; i<systemGateway.length; i++)
+				{
+					if (typeof(systemGateway[i]) !== 'undefined')
+					{
+						var setCardTitle = systemGateway[i].title.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+						if (setCardTitle === soughtCardTitle) return i;
+					}
+				}
+				return -1;
+			}
+			
+			function Parse()
+			{
+				//disable launch while checking
+				$("#launch").prop("disabled",'disabled');
+				$("#launch").html("Checking...");
+				$("#output").html("");
+				$(".cardgroup").remove();
+				
+				//read the textarea and create the deck
+				var validDeck = true;
+				var outputLine = 0;
+				json.systemGateway = [];
+				var splitText = $("#deck").val().split("\n");
+				for (var i=0; i<splitText.length; i++)
+				{
+					var cardCount = 0;
+					var cardTitle = "";
+					var splitLine = splitText[i].split(" ");
+					if (splitLine.length == 1)
+					{
+						cardCount = 1;
+						cardTitle = splitLine[0];
+					}
+					else if (splitLine.length > 1)
+					{
+						cardCount = parseInt(splitLine[0]);
+						cardTitle = splitLine.slice(1).join(' ');
+					}
+					if ((cardCount > 0)&&(cardTitle != ""))
+					{
+						var id = GetCardIdFromTitle(cardTitle);
+						if (id > -1)
+						{
+							if (systemGateway[id].player == runner)
+							{
+								$("#contentcontainer").append('<div id="cg-'+(uid++)+'" class="cardgroup" style="float:left;" data-id="'+id+'" data-line="'+outputLine+'" oncontextmenu="return false"></div>');
+								Math.seedrandom(id);
+								for (var j=0; j<cardCount; j++)
+								{
+									json.systemGateway.push(id);
+									var stylestr = '';
+									if (j > 0) stylestr = '" style="margin-left: -120px; transform:rotate('+(Math.random()*10-5)+'deg);';
+									$("#contentcontainer").children().last().append('<img src="images/'+systemGateway[id].imageFile+stylestr+'">');
+								}
+								$("#contentcontainer").children().last().mousedown(mouseDownCallback);
+								outputLine++;
+							}
+							else
+							{
+								$("#output").append(cardTitle+" is not a Runner card<br/>");
+								validDeck = false;
+							}
+						}
+						else
+						{
+							$("#output").append(cardTitle+" not found in System Gateway<br/>");
+							validDeck = false;
+						}
+					}
+				}
+				//done checking, permit launch if valid
+				if (validDeck)
+				{
+					$("#output").html("");
+					$("#launch").prop("disabled",false);
+				}
+				$("#launch").html("Launch");
+				UpdateLaunchStrings();
+			}
+		</script>
+		<style>
+			img {
+				width: 144px;
+				margin: 15px;
+			}
+			
+			body {
+			  background-image: url('images/bg.jpg');
+			  background-size:cover;
+			}
+			
+			.button {
+				margin-bottom: -15px;
+			}
+			
+			.cardgroup {
+				cursor:pointer;
+			}
+		</style>
+	</head>
+
+
+	<body onload="Init();">
+		<div id="contentcontainer">
+			<div id="dataentry" style="width:440px; float:left; padding:30px;">
+				<select id="identityselect"></select>
+				<img id="identity" src="images/glow_outline.png">
+				<textarea id="deck" spellcheck="false" cols="30"></textarea><br/>
+				<div id="output"></div><br/>
+				<button id="launch" class="button" onclick="window.location.href=$(this).prop('href');">Launch</a>
+			</div>
+		</div>
+	</body>
+</html>

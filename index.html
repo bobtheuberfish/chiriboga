@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Chiriboga</title>
+		<link href="images/favicon.ico" rel="icon">
+		<link rel="stylesheet" href="style.css" />
+		<script src="jquery/jquery-3.2.1.min.js"></script>
+		<script src="cardrenderer/pixi.min.js"></script>
+		<script src="cardrenderer/pixi-particles.min.js"></script>
+		<script src="cardrenderer/particlesystems.js"></script>
+		<script src="cardrenderer/cardrenderer.js"></script>
+		<script src="deck/lz-string.min.js"></script>
+		<script src="deck/seedrandom.min.js"></script>
+		<script src="init.js"></script>
+		<script src="phase.js"></script>
+		<script src="command.js"></script>
+		<script src="checks.js"></script>
+		<script src="mechanics.js"></script>
+		<script src="utility.js"></script>
+		<script src="sets/systemgateway.js"></script>
+		<script src="sets/tutorial.js"></script>
+		<!-- <script src="sets/coreset.js"></script> -->
+		<script src="sets/cheat.js"></script>
+		<script src="decks.js"></script>
+		<script src="runcalculator.js"></script>
+		<!-- <script src="rl.js"></script> -->
+		<script src="ai_corp.js"></script>
+		<script src="ai_runner.js"></script>
+	</head>
+
+	<body id="body" onload="Init();">
+		<div id="contentcontainer" class="content">
+			<div id="output"></div>
+			<form id="cmdform">
+				<input type="submit" value="Submit">
+				<span id="turnphase"></span>
+				<input id="command" type="text" value="">
+			</form>
+		</div>
+		<div id="menubar"><button onclick="$('#menu').css('display','flex'); if (document.fullscreen) document.exitFullscreen(); $('.fullscreen-button').show();"><img src="images/chiriboga_withtext.png"></button></div>
+		<div id="header"></div>
+		<button class="fullscreen-button" onclick="document.getElementById('body').requestFullscreen({ navigationUI: 'hide' }); $('.fullscreen-button').hide();"></button>
+		<div id="fps"></div>
+		<div id="footer"></div>
+		<div id="modal" class="modal">
+			<div id="modalcontent" class="modal-content"></div>
+		</div>
+		<div id="history-wrapper">
+			<div id="history"></div>
+		</div>
+		<div id="menu" class="modal">
+			<div id="menucontent" class="modal-content-inactive">
+				<span onclick="$('#menu').css('display','none');" class="close-cross">X</span>
+				<h1>Chiriboga</h1>
+				<button id="editdeck" onclick="window.location.href='decklauncher.html';" class="button">Edit this deck</button>
+				<button onclick="window.location.href='decklauncher.html';" class="button">Edit new random deck</button>
+				<p>Chiriboga implements the game <a href="https://nisei.net/about/netrunner/">Android: Netrunner</a> with an AI opponent. Source is <a href="https://github.com/bobtheuberfish/chiriboga">available on github</a>.</p>
+				<p>Includes all cards in NISEI's <a href="https://nisei.net/products/system-gateway/">System Gateway</a> set. Card front art is the property of NISEI.<br/>
+				Includes <a href="https://nisei.net/about/nisei-visual-assets/">game symbols permitted for use by NISEI</a> under CC BY-ND 4.0.<br/>
+				Chiriboga is not endorsed by NISEI.</p>
+				<p>Netrunner and Android are trademarks of Fantasy Flight Publishing, Inc. and/or Wizards of the Coast LLC.<br/>
+				Chiriboga is not affiliated with Fantasy Flight Games or Wizards of the Coast.</p>
+				<p><em>...but who ordered him to wear that hat?</em></p>
+				<button onclick="DownloadCapturedLog();" class="button">Download captured log</button> (for <a href="https://github.com/bobtheuberfish/chiriboga/issues">error reporting</a>)
+				<br/><br/>
+			</div>
+		</div>
+	</body>
+</html>

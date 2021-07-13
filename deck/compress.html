@@ -1,0 +1,27 @@
+<html>
+	<head>
+		<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+		<meta content="utf-8" http-equiv="encoding">
+
+		<script language="javascript" src="lz-string.min.js"></script>
+</head>
+
+<body>
+	<script>
+		var json = {
+			coreSet: [77,54,7,100,37,92,43,40,83,30,76,27,89,79,99],
+			systemGateway: [16,91,67,77,7,57,6,65,25,99,80,90,96,71,3,45,96,98,7,53,38,90,72,11,62,31,33,29,52,72],
+			fictionalSet: [46,10,25,47,76,68,46,11,82,51,26,85,85,99,5,80,56,91,53,94,48,95,57,95,90,76,12,53,40,4,14,65,17,25,27],
+			anotherSet: [32,83,13,79,61,60,6,67,96,48,43,79,84,66,91],
+			tutorial: [32,40,42,96,74],
+		};
+		var string = JSON.stringify(json);
+		document.write("Size of sample is: " + string.length+"<br/>");
+		var compressed = LZString.compressToEncodedURIComponent(string);
+		document.write("Size of compressed sample is: " + compressed.length+"<br/>");
+		document.write("Compressed sample is: " + compressed+"<br/>");
+		string = LZString.decompressFromEncodedURIComponent(compressed);
+		document.write("Uncompressed sample is: " + string+"<br/>");
+	</script>
+</body>
+</html>
