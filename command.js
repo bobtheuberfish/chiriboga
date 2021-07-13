@@ -105,7 +105,7 @@ function GetAvailability(renderer)
 		{
 			if ((activePlayer==viewingPlayer)&&(activePlayer==runner))
 			{
-				if ((typeof(currentPhase.Resolve.remove) == 'function')&&(executingCommand=="n")&&(runner.tags > 0)) return 1; //available when listed and not mid-decision
+				if ((typeof(currentPhase.Resolve.remove) == 'function')&&(executingCommand=="n")&&(currentPhase.Enumerate.remove().length > 0)) return 1; //available when listed and not mid-decision
 			}
 		}
 		else if (renderer == countersUI.hand_size.runner)
