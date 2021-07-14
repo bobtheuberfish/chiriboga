@@ -462,9 +462,11 @@ Card:class {
 					}
 					else if (pixi_playThreshold(this))
 					{
-						if (executingCommand=="trash") this.glowSprite.tint = parseInt("D80000",16); //special case: dragging to trash (e.g. before install), red
-						else if (executingCommand=="discard") this.glowSprite.tint = parseInt("D80000",16); //special case: dragging to discard, red
-						else this.glowSprite.tint = parseInt("D800FF",16); //purple
+						//there swere some special red cases but they are now all purple for consistency (purple means "this will happen when you release")
+						//if (executingCommand=="trash") this.glowSprite.tint = parseInt("FF0000",16); //special case: dragging to trash (e.g. before install), red
+						//else if (executingCommand=="discard") this.glowSprite.tint = parseInt("FF0000",16); //special case: dragging to discard, red
+						//else 
+						this.glowSprite.tint = parseInt("D800FF",16); //purple
 					}
 					else this.glowSprite.visible = false; //don't glow while dragging if nothing will happen
 				}
@@ -1182,6 +1184,7 @@ Renderer:class {
 		this.app.stage.addChild(this.iceGlow); //add sprite to the stage container (so it renders)
 		this.UpdateGlow = function(card,glow,x=null,y=null) { //card is a CardRenderer.Card
 			this.iceGlow.rotation = 0;
+			this.iceGlow.scale.y = 0.5;
 			if ((card == null)&&(glow==0))
 			{
 				this.iceGlow.visible = false;
@@ -1331,6 +1334,30 @@ Renderer:class {
 						}
 					}
 				}
+			}
+			
+			//special use of iceglow
+			if ((executingCommand=="trash")||(executingCommand=="discard")) //trash before install or discard at end of turn
+			{
+				//NOTE: this currently assuming the player is trashing their own cards
+				if (viewingPlayer == runner)
+				{
+					this.iceGlow.visible = true;
+					this.iceGlow.x = 0.5*(runner.heap.xStart + runner.heap.xEnd) - 15; //the subtraction amount is arbitrary, tweak to look right
+					
+					this.iceGlow.y = runner.heap.yCards - 100; //the subtraction amount is arbitrary, tweak to look right
+					this.iceGlow.scale.x = 0.35;
+					this.iceGlow.scale.y = 0.5;
+					this.iceGlow.rotation = Math.PI;
+					
+					if (pixi_draggingCard !== null)
+					{
+						if (pixi_playThreshold(pixi_draggingCard)) this.iceGlow.tint = parseInt("D800FF",16); //purple
+						else this.iceGlow.tint = parseInt("FFFFFF",16); //white
+					}
+					else this.iceGlow.visible = false;
+				}
+				//not implemented for corp yet
 			}
 			
 			//hide subroutine choices when not longer needed
