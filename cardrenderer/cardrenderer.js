@@ -1659,9 +1659,6 @@ var pixi_subroutineDelay = 0; //to help prevent unwanted card unzoom when select
 function pixi_onDragStart(event)
 {
 	pixi_holdCard = this.card;
-	//if the card was zoomed, restore its position (it may have been adjusted due to edge of screen)
-	pixi_holdCard.sprite.x = pixi_holdCard.storedPosition.x;
-	pixi_holdCard.sprite.y = pixi_holdCard.storedPosition.y;
 	pixi_holdZoom = false;
 	//note this is all in the context of sprite
 	if (event.data.pointerType == "touch") //touch (left-click is "mouse")
@@ -1686,6 +1683,10 @@ function pixi_onDragStart(event)
 	pixi_mouseStart = pixi_mousePosition;
 	if (this.card.availability != 2) return; //2 is dragging
 	
+	//if the card was zoomed, restore its position (it may have been adjusted due to edge of screen)
+	pixi_holdCard.sprite.x = pixi_holdCard.storedPosition.x;
+	pixi_holdCard.sprite.y = pixi_holdCard.storedPosition.y;
+
     // store a reference to the data (in 'this' i.e. the sprite)
     // the reason for this is because of multitouch
     // we could track the movement of this particular touch
