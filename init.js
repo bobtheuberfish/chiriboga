@@ -250,6 +250,7 @@ function Render()
 	var hardwareCascade = new CardRenderer.Cascade(RenderCards(runner.rig.hardware,NoTint),180,0,hostingX);
 	var programsCascade = new CardRenderer.Cascade(RenderCards(runner.rig.programs,NoTint),180,0,hostingX);
 	var heapCascade = new CardRenderer.Cascade(RenderCards(runner.heap,NoTint),tightXStep,tightYStep,hostingX);
+	if (heapCascade.width < 180) heapCascade.width = 180; //leave a pre-prepared blank area for heap
 	var stackCascade = new CardRenderer.Cascade(RenderCards(runner.stack,RandomTint),tightXStep,tightYStep,hostingX);
 	var gripCascade;
 	if (viewingPlayer == runner) gripCascade = new CardRenderer.Cascade(RenderCards(runner.grip,FaceUpNoTint),spreadXStep,0,hostingX);
@@ -857,6 +858,10 @@ function ExecuteChosen(chosenCommand)
 		//have decided I prefer to not show the resolving text as it might just confuse the user
 		//except where it will be useful for the player to have an instruction
 		if (footerText == "Access") footerText = "Access cards";
+		else if ((footerText=="Trash")||(footerText=="Discard")) //trash before install or discard at end of turn
+		{
+			footerText = "Drag to your heap";
+		}
 		else footerText = ""; 
 		
 		$("#footer").html("<h2>"+footerText+"</h2>");
