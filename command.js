@@ -25,7 +25,7 @@ function Execute(cmd)
 }
 
 var executingCommand = null;
-var validOptions = [{}];
+var validOptions = [];
 function ResolveChoice(idx)
 {
 	$("#modal").css("display","none");
@@ -332,7 +332,13 @@ function ResolveClick(input)
 			var closestOption = 0; //index in relevantOptions, not validOptions
 			for (var i=0; i<relevantOptions.length; i++)
 			{
-				if (relevantOptions[i].host.renderer.isClosestHost) closestOption = i;
+				//handle error gracefully
+				if (typeof(relevantOptions[i].host) == 'undefined')
+				{
+					LogError("relevantOptions[i].host not defined for "+i+" in "+JSON.stringify(relevantOptions));
+					closestOption = i; //at least this way something will fire and the game will continue
+				}
+				else if (relevantOptions[i].host.renderer.isClosestHost) closestOption = i;
 			}
 			ResolveChoice(validOptions.indexOf(relevantOptions[closestOption]));
 		}
@@ -421,10 +427,11 @@ function CardEffectsForbid(id,card)
  * Regenerate phaseOptions.</br>Results are LogDebug'd.
  *
  * @method EnumeratePhase
- * @returns {String[]} list of valid options
+ * @returns {choice[]} list of valid options
  */
 function EnumeratePhase()
 {
+	validOptions = [];
 	phaseOptions = [];
 	for (var id in currentPhase.Resolve) {
 		if (typeof(currentPhase.Resolve[id]) === "function")
@@ -518,7 +525,6 @@ function Cancel()
 		cardRenderer.RenderSubroutineChoices(null, []);
 		if (ice)
 		{
-			validOptions=[];
 			ice.renderer.ToggleZoom();
 			EnumeratePhase();
 			return;
@@ -526,7 +532,6 @@ function Cancel()
 	}
 
 	//generic cases
-	validOptions=[];
 	EnumeratePhase();
 	executingCommand="n"; //i.e. act as if the previous phase was finished
 	MakeChoice();
