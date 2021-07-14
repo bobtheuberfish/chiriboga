@@ -530,6 +530,12 @@ Card:class {
 			.on('pointerupoutside', pixi_onDragEnd)
 			.on('pointermove', pixi_onDragMove)
 		this.sprite.pointerover = function(event) {
+			//prevent a glitch at first hover
+			if ((this.card.storedPosition.x == 0)&&(this.card.storedPosition.y == 0))
+			{
+				this.card.storedPosition.x = this.x;
+				this.card.storedPosition.y = this.y;
+			}
 			if ((pixi_draggingCard)&&(pixi_draggingCard != this.card)) return; //if card trails behind mouse by a frame, prevent weirdness
 			if (!this.card.zoomed)
 			{
