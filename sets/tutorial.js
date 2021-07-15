@@ -14,6 +14,7 @@ tutorial[0] = { title:'The Catalyst (without advanced cards)', imageFile:'30076.
 	tutorialSteps: [{
 		//Welcome to Netrunner
 		str:'', action:function() { //blank string means start-of-game init
+			skipShuffleAndDraw = true;
 			Math.seedrandom(0);
 			corp.creditPool = 5;
 			runner.creditPool = 1;

@@ -2096,6 +2096,7 @@ systemGateway[57] = { title:'Public Trail', imageFile:'30057.png', player:corp, 
 	//TODO AI for when to play this
 };
 systemGateway[58] = { title:'AMAZE Amusements', imageFile:'30058.png', player:corp, faction:'NBN', influence:3, cardType:'upgrade', rezCost:1, trashCost:3, unique:true,
+	AIIsScoringUpgrade:true,
 	runnerStoleAgendasThisRun: false,
 	serverThisWasInstalledIn: null,
 	runBegins: {
@@ -2358,8 +2359,13 @@ systemGateway[65] = { title:'Retribution', imageFile:'30065.png', player:corp, f
 	}
 };
 systemGateway[66] = { title:'Malapert Data Vault', imageFile:'30066.png', player:corp, faction:'Weyland Consortium', influence:3, cardType:'upgrade', rezCost:1, trashCost:4, unique:true,
-	AIInstallOnlyInRemotes:true,
-	AIRezBeforeScore:true,
+	AIIsScoringUpgrade:true,
+	AIWouldRezBeforeScore:function(cardToScore,serverToRezIn){
+		var server = GetServer(this);
+		if (typeof(serverToRezIn) !== 'undefined') server = serverToRezIn;
+		if (GetServer(cardToScore) == server) return true;
+		return false;
+	},
 	scoringFromServer:null,
 	score: {
 		Resolve: function() {

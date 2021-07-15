@@ -73,6 +73,71 @@ class CorpAI
 	return preferredServer;
   }
   
+  _isAScoringServer(server) //note that this can includes servers with and without non-upgrade cards installed (so be careful what you would need to trash to install)
+  {
+	  if (typeof(server.cards) == 'undefined') //is remote
+	  {
+		//no if its protection is too weak
+		var protScore = this._protectionScore(server,false); //false means remotes get no bonus points
+		var minProt = RandomRange(3,4); //arbitrary: tweak as needed
+		if (protScore < minProt) return false;
+		
+		//yes if it has a scoring upgrade, an agenda or an ambush installed
+		for (var j=0; j<server.root.length; j++)
+		{
+		  if (server.root[j].AIIsScoringUpgrade) return true;
+		  if (CheckCardType(server.root[j],["agenda"])) return true;
+		  if (CheckSubType(server.root[j],"Ambush")) return true;
+		}
+		//no if there is a better server available (empty except for a scoring upgrade)
+		var emptyProtectedRemotes = this._emptyProtectedRemotes();
+		for (var i=0; i<emptyProtectedRemotes.length; i++)
+		{
+			if (server !== emptyProtectedRemotes[i])
+			{
+				for (var j=0; j<emptyProtectedRemotes[i].root.length; j++)
+				{
+					if (emptyProtectedRemotes[i].root[j].AIIsScoringUpgrade) return false;
+				}
+			}
+		}
+		//otherwise yes if it is the empty remote server with the most protection
+		if (emptyProtectedRemotes.length > 0)
+		{
+		  if (server == emptyProtectedRemotes[0]) return true;
+		}
+	  }
+	  return false;
+  }
+ 
+  _shouldUpgradeServerWithCard(server,card)
+  {
+	  if (CheckCardType(card,["upgrade"])) //just in case
+	  {
+		  if (!this._uniqueCopyAlreadyInstalled(card))
+		  {
+			if (card.AIIsScoringUpgrade)
+			{
+				if (!this._isAScoringServer(server)) return false;
+			}
+			return true; //should be ok to install
+		  }
+	  }
+	  return false;
+  }
+  
+  _upgradeInstallPreferences(server) //if server is not specified, the best server for each card will be chosen
+  {
+	  var ret = [];
+	  for (var i=0; i<corp.HQ.cards.length; i++)
+	  {
+		  var serverToInstallTo = this._bestServerToUpgrade(corp.HQ.cards[i]);
+		  if (typeof(server) !== 'undefined') serverToInstallTo = server;
+		  if (this._shouldUpgradeServerWithCard(serverToInstallTo,corp.HQ.cards[i])) ret.push({ cardToInstall:corp.HQ.cards[i], serverToInstallTo:serverToInstallTo });
+	  }
+	  return ret;
+  }
+
   _reducedDiscardList(optionList,minCount=1) //reduces optionList (only include ones we are ok to discard) but keeps list size at or above minCount
   {
 	  //don't discard agendas
@@ -113,15 +178,15 @@ class CorpAI
   _agendasInServer(server) //returns int
   {
   	  var ret = 0;
-	  for (var i=0; i<server.cards.length; i++)
+	  for (var i=0; i<server.root.length; i++)
 	  {
-		  if (CheckCardType(server.cards[i],["agenda"])) ret++;
+		  if (CheckCardType(server.root[i],["agenda"])) ret++;
 	  }
-	  if (typeof(server.root) !== 'undefined')
+	  if (typeof(server.cards) !== 'undefined')
 	  {
-		  for (var i=0; i<server.root.length; i++)
+		  for (var i=0; i<server.cards.length; i++)
 		  {
-			  if (CheckCardType(server.root[i],["agenda"])) ret++;
+			  if (CheckCardType(server.cards[i],["agenda"])) ret++;
 		  }
 	  }
 	  return ret;
@@ -245,7 +310,6 @@ class CorpAI
 			  protectionScore = protectionScores.archives;
 		  }
 	  }
-	  //console.log(protectionScores); //for debugging
 	  return serverToProtect;
   }
 
@@ -376,10 +440,6 @@ class CorpAI
   
   _bestTrashOption(optionList)
   {
-	//first check if we're mid-action
-	var midActionPreference = this._processMidActionCommand("trash", "card", "cardToTrash");
-	if (midActionPreference > -1) return midActionPreference;
-
 	var rankedThreats = this._rankedThreats();
 	for (var j=0; j<rankedThreats.length; j++)
 	{
@@ -398,7 +458,6 @@ class CorpAI
   _bestInstallOption(optionList)
   {
 	  var rankedInstallOptions = this._rankedInstallOptions();
-	  this.preferred = null; //we don't want to set a future preference, just use the ranking immediately
 	  for (var j=0; j<rankedInstallOptions.length; j++)
 	  {
 			for (var i=0; i<optionList.length; i++)
@@ -429,17 +488,19 @@ this._log("a click ability could provide economy");
 	  
 	  //if an economy card is in hand, play/install it (this list is in order of preference)
 	  //list of economy cards (by title)
+	  //could implement these on-card instead? (e.g. as AIEconomyCard)
 	  var canPlay = (optionList.indexOf("play") > -1);
 	  var canInstall = (optionList.indexOf("install") > -1);
 	  var economyCards = [];
-	  //economyCards.push('Government Subsidy'); TODO restore these (I'm testing Hansei)
-	  //economyCards.push('Hedge Fund');
+	  economyCards.push('Government Subsidy');
+	  economyCards.push('Hedge Fund');
 	  if (this._agendasInHand() < corp.HQ.cards.length-1) economyCards.push('Hansei Review'); //only if there is at least 1 non-agenda card (other than this) in HQ
 	  if ((emptyProtectedRemotes.length>0)||(this._clicksLeft()>1)) economyCards.push('Regolith Mining License'); //regolith is only of value if there will be an opportunity to use it
 	  economyCards.push('Nico Campaign');
 	  economyCards.push('Melange Mining Corp.');
 	  economyCards.push('PAD Campaign');	  
 	  economyCards.push('Predictive Planogram');
+	  economyCards.push('Tithe');
 	  
 	  for (var j=0; j<economyCards.length; j++)
 	  {
@@ -461,13 +522,13 @@ this._log(GetTitle(corp.HQ.cards[i])+" might be good economy?");
 this._log(GetTitle(corp.HQ.cards[i])+" might be good economy?");
 						  return this._returnPreference(optionList, "install", { cardToInstall:corp.HQ.cards[i], serverToInstallTo:preferredServer });
 					  }
-					  else //don't upgrade an empty server ... it's a bit pointless
+					  else //upgrades
 					  {
 						  var preferredServer = this._preferredServerToUpgrade(corp.HQ.cards[i]);
-						  if ((typeof(preferredServer.cards) == 'undefined')||(!corp.HQ.cards[i].AIInstallOnlyInRemotes))
+						  if (this._shouldUpgradeServerWithCard(preferredServer, corp.HQ.cards[i]))
 						  {
 this._log(GetTitle(corp.HQ.cards[i])+" might be good economy?");
-							return this._returnPreference(optionList, "install", { cardToInstall:corp.HQ.cards[i], serverToInstallTo:preferredServer });
+							  return this._returnPreference(optionList, "install",{ cardToInstall:corp.HQ.cards[i], serverToInstallTo:preferredServer });
 						  }
 					  }
 				  }
@@ -632,34 +693,35 @@ this._log("No desired install options were available, using arbitrary option.");
 		  //choose an card and server to install to
 		  for (var i=0; i<corp.HQ.cards.length; i++)
 		  {
-			  if (CheckCardType(corp.HQ.cards[i],["asset"]))
+			  if (CheckCardType(corp.HQ.cards[i],["agenda"])||CheckSubType(corp.HQ.cards[i],"Ambush"))
 			  {
-				  serverToInstallTo = emptyProtectedRemotes[RandomRange(0,emptyProtectedRemotes.length-1)]; //just whatever for now
-				  ret.push({ cardToInstall:corp.HQ.cards[i], serverToInstallTo:serverToInstallTo });
+				  //loop through possible scoring servers (in order from strongest to weakest)
+				  for (var j=0; j<emptyProtectedRemotes.length; j++)
+				  {
+					  serverToInstallTo = emptyProtectedRemotes[j];
+					  if (this._isAScoringServer(serverToInstallTo)) ret.push({ cardToInstall:corp.HQ.cards[i], serverToInstallTo:serverToInstallTo });
+				  }
 			  }
-			  else if (CheckCardType(corp.HQ.cards[i],["agenda"]))
+			  else if (CheckCardType(corp.HQ.cards[i],["asset"]))
 			  {
-				  serverToInstallTo = emptyProtectedRemotes[0]; //strongest-protected server
-				  var protScore = this._protectionScore(serverToInstallTo,false); //false means remotes get no bonus points
-				  var minProt = RandomRange(2,4); //arbitrary: tweak as needed
-				  if (minProt >= protScore) ret.push({ cardToInstall:corp.HQ.cards[i], serverToInstallTo:serverToInstallTo });
+				  //loop through unlikely scoring servers (in order from strongest to weakest)
+				  for (var j=0; j<emptyProtectedRemotes.length; j++)
+				  {
+					  serverToInstallTo = emptyProtectedRemotes[j];
+					  if (!this._isAScoringServer(serverToInstallTo))
+					  {
+						  serverToInstallTo = emptyProtectedRemotes[RandomRange(0,emptyProtectedRemotes.length-1)]; //just whatever for now
+						  ret.push({ cardToInstall:corp.HQ.cards[i], serverToInstallTo:serverToInstallTo });
+					  }
+				  }
 			  }
 		  }
 	  }
 	  
-	  //Upgrade ideally server should be NOT empty
+	  //Upgrade?
 	  serverToInstallTo = this._bestProtectedRemote();
 	  if (serverToInstallTo == null) serverToInstallTo = this._serverToProtect(true); //true means don't install to archives
-	  for (var i=0; i<corp.HQ.cards.length; i++)
-	  {
-		  if (CheckCardType(corp.HQ.cards[i],["upgrade"]))
-		  {
-			  if (!this._uniqueCopyAlreadyInstalled(corp.HQ.cards[i]))
-			  {
-				if ((typeof(serverToInstallTo.cards) == 'undefined')||(!corp.HQ.cards[i].AIInstallOnlyInRemotes)) ret.push({ cardToInstall:corp.HQ.cards[i], serverToInstallTo:serverToInstallTo });
-			  }
-		  }
-	  }
+	  ret = ret.concat(this._upgradeInstallPreferences(serverToInstallTo));
 	  
 	  //If no protected empty remote exists, let's make one if possible (otherwise just add ice to whatever server needs it most)
 	  serverToInstallTo = null;
@@ -844,11 +906,17 @@ this._log("I will rez the approached ice");
   }
 
   //sets this.preferred to prefs and returns indexOf cmd in optionList
+  //don't forget to return the result!
   _returnPreference(optionList, cmd, prefs)
   {
 	this.preferred = prefs;
 	this.preferred.command = cmd;
-	return optionList.indexOf(cmd);
+	if (optionList.indexOf(cmd) > -1) return optionList.indexOf(cmd);
+	else if (optionList.indexOf('n') > -1) return optionList.indexOf('n'); //cmd might be coming up next phase
+	LogError('returnPreference failed to find "'+cmd+'" in this optionList with these prefs:');
+	console.log(optionList);
+	console.log(prefs);
+	return 0; //arbitrary
   }
 
   Phase_TrashBeforeInstall(optionList)
@@ -901,16 +969,38 @@ this._log("I have no choice, will trash an arbitrary card");
 
   Phase_Score(optionList)
   {
+	var cardToScore = phaseTemplates.corpScorableResponse.Enumerate.score()[0].card; //just use the first available score option (there's unlikely to be more than one)
+	var serverToScoreIn = GetServer(cardToScore);
+	//are there things we could rez to benefit?
 	if (optionList.indexOf("rez") > -1)
 	{
 		var rnics = this._rezzableNonIceCards();
 		for (var i=0; i<rnics.length; i++)
 		{
 			var card = rnics[i];
-			if (card.AIRezBeforeScore) return this._returnPreference(optionList, "rez", { cardToRez:card });
+			if (card.AIWouldRezBeforeScore.call(card,cardToScore,serverToScoreIn)) return this._returnPreference(optionList, "rez", { cardToRez:card });
 		}
 	}
-	return optionList.indexOf("score");
+	//are there things we could install first to benefit?
+	if (this._clicksLeft() > 0)
+	{
+		for (var i=0; i<corp.HQ.cards.length; i++)
+		{
+			var card = corp.HQ.cards[i];
+			if (card.AIWouldRezBeforeScore.call(card,cardToScore,serverToScoreIn))
+			{
+				if (CheckCredits(RezCost(card),corp,"rezzing",card))
+				{
+					//only handling scoring upgrades at the moment (may need to add consideration of assets being put in a server other than this one)
+					if (card.AIIsScoringUpgrade)
+					{
+						if (this._shouldUpgradeServerWithCard(serverToScoreIn,card)) return this._returnPreference(optionList, "install", { serverToInstallTo:serverToScoreIn, cardToInstall:card });
+					}
+				}
+			}
+		}
+	}
+	return this._returnPreference(optionList, "score", { cardToScore:cardToScore });
   }
 
   Phase_Main(optionList)
@@ -1047,13 +1137,11 @@ this._log("Thinking of installing something...");
 		  }
 		
 		  //do I have an upgrade I could install?
-		  for (var i=0; i<corp.HQ.cards.length; i++)
+		  var upgradeInstallPreferences = this._upgradeInstallPreferences();
+		  if (upgradeInstallPreferences.length > 0)
 		  {
-			  if (corp.HQ.cards[i].cardType == "upgrade")
-			  {
 this._log("Hmm...maybe this...");
-				  return this._returnPreference(optionList, "install", { cardToInstall:corp.HQ.cards[i], serverToInstallTo:this._bestServerToUpgrade(corp.HQ.cards[i]) });
-			  }
+			  return this._returnPreference(optionList, "install", upgradeInstallPreferences[0]);
 		  }
 	  }
 	  
@@ -1130,7 +1218,7 @@ this._log("Oh I know, I'll install something");
 				ret = optionList.indexOf(this.preferred.option);
 				if (ret > -1)
 				{
-					this.preferred = null;
+					this.preferred = null; //reset (don't reuse the preference)
 					return ret;
 				}
 			}
@@ -1147,6 +1235,8 @@ this._log("Oh I know, I'll install something");
 				if (cmd == "trash") data = [{prop:"card", key:"cardToTrash"}];
 				else if (cmd == "rez") data = [{prop:"card", key:"cardToRez"}];
 				else if (cmd == "play") data = [{prop:"card", key:"cardToPlay"}];
+				else if (cmd == "score") data = [{prop:"card", key:"cardToScore"}];
+				else if (cmd == "trash") data = [{prop:"card", key:"cardToTrash"}];
 				else if (cmd == "advance") data = [{prop:"card", key:"cardToAdvance"}];
 				else if (cmd == "install") data = [{prop:"card", key:"cardToInstall"}, {prop:"server", key:"serverToInstallTo"}];
 				
@@ -1169,6 +1259,7 @@ this._log("Oh I know, I'll install something");
 								if (matches == data.length)
 								{
 									this._log("a relevant preference has been set");
+									this.preferred = null; //reset (don't reuse the preference)
 									return i;
 								}
 							}
@@ -1263,6 +1354,10 @@ this._log("Oh I know, I'll install something");
 
   CommandChoice(optionList)
   {
+	if (this.preferred !== null)
+	{
+		if (optionList.indexOf(this.preferred.command) > -1) return optionList.indexOf(this.preferred.command);
+	}
     return this.Choice(optionList,"command");
   }
 
