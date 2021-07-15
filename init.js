@@ -774,7 +774,14 @@ function Setup()
 		UpdateCounters(); //rotate the text to be the right way up
 	}
 	
-	//wait for renderer to load (will call StartGame which calls Render and Main)
+	//move all cards into starting positions
+	Render();
+	ApplyToAllCards(function(card){
+		card.renderer.sprite.x = card.renderer.destinationPosition.x;
+		card.renderer.sprite.y = card.renderer.destinationPosition.y;
+	});
+
+	//wait for textures to load (will call StartGame which calls Main)
 }
 
 function StartGame()
@@ -789,7 +796,7 @@ function StartGame()
 		Log("Each player has taken five credits and drawn five cards");
 		IncrementPhase();
 	}
-	Render();
+	Render(); //to show cards have moved from decks
 	Main();
 }
 
