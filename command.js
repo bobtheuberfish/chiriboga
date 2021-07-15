@@ -77,6 +77,8 @@ function ResolveChoice(idx)
 var useHostForAvailability = false;
 function GetAvailability(renderer)
 {	
+	if (currentPhase == null) return 0; //game not loaded yet
+
 	//check for accessing first
 	if (accessList.length > 0)
 	{
@@ -110,11 +112,11 @@ function GetAvailability(renderer)
 		}
 		else if (renderer == countersUI.hand_size.runner)
 		{
-			if (runner.grip.length > MaxHandSize(runner)) return -2;
+			if (runner.grip.length > MaxHandSize(runner)) return -2; //glow red
 		}
 		else if (renderer == countersUI.hand_size.corp)
 		{
-			if (corp.HQ.cards.length > MaxHandSize(corp)) return -2;
+			if (corp.HQ.cards.length > MaxHandSize(corp)) return -2; //glow red
 		}
 		return 0;
 	}

@@ -344,22 +344,31 @@ function LoadDecks()
 	DeckBuildRandomly(corp.identityCard,systemGateway,otherCards,corp.RnD.cards,44,cardBackTexturesCorp,glowTextures,strengthTextures);
 	PrintDeck(corp.identityCard,corp.RnD.cards);
 	
-	/*
-	var newCard = InstanceCardsPush(systemGateway,50,corp.archives.cards,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
-	newCard.faceUp = true;
-	newCard = InstanceCardsPush(systemGateway,55,corp.archives.cards,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
-	newCard = InstanceCardsPush(systemGateway,65,corp.archives.cards,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
 	
+	/*
 	var newServer = NewServer("Remote 0",false);
 	corp.remoteServers.push(newServer);
-	var newIce = InstanceCardsPush(systemGateway,54,newServer.ice,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
+	var newCard = InstanceCardsPush(systemGateway,60,newServer.root,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
+	Advance(newCard);
+	Advance(newCard);
+	var newIce = InstanceCardsPush(systemGateway,72,newServer.ice,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
 	Rez(newIce);
-	*/
-	/*
+	
+	while (corp.RnD.cards.length > 0)
+	{
+		MoveCard(corp.RnD.cards[0],corp.archives.cards);
+	}
+	InstanceCardsPush(systemGateway,70,corp.RnD.cards,10,cardBackTexturesCorp,glowTextures,strengthTextures);
+	//InstanceCardsPush(systemGateway,66,newServer.root,1,cardBackTexturesCorp,glowTextures,strengthTextures);
+	
+	
+	
 	newServer = NewServer("Remote 1",false);
 	corp.remoteServers.push(newServer);
 	newIce = InstanceCardsPush(systemGateway,72,newServer.ice,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
 	Rez(newIce);
+	*/
+	/*
 	newServer = NewServer("Remote 2",false);
 	corp.remoteServers.push(newServer);
 	InstanceCardsPush(systemGateway,55,newServer.ice,1,cardBackTexturesCorp,glowTextures,strengthTextures);
@@ -414,6 +423,7 @@ function LoadDecks()
 		InstanceCardsPush(systemGateway,75,corp.RnD.cards,3,cardBackTexturesCorp,glowTextures,strengthTextures);
 	*/
 	
+		//ChangePhase(phases.corpStartDraw);
 		//ChangePhase(phases.runnerStartResponse);
 		//attackedServer = corp.archives;
 		//ChangePhase(phases.runApproachServer);

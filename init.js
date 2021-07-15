@@ -718,6 +718,7 @@ var counterList = ['advancement','credits','virus','power','agenda']; //used for
 var countersUI = { credits:{}, click:{}, tag:{}, mu:{}, advancement:{}, virus:{}, power:{}, agenda:{}, brain_damage:{}, bad_publicity:{}, hand_size:{} };
 
 //Prepare game for play
+var skipShuffleAndDraw = false;
 function Setup()
 {
 	activePlayer = corp;
@@ -765,6 +766,21 @@ function Setup()
 		Log("Decks shuffled");
 		corp.creditPool = 5;
 		runner.creditPool = 5;
+	}
+
+	if (viewingPlayer == corp)
+	{
+		cardRenderer.ChangeSide();
+		UpdateCounters(); //rotate the text to be the right way up
+	}
+	
+	//wait for renderer to load (will call StartGame which calls Render and Main)
+}
+
+function StartGame()
+{
+	if (!skipShuffleAndDraw)
+	{
 		for (var i=0; i<5; i++) //no need to call triggers because no cards are active during setup
 		{
 			MoveCardByIndex(corp.RnD.cards.length-1, corp.RnD.cards, corp.HQ.cards);
@@ -773,15 +789,7 @@ function Setup()
 		Log("Each player has taken five credits and drawn five cards");
 		IncrementPhase();
 	}
-
-	if (viewingPlayer == corp)
-	{
-		cardRenderer.ChangeSide();
-		UpdateCounters(); //rotate the text to be the right way up
-	}
-
 	Render();
-
 	Main();
 }
 

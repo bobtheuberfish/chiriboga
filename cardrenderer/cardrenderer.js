@@ -242,6 +242,7 @@ Card:class {
 		this.app = app;
 		this.card = card; //the actual game card
 		this.frontTexture = front;
+		cardRenderer.loadingTextures.push(this.frontTexture);
 		this.backTexture = back.back;
 		this.glowTextures = glow;
 		this.faceUp = false; //flipProgress will tend towards the result required by this
@@ -959,7 +960,6 @@ Card:class {
 
 	//FaceDown will change the sprite to show the card back
 	FaceDown() {
-		//this.sprite.texture = this.backTexture;
 		this.faceUp = false;
 		if (this.strengthSprite) this.strengthSprite.visible = false;
 		if (this.strengthText) this.strengthText.visible = false;
@@ -967,7 +967,6 @@ Card:class {
 
 	//FaceUp will change the sprite to show the card front
 	FaceUp(text="") {
-		//this.sprite.texture = this.frontTexture;
 		this.faceUp = true;
 		if (this.strengthText&&this.strengthSprite)
 		{
@@ -1155,6 +1154,9 @@ Renderer:class {
 		container.y = h/2;
 		document.body.appendChild(this.app.view); //just during creation, in init.js we move it straight away
 
+		this.loadingTextures = [];
+		this.loadingMax = 1;
+
 		//set up font styles (https://pixijs.io/pixi-text-style/)
 		this.counterStyle = new PIXI.TextStyle({
 		    fontFamily: 'Arial',
@@ -1272,6 +1274,28 @@ Renderer:class {
   
 		//add a global ticker
 		this.app.ticker.add(function(delta) {
+			//make sure all textures are loaded
+			if (this.loadingTextures.length > 0)
+			{
+				if (this.loadingTextures.length > this.loadingMax) this.loadingMax = this.loadingTextures.length;
+				
+				for (var i=0; i<this.loadingTextures.length; i++)
+				{
+					if (this.loadingTextures[i].valid)
+					{
+						this.loadingTextures.splice(i,1);
+						i--;
+						if ((this.loadingTextures.length == 0)&&($("#loading").is(":visible")))
+						{
+							$("#loading").hide();
+							StartGame();
+						}
+					}
+				}
+				var loadingText = "Loading "+Math.floor(100*(this.loadingMax-this.loadingTextures.length)/this.loadingMax)+"%";
+				$("#loading-text").html(loadingText);
+			}
+			
 			//fps display
 			this.framerates.push(PIXI.ticker.shared.FPS);
 			if (this.framerates.length == 20)
@@ -1404,7 +1428,7 @@ Renderer:class {
 		this.app.stage.addChild(this.interfacer);
 		this.interfacer.x = 0;
 		this.interfacer.y = 0;
-		this.app.ticker.add(function(delta) {
+		this.app.ticker.add(function(delta) {			
 			this.visible = false; 
 			if (approachIce > -1)
 			{
