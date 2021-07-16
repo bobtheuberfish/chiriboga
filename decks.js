@@ -161,6 +161,9 @@ function InstanceCardsPush(cardSet,setNumber,destination,num,backTextures,glowTe
     }
 	return ret;
 }
+
+var deckBuildingMaxTime = 2000; //ms
+
 /**
  * Instance and add cards to a given array from a given set and list of set numbers.<br/>Do not use this with agendas.<br/>Nothing is logged.
  *
@@ -169,16 +172,18 @@ function InstanceCardsPush(cardSet,setNumber,destination,num,backTextures,glowTe
  * @param {Card[]} cardSet the set containing the original definition to create instances from
  * @param {int[]} indices set indices of the original definition to create instances from
  * @param {Card[]} target array to push the Card instances into
- * @param {int} max maximum length for destination to become
+ * @param {int} maxLength maximum length for destination to become
+ * @param {int} maxInfluence maximum influence for list to have
  * @returns {int[]} set id of each card instanced
  */
-function DeckBuildRandomly(identityCard,cardSet,indices,destination,max,cardBack,glowTextures,strengthTextures)
+function DeckBuildRandomly(identityCard,cardSet,indices,destination,maxLength,maxInfluence,cardBack,glowTextures,strengthTextures)
 {
+	var startTime = Date.now(); //just in case it goes on too long
 	var ret = [];
 	var countSoFar = []; //of each card (by name)
 	for (var i=0; i<indices.length; i++) {	countSoFar[i] = 0;	}
 	var totalInfluence = 0;
-	while (destination.length < max)
+	while ((destination.length < maxLength)&&((Date.now() - startTime) < deckBuildingMaxTime))
 	{
 		var randomIndex = RandomRange(0,indices.length-1);
 		var cardNumber = indices[randomIndex];
@@ -190,7 +195,7 @@ function DeckBuildRandomly(identityCard,cardSet,indices,destination,max,cardBack
 			if (cardSet[cardNumber].faction == identityCard.faction) legalCard = true;
 			else
 			{
-				if (totalInfluence + cardSet[cardNumber].influence <= 15) //TODO use value on card
+				if (totalInfluence + cardSet[cardNumber].influence <= maxInfluence)
 				{
 					totalInfluence += cardSet[cardNumber].influence;
 					legalCard = true;
@@ -203,6 +208,12 @@ function DeckBuildRandomly(identityCard,cardSet,indices,destination,max,cardBack
 				ret.push(cardNumber);
 			}
 		}
+	}
+	//report timeout error, if relevant
+	if ((Date.now() - startTime) > deckBuildingMaxTime)
+	{
+		console.error("DeckBuildRandomly phase took too long (identity "+identityCard.title+"). Cards so far:");
+		console.log(destination);
 	}
 	return ret;
 }
@@ -218,12 +229,13 @@ function DeckBuildRandomly(identityCard,cardSet,indices,destination,max,cardBack
  */
 function DeckBuildRandomAgendas(identityCard,cardSet,indices,destination,deckSize,cardBack,glowTextures,strengthTextures)
 {
+	var startTime = Date.now(); //just in case it goes on too long
 	var agendaMin = 2*Math.floor(deckSize/5)+2;
 	var agendaMax = agendaMin+1;
 	var countSoFar = []; //of each card (by name)
 	for (var i=0; i<indices.length; i++) {	countSoFar[i] = 0;	}
 	var totalAgendaPoints = 0;
-	while (totalAgendaPoints < agendaMin)
+	while ((totalAgendaPoints < agendaMin)&&((Date.now() - startTime) < deckBuildingMaxTime))
 	{
 		var randomIndex = RandomRange(0,indices.length-1);
 		var cardNumber = indices[randomIndex];
@@ -241,6 +253,12 @@ function DeckBuildRandomAgendas(identityCard,cardSet,indices,destination,deckSiz
 				}
 			}
 		}
+	}
+	//report timeout error, if relevant
+	if ((Date.now() - startTime) > deckBuildingMaxTime)
+	{
+		console.error("DeckBuildRandomAgendas phase took too long (identity "+identityCard.title+"). Cards so far:");
+		console.log(destination);
 	}
 }
 
@@ -276,6 +294,26 @@ function PrintDeck(identity, deck)
 		ret.push(sortedDeck[i].count+" "+sortedDeck[i].title);
 	}
 	console.log(ret);
+}
+
+/**
+ * Count the influence in a list of card indices (set numbers)<br/>Nothing is logged.
+ *
+ * @method CountInfluence
+ * @param {Card} identityCard identity card to decide whether influence counts
+ * @param {Card[]} cardSet the set containing the original definition to create instances from
+ * @param {int[]} indices set indices of the original definition
+ * @returns {int} total influence
+ */
+function CountInfluence(identityCard,cardSet,indices)
+{
+	var ret = 0;
+	for (var i=0; i<indices.length; i++)
+	{
+		var cardNumber = indices[i];
+		if (cardSet[cardNumber].faction !== identityCard.faction) ret += cardSet[cardNumber].influence;
+	}
+	return ret;
 }
 
 //DECKS
@@ -323,7 +361,7 @@ function LoadDecks()
 		deckJson.identity = runnerIdentities[RandomRange(0,runnerIdentities.length-1)];
 		runner.identityCard = InstanceCard(systemGateway,deckJson.identity,cardBackTexturesRunner,glowTextures,strengthTextures); //note that card.location is not set for identity cards
 		var runnerCards = [2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34];
-		deckJson.systemGateway = DeckBuildRandomly(runner.identityCard,systemGateway,runnerCards,runner.stack,40,cardBackTexturesRunner,glowTextures,strengthTextures);
+		deckJson.systemGateway = DeckBuildRandomly(runner.identityCard,systemGateway,runnerCards,runner.stack,40,15,cardBackTexturesRunner,glowTextures,strengthTextures);
 	}
 
 	//whichever way the deck is built, update the "Edit this deck" link
@@ -332,19 +370,23 @@ function LoadDecks()
 	PrintDeck(runner.identityCard,runner.stack);
 
 	//CORP
+	var cardsChosen = [];
+	var influenceUsed = 0;
 	var corpIdentities = [35,43,51,59];
 	corp.identityCard = InstanceCard(systemGateway,corpIdentities[RandomRange(0,corpIdentities.length-1)],cardBackTexturesCorp,glowTextures,strengthTextures); //note that card.location is not set for identity cards
 	var agendaCards = [60,44,36,67,68,69,70,52];
 	DeckBuildRandomAgendas(corp.identityCard,systemGateway,agendaCards,corp.RnD.cards,44,cardBackTexturesCorp,glowTextures,strengthTextures);
 	var economyCards = [37,48,56,64,71,75]; //(credit economy only)
-	DeckBuildRandomly(corp.identityCard,systemGateway,economyCards,corp.RnD.cards,corp.RnD.cards.length+RandomRange(10,14),cardBackTexturesCorp,glowTextures,strengthTextures);
+	cardsChosen = DeckBuildRandomly(corp.identityCard,systemGateway,economyCards,corp.RnD.cards,corp.RnD.cards.length+RandomRange(10,14),5,cardBackTexturesCorp,glowTextures,strengthTextures);
+	influenceUsed += CountInfluence(corp.identityCard,systemGateway,cardsChosen);
 	var iceCards = [38,62,39,46,54,47,72,63,55,73,74];
-	DeckBuildRandomly(corp.identityCard,systemGateway,iceCards,corp.RnD.cards,corp.RnD.cards.length+RandomRange(14,17),cardBackTexturesCorp,glowTextures,strengthTextures);
+	cardsChosen = DeckBuildRandomly(corp.identityCard,systemGateway,iceCards,corp.RnD.cards,corp.RnD.cards.length+RandomRange(14,17),10-influenceUsed,cardBackTexturesCorp,glowTextures,strengthTextures);
+	influenceUsed += CountInfluence(corp.identityCard,systemGateway,cardsChosen);
 	var otherCards = [40,41,42,45,49,50,53,57,58,61,65,66];
-	DeckBuildRandomly(corp.identityCard,systemGateway,otherCards,corp.RnD.cards,44,cardBackTexturesCorp,glowTextures,strengthTextures);
+	DeckBuildRandomly(corp.identityCard,systemGateway,otherCards,corp.RnD.cards,44,15-influenceUsed,cardBackTexturesCorp,glowTextures,strengthTextures);
 	PrintDeck(corp.identityCard,corp.RnD.cards);
 	
-	
+	//InstanceCardsPush(systemGateway,62,corp.RnD.cards,10,cardBackTexturesCorp,glowTextures,strengthTextures);
 	/*
 	var newServer = NewServer("Remote 0",false);
 	corp.remoteServers.push(newServer);
