@@ -551,7 +551,14 @@ Card:class {
 		}
 		this.sprite.pointerout = function(event) {
 			if (pixi_draggingCard == this.card) return; //if card trails behind mouse by a frame, prevent weirdness
-			if (this.card.zoomed) this.card.ToggleZoom();
+			if (this.card.zoomed)
+			{
+				this.card.ToggleZoom();
+				//restore its position and rotation (it may have been moved for zoom by touch code)
+				this.card.sprite.x = this.card.storedPosition.x;
+				this.card.sprite.y = this.card.storedPosition.y;
+				this.card.sprite.rotation = this.card.storedRotation;
+			}
 			this.card.hover = false;
 			this.card.UpdateGlow();
 		}
@@ -1826,11 +1833,11 @@ function pixi_playThreshold(cardToPlay)
 		}
 		else if ((activePlayer == corp)&&(cardToPlay.card == corp.RnD.cards[corp.RnD.cards.length-1])) //corp drawing card
 		{
-			return (pixi_SqDistToPile(corp.RnD) > 30000); //arbitrary to feel right
+			return (pixi_SqDistToPile(corp.RnD) > 20000); //arbitrary to feel right
 		}
 		if ((activePlayer == runner)&&(cardToPlay.card == runner.stack[runner.stack.length-1])) //runner drawing card
 		{
-			return (pixi_SqDistToPile(runner.stack) > 30000); //arbitrary to feel right
+			return (pixi_SqDistToPile(runner.stack) > 20000); //arbitrary to feel right
 		}
 		if (typeof(cardToPlay.card.installOnlyOn) === 'function') //install a card that needs to be hosted
 		{
