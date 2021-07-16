@@ -215,6 +215,39 @@ class CorpAI
 	}
 	return false;
   }
+  
+  _aCompatibleBreakerIsInstalled(iceCard) //ignores strength and credit requirements
+  {
+	var installedRunnerCards = InstalledCards(runner);
+	for (var i=0; i<installedRunnerCards.length; i++)
+	{
+		if (CheckSubType(installedRunnerCards[i],"Icebreaker"))
+		{
+			if (CheckSubType(installedRunnerCards[i],"AI")) return true;
+			if (CheckSubType(installedRunnerCards[i],"Killer")&&CheckSubType(iceCard,"Sentry")) return true;
+			if (CheckSubType(installedRunnerCards[i],"Decoder")&&CheckSubType(iceCard,"Code Gate")) return true;
+			if (CheckSubType(installedRunnerCards[i],"Fracter")&&CheckSubType(iceCard,"Barrier")) return true;
+		}
+	}
+	return false;
+  }
+  
+  _numCompatibleIceInstalled(breakerCard) //ignores strength and credit requirements
+  {
+	var ret = 0;
+	var installedCorpCards = InstalledCards(corp);
+	for (var i=0; i<installedCorpCards.length; i++)
+	{
+		if (CheckCardType(installedCorpCards[i],["ice"]))
+		{
+			if (CheckSubType(breakerCard,"AI")) ret++;
+			if (CheckSubType(breakerCard,"Killer")&&CheckSubType(installedCorpCards[i],"Sentry")) ret++;
+			if (CheckSubType(breakerCard,"Decoder")&&CheckSubType(installedCorpCards[i],"Code Gate")) ret++;
+			if (CheckSubType(breakerCard,"Fracter")&&CheckSubType(installedCorpCards[i],"Barrier")) ret++;
+		}
+	}
+    return ret;
+  }
 
   _iceProtectionValue(card) //from 0 (completely pointless) to 2+ (depending on rez cost etc)
   {
@@ -229,8 +262,9 @@ class CorpAI
 	  {
 		  ret++; //plus bonus point for high rez cost (based on printed value) or strong
 	  }
+	  //weaker if threatened
+	  if (this._aCompatibleBreakerIsInstalled(card)) ret--;
 	  //and modify value based on hosted cards and virus counters
-	  //TODO check installed breakers too?
 	  if (typeof(card.hostedCards) !== 'undefined')
 	  {
 		  for (var i=0; i<card.hostedCards.length; i++)
@@ -423,16 +457,23 @@ class CorpAI
   _rankedThreats()
   {
 	  var ret = InstalledCards(runner);
-	  //printed install cost + hosted credits + hosted virus counters
+	  //predetermine number of compatible ice installed (for icebreakers only)
+	  for (var i=0; i<ret.length; i++)
+	  {
+		 if (CheckSubType(ret[i],"Icebreaker")) ret[i].AInumCompatibleIceInstalled = this._numCompatibleIceInstalled(ret[i]);
+	  }
+	  //printed install cost + hosted credits + hosted virus counters + ice threatened
 	  ret.sort(function(a, b) {
 		  var ascore = 0;
 		  if (typeof(a.installCost) !== 'undefined') ascore += a.installCost;
 		  ascore += Counters(a,"credit");
 		  ascore += Counters(a,"virus");
+		  if (typeof(a.AInumCompatibleIceInstalled) !== 'undefined') ascore += a.AInumCompatibleIceInstalled;
 		  var bscore = 0;
 		  if (typeof(b.installCost) !== 'undefined') bscore += b.installCost;
 		  bscore += Counters(b,"credit");
 		  bscore += Counters(b,"virus");
+		  if (typeof(b.AInumCompatibleIceInstalled) !== 'undefined') bscore += b.AInumCompatibleIceInstalled;
 		  return bscore-ascore; //descending order
 	  });
 	  return ret;
