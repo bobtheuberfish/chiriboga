@@ -186,6 +186,8 @@
 				
 				//read the textarea and create the deck
 				var validDeck = true;
+				var totalCards = 0;
+				var totalInfluence = 0;
 				var outputLine = 0;
 				json.systemGateway = [];
 				var splitText = $("#deck").val().split("\n");
@@ -209,16 +211,18 @@
 						var id = GetCardIdFromTitle(cardTitle);
 						if (id > -1)
 						{
-							if (systemGateway[id].player == runner)
+							if (cardSet[id].player == runner)
 							{
 								$("#contentcontainer").append('<div id="cg-'+(uid++)+'" class="cardgroup" style="float:left;" data-id="'+id+'" data-line="'+outputLine+'" oncontextmenu="return false"></div>');
 								Math.seedrandom(id);
 								for (var j=0; j<cardCount; j++)
 								{
+									totalCards++;
+									if (cardSet[id].faction !== cardSet[json.identity].faction) totalInfluence+=cardSet[id].influence;
 									json.systemGateway.push(id);
 									var stylestr = '';
 									if (j > 0) stylestr = '" style="margin-left: -120px; transform:rotate('+(Math.random()*10-5)+'deg);';
-									$("#contentcontainer").children().last().append('<img src="images/'+systemGateway[id].imageFile+stylestr+'">');
+									$("#contentcontainer").children().last().append('<img src="images/'+cardSet[id].imageFile+stylestr+'">');
 								}
 								$("#contentcontainer").children().last().mousedown(mouseDownCallback);
 								outputLine++;
@@ -239,7 +243,12 @@
 				//done checking, permit launch if valid
 				if (validDeck)
 				{
-					$("#output").html("");
+					numstylestr = "";
+					if (totalCards < 40) numstylestr = ' style="color:red;"';
+					infstylestr = "";
+					if (totalInfluence > 15) infstylestr = ' style="color:red;"';
+					if (totalCards!==1) $("#output").html("<span"+numstylestr+">"+totalCards+" cards </span><span"+infstylestr+">("+totalInfluence+" influence)</span>");
+					else $("#output").html(totalCards+" card ("+totalInfluence+" influence)");
 					$("#launch").prop("disabled",false);
 				}
 				$("#launch").html("Launch");
