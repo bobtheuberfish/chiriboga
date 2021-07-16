@@ -870,14 +870,22 @@ function ExecuteChosen(chosenCommand)
 			}
 		}
 		
-		//have decided I prefer to not show the resolving text as it might just confuse the user
+		//have decided I prefer to not show the resolving text as it might just confuse the user (it usually said "Continue")
 		//except where it will be useful for the player to have an instruction
-		if (footerText == "Access") footerText = "Access cards";
-		else if ((footerText=="Trash")||(footerText=="Discard")) //trash before install or discard at end of turn
+		var oldFooterText = footerText;
+		footerText = ""; 
+		if (viewingPlayer == activePlayer)
 		{
-			footerText = "Drag to your heap";
+			if (activePlayer == runner)
+			{
+				if (oldFooterText == "Access") footerText = "Access cards";
+				else if (oldFooterText=="Discard") footerText = "Drag to your heap";
+			}
+			else
+			{
+				if (oldFooterText=="Discard") footerText = "Drag to Archives";
+			}
 		}
-		else footerText = ""; 
 		
 		$("#footer").html("<h2>"+footerText+"</h2>");
 		
