@@ -159,6 +159,22 @@ canvas {
  line-height: 50%;
  overflow-y: auto;
  overflow-x: visible;
+ scrollbar-width: thin;
+ scrollbar-color: #7F8387 #5B6063;
+}
+
+/* chrome desktop doesn't yet support thin scrollbar so we need all this */
+*::-webkit-scrollbar {
+  width: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: #5B6063; 
+}
+*::-webkit-scrollbar-thumb {
+  background: #7F8387; 
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #66696C; 
 }
 
 #history {
