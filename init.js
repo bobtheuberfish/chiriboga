@@ -326,9 +326,11 @@ function Render()
 	var interfaceScale = 1.0
 	//calculate field height from total height of runner + spacer + corp
 	var totalFieldHeight = runnerLargestHeight - 150 + largestServerHeight;
+	if (totalFieldHeight < 700) totalFieldHeight = 700; //this is approximately 1 layer of ice
 	var fieldHeightRatio = totalFieldHeight/h;
 	//calculate field width from corp field (assumes this will be wider than runner field)
 	var totalFieldWidth = scoredCascade.width + (serverSeparationX*(4+corp.remoteServers.length)) + totalServersWidth;
+	if (totalFieldWidth < 1000) totalFieldWidth = 1000; //this is approximately 1 remote with ice
 	var fieldWidthRatio = (totalFieldWidth+arbitraryHistorySpacer)/w;
 	var largestRatio = Math.max(fieldHeightRatio, fieldWidthRatio);
 	if (largestRatio > 1.0)
