@@ -602,9 +602,12 @@ Card:class {
 			var dummyMaskToUse = this.dummyDefaultMask;
 			var hitDimensionsToUse = this.defaultMaskDimensions;
 			var isApproachEncounter = false;
+			this.sprite.interactive = true;
 			if (GetApproachEncounterIce() == this.card)
 			{
 				if (CheckApproach()||CheckEncounter()) isApproachEncounter = true;
+				//no interaction if choosing subroutines
+				if (OptionsAreOnlyUniqueSubroutines()) this.sprite.interactive = false;
 			}
 			//apply visual rules for when card is cropped
 			var forceCropped = (this.availability < 1)&&(this == pixi_holdCard)&&(!pixi_holdZoom)&&(!(OptionsAreOnlyUniqueSubroutines()&&(this.card === GetApproachEncounterIce())));
