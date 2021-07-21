@@ -323,6 +323,7 @@ function Render()
 	cardRenderer.app.stage.y = h*0.5;
 	//zoom the field out if there is too much on it
 	fieldZoom = 1.0
+	var interfaceScale = 1.0
 	//calculate field height from total height of runner + spacer + corp
 	var totalFieldHeight = runnerLargestHeight - 150 + largestServerHeight;
 	var fieldHeightRatio = totalFieldHeight/h;
@@ -330,13 +331,36 @@ function Render()
 	var totalFieldWidth = scoredCascade.width + (serverSeparationX*(4+corp.remoteServers.length)) + totalServersWidth;
 	var fieldWidthRatio = (totalFieldWidth+arbitraryHistorySpacer)/w;
 	var largestRatio = Math.max(fieldHeightRatio, fieldWidthRatio);
-	if (largestRatio > 1.0) fieldZoom = largestRatio;
+	if (largestRatio > 1.0)
+	{
+		fieldZoom = largestRatio;
+		interfaceScale = 1.0/fieldZoom;
+	}
 	w *= fieldZoom;
 	h *= fieldZoom;
 	cardRenderer.app.renderer.resize(w,h);
-	w -= arbitraryHistorySpacer*fieldZoom; //leave space for history sidebar
+	w -= arbitraryHistorySpacer; //leave space for history sidebar
 	cardRenderer.tutorialText.x = 15;
 	cardRenderer.tutorialText.y = h - 300;
+	//scale interface to match game zoom
+	$("#footer").css("transform-origin","bottom left");
+	$("#footer").css("transform", "scale("+interfaceScale+")");
+	$("#header").css("transform-origin","top right");
+	$("#header").css("transform", "scale("+interfaceScale+")");
+	$("#menubar").css("transform-origin","top left");
+	$("#menubar").css("transform", "scale("+interfaceScale+")");
+	$("#history-wrapper").css("width",(interfaceScale*56)+"px");
+	$("#history-wrapper").css("top",(interfaceScale*65)+"px");
+	$("#history").css("width",(interfaceScale*56)+"px");
+	$(".historycontents").css("transform-origin","top left");
+	$(".historycontents").css("transform", "scale("+interfaceScale+")");
+	$(".historyentry").css("background-size", "100% 100%");
+	$(".historyentry").css("height",(interfaceScale*50)+"px");
+	$(".historyentry").css("width",(interfaceScale*50)+"px");
+	$(".fullscreen-button").css("transform-origin","top right");
+	$(".fullscreen-button").css("transform", "scale("+interfaceScale+")");
+	corpHeaderFooter *= interfaceScale;
+	runnerHeaderFooter *= interfaceScale;
 	
 	//now apply all the renders
 	//RUNNER
@@ -443,7 +467,7 @@ function Render()
 	}
 
 	//Field rendered, now overlay any GUI
-	var corpFooterHeight = 65*fieldZoom;
+	var corpFooterHeight = 65;
 	//if (viewingPlayer != corp) corpFooterHeight = 0;
 	countersUI.credits.corp.SetPosition(w-40,40+corpFooterHeight);
 	countersUI.click.corp.SetPosition(w-114,40+corpFooterHeight);
@@ -454,7 +478,7 @@ function Render()
 	//countersUI.bad_publicity.corp.SetPosition(w-204,40+corpFooterHeight);
 	countersUI.bad_publicity.corp.SetPosition(w-204,-100); //moved off-screen for basic tutorial game
 
-	var runnerFooterHeight = 65*fieldZoom;
+	var runnerFooterHeight = 65;
 	//if (viewingPlayer != runner) runnerFooterHeight = 0;
 	countersUI.credits.runner.SetPosition(40,h-40-runnerFooterHeight);
 	countersUI.click.runner.SetPosition(114,h-40-runnerFooterHeight);

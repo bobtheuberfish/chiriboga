@@ -1038,7 +1038,7 @@ function ChangePhase(src, skipInit=false)
 			$("#footer").css("background",footerBackground);
 			$("#history").children().first().css({opacity:"1"});
 			//on desktop you can just hover, on mobile we need this touch start/end code
-			$("#history").prepend('<div ontouchstart="$(this).children(\'.tooltiptext\').show(); _history_wrapper_expand();" ontouchend="$(this).children(\'.tooltiptext\').hide(); _history_wrapper_shrink();" class="tooltip '+historyClass+'"><div class="historycontents"></div><pre class="tooltiptext">'+colouredPhaseTitle+'</pre></div>');
+			$("#history").prepend('<div ontouchstart="$(this).children(\'.tooltiptext\').show(); _history_wrapper_expand();" ontouchend="$(this).children(\'.tooltiptext\').hide(); _history_wrapper_shrink();" class="tooltip historyentry '+historyClass+'"><div class="historycontents"></div><pre class="tooltiptext">'+colouredPhaseTitle+'</pre></div>');
 			SetHistoryThumbnail('',"...");
 			$("#history").children().first().css({opacity:"0.5"});
 			//$("#history").css({top:"15px"});
