@@ -901,6 +901,10 @@ Card:class {
 			var scalingratio = 0.5;
 			if ((this.zoomed)&&(this.faceUp || this.canView)) scalingratio = fieldZoom;
 			if ((this == pixi_holdCard)&&(!pixi_holdZoom)&&(!(OptionsAreOnlyUniqueSubroutines()&&(this.card === GetApproachEncounterIce())))) scalingratio = 0.5; //this is different to forceCropped since it also unzooms dragging cards
+			//make sure card isn't bigger than screen (assumes image dimensions 300x419)
+			if (scalingratio*300/fieldZoom > window.innerWidth) scalingratio = fieldZoom*window.innerWidth/300;
+			if (scalingratio*419/fieldZoom > window.innerHeight) scalingratio = fieldZoom*window.innerHeight/419;
+			//animate the scale
 			var scaleDiff = scalingratio - this.sprite.scale.y;
 			var scalingSpeed = -0.5*scaleDiff + 1; //creates a custom scale animation curve. Realistically this assumes -1 < x < 1
 			this.sprite.scale.y += scalingSpeed*delta;
