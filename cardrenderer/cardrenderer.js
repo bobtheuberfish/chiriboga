@@ -594,7 +594,7 @@ Card:class {
 		//add a ticker for this card
 		this.minZoomLoops=1;
 		app.ticker.add(function(delta) {
-			var showFace = this.faceUp || (this.canView && this.zoomed);
+			var showFace = (this.card === accessingCard) || this.faceUp || (this.canView && this.zoomed);
 			//use correct mask
 			var maskOffset = { x:0, y:86 }; //by default, view begins from top left of card
 			this.sprite.anchor.set(0.5,0.293);
@@ -845,7 +845,11 @@ Card:class {
 			if (dispDiff.r > Math.PI) dispDiff.r -= 2.0*Math.PI;
 			else if (dispDiff.r < -Math.PI) dispDiff.r += 2.0*Math.PI;
 			var rspeed = 0.1;
-			if (this.card.player != viewingPlayer) rspeed = 0.5;
+			if (this.card.player != viewingPlayer)
+			{
+				if (this.card == accessingCard) rspeed = 100; //fixes a spinny glitch
+				else rspeed = 0.5;
+			}
 			if (Math.abs(dispDiff.r) < rspeed*delta)
 			{
 				deltaVec.r = dispDiff.r;
@@ -1008,7 +1012,7 @@ Card:class {
 	{
 		if ((!this.zoomed)&&(pixi_subroutineDelay >= 0)) return; //don't zoom new cards during this time
 		
-		if ((this.zoomed === true)&&((this.card === accessingCard)||((OptionsAreOnlyUniqueSubroutines())&&(this.card === GetApproachEncounterIce())))) //stay zoomed
+		if ((this.zoomed === true)&&(((OptionsAreOnlyUniqueSubroutines())&&(this.card === GetApproachEncounterIce())))) //stay zoomed
 		{
 			this.glowSprite.parent.addChild(this.glowSprite);
 			this.sprite.parent.addChild(this.sprite); //keep it on top!
