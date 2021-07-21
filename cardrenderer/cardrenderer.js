@@ -1752,11 +1752,14 @@ function pixi_onDragStart(event)
 	
 	pixi_mousePosition = event.data.getLocalPosition(this.parent);
 	pixi_mouseStart = pixi_mousePosition;
-	if (this.card.availability != 2) return; //2 is dragging
 	
+	if (this.card.availability < 1) return; //1+ means available to click
+
 	//if the card was zoomed, restore its position (it may have been adjusted due to edge of screen)
 	pixi_holdCard.sprite.x = pixi_holdCard.storedPosition.x;
 	pixi_holdCard.sprite.y = pixi_holdCard.storedPosition.y;
+
+	if (this.card.availability != 2) return; //2 is dragging
 
     // store a reference to the data (in 'this' i.e. the sprite)
     // the reason for this is because of multitouch
