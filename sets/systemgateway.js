@@ -88,9 +88,9 @@ systemGateway[3] = { title:'Carnivore', imageFile:'30003.png', player:runner, fa
 								Trash(params.card,false,function(){ //false means it can't be prevented 
 									TrashAccessedCard(true); //true means it can be prevented (it is not a cost)
 								},this);
-							},null,"Carnivore",this,"trash");
+							},null,"Discard",this,"trash"); //"Discard" was "Carnivore" but current implementation uses "Discard" as a hint to show an instruction
 						},this);	
-					},null,"Carnivore",this,"trash");
+					},null,"Discard",this,"trash"); //"Discard" was "Carnivore" but current implementation uses "Discard" as a hint to show an instruction
 				}
 			}
 		]	
