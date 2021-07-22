@@ -817,7 +817,7 @@ phases.runBreachServer = {
 	identifier: "Run 5.2",
 	Init: function() {
 		//trigger breach modifiers (number of additional cards to access)
-		var additionalToAccess = ModifyingTriggers("breachServer");
+		var additionalToAccess = ModifyingTriggers("breachServer",null,0); //null means no parameter is sent, lower limit of 0 means the total will not be any lower than zero
 		CreateAccessCardList(additionalToAccess);
 		PrepareAccessList();
 	},

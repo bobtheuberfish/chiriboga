@@ -86,11 +86,13 @@ function Log(src)
 	if (logDisabled) return;
 	//$("#output").append(src+"<br/>");
 	//window.scrollTo(0,Math.max( document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight ) - window.innerHeight);
-/*
+
+	/*
 	let utterance = new SpeechSynthesisUtterance(src);
 	utterance.lang = 'en-US';
 	speechSynthesis.speak(utterance);
-*/
+	*/
+
 	console.log(src);
 	$("#history").children().first().children("pre").first().append('<br/>'+Iconify(src));
 }
@@ -533,7 +535,7 @@ function MaxHandSize(player)
 	if (typeof(player) === 'undefined') player = activePlayer;
 	var ret = player.maxHandSize;
 	if (player == runner) ret -= runner.brainDamage;
-	ret += ModifyingTriggers("modifyMaxHandSize",player);
+	ret += ModifyingTriggers("modifyMaxHandSize",player,-ret); //lower limit of -ret means the total will not be any lower than zero
 	return ret;
 }
 
@@ -548,8 +550,8 @@ function BasicActionDraw(player)
 {
 	if (typeof(player) === 'undefined') player = activePlayer;
 	var num = 1;
-	if (player == corp) num += ModifyingTriggers("modifyBasicActionCorpDraw",num);
-	else if (player == runner) num += ModifyingTriggers("modifyBasicActionRunnerDraw",num);
+	if (player == corp) num += ModifyingTriggers("modifyBasicActionCorpDraw",num,0); //lower limit of 0 means the total will not be any lower than 1
+	else if (player == runner) num += ModifyingTriggers("modifyBasicActionRunnerDraw",num,0); //lower limit of 0 means the total will not be any lower than 1
 	SpendClicks(player,1);
 	return Draw(player,num);
 }
@@ -1477,9 +1479,11 @@ function AutomaticTriggers(callbackName,parameter=null)
  * @method ModifyingTriggers
  * @param {String} callbackName name of the callback property
  * @param {Object} [parameter] parameter to pass to Resolve
+ * @param {int} [lowerLimit] modification returned will be no lower than this (along the number line, not in magnitude)
+ * @param {int} [upperLimit] modification returned will be no higher than this (along the number line, not in magnitude)
  * @returns {Params[]} array of {card,label} where card[callbackName] is defined
  */
-function ModifyingTriggers(callbackName,parameter=null)
+function ModifyingTriggers(callbackName,parameter=null,lowerLimit,upperLimit)
 {
 	var ret = 0; //default is no modification
 	//any relevant triggers (assume automatic for now, if you want player choice use TriggeredResponsePhase)
@@ -1487,7 +1491,15 @@ function ModifyingTriggers(callbackName,parameter=null)
 	for (var i=0; i<triggerList.length; i++)
 	{
 		ret += triggerList[i].card[callbackName].Resolve.call(triggerList[i].card,parameter);
-	}			
+	}
+	if (typeof(lowerLimit) !== 'undefined')
+	{
+		if (ret < lowerLimit) ret = lowerLimit;
+	}
+	if (typeof(upperLimit) !== 'undefined')
+	{
+		if (ret > upperLimit) ret = upperLimit;
+	}
 	return ret;
 }
 
@@ -1884,11 +1896,7 @@ function GetGlobalProperty(propertyName)
 	var ret = globalProperties[propertyName];
 	//any relevant triggers that would modify the result (assume automatic for now, if you want player choice see phaseTemplates.globalTriggers for an example)
 	var triggerCallbackName = "modify"+propertyName.charAt(0).toUpperCase() + propertyName.slice(1);
-	var triggerList = ChoicesActiveTriggers(triggerCallbackName);
-	for (var i=0; i<triggerList.length; i++)
-	{
-		ret += triggerList[i].card[triggerCallbackName].Resolve.call(triggerList[i].card);
-	}
+	ret += ModifyingTriggers(triggerCallbackName,null,-ret); //null means no parameter is sent, lower limit of -ret means the total will not be any lower than zero
 	return ret;
 }
 
@@ -1906,11 +1914,7 @@ function GetCardProperty(card,propertyName)
 	if (typeof(card[propertyName]) !== 'undefined') ret = card[propertyName];
 	//any relevant triggers that would modify the result (assume automatic for now, if you want player choice see phaseTemplates.globalTriggers for an example)
 	var triggerCallbackName = "modify"+propertyName.charAt(0).toUpperCase() + propertyName.slice(1);
-	var triggerList = ChoicesActiveTriggers(triggerCallbackName);
-	for (var i=0; i<triggerList.length; i++)
-	{
-		ret += triggerList[i].card[triggerCallbackName].Resolve.call(triggerList[i].card,card);
-	}
+	ret += ModifyingTriggers(triggerCallbackName,card,-ret); //null means no parameter is sent, lower limit of -ret means the total will not be any lower than zero
 	LogDebug(GetTitle(card)+" has "+propertyName+" "+ret);
 	return ret;
 }
