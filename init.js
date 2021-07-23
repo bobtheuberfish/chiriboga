@@ -785,7 +785,7 @@ function Setup()
 	runner.identityCard.faceUp = true;
 	if (typeof(corp.identityCard.Tutorial) !== 'undefined') corp.identityCard.Tutorial.call(corp.identityCard,''); //blank string means game initialisation
 	else if (typeof(runner.identityCard.Tutorial) !== 'undefined') runner.identityCard.Tutorial.call(runner.identityCard,''); //blank string means game initialisation
-	else //normal play mode (non-tutorial)
+	else if (!skipShuffleAndDraw) //normal play mode (non-tutorial)
 	{
 		Shuffle(corp.RnD.cards);
 		Shuffle(runner.stack);
@@ -846,7 +846,11 @@ function NicelyFormatCommand(cmdstr)
 	{
 		if (accessList.length > 1) cmdstr = "Next";
 		else if (accessingCard != null) cmdstr = "End";
-		else if (currentPhase.identifier == "Run 3.1") cmdstr = "Resolve unbroken subroutines";
+		else if (currentPhase.identifier == "Run 3.1")
+		{
+			if (ChoicesEncounteredSubroutines().length > 0) cmdstr = "Resolve unbroken subroutines";
+			else cmdstr = "Continue";
+		}
 		else if (currentPhase.identifier == "Run 4.3") cmdstr = "Approach";
 		else if (typeof(phaseOptions.m) !== 'undefined') cmdstr = "Keep";
 		else cmdstr = "Continue";

@@ -292,6 +292,12 @@ systemGateway[8] = { title:'Leech', imageFile:'30008.png', player:runner, factio
 			return 0; //no modification to strength
 		}
 	},
+	encounterEnds: {
+		Resolve: function() {
+			this.strengthReduce = 0;
+		},
+		automatic: true
+	},
 	runSuccessful: {
 		Resolve: function() {
 			//central servers only
@@ -305,6 +311,7 @@ systemGateway[8] = { title:'Leech', imageFile:'30008.png', player:runner, factio
 			Enumerate: function() {
 				if (!CheckEncounter()) return [];
 				if (!CheckCounters(this,"virus",1)) return [];
+				if (ChoicesEncounteredSubroutines().length == 0) return []; //for usability only, not strictly required
 				return [{}];
 			},
 			Resolve: function(params) {
