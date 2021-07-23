@@ -552,12 +552,6 @@ function MakeChoice()
 		return;
 	}
 
-	if (validOptions.length == 1)
-	{
-		ResolveChoice(0);
-		return;
-	}
-
 	if (activePlayer.AI != null) //active player is AI controlled
 	{
 		try{
@@ -568,6 +562,12 @@ function MakeChoice()
 			console.log(validOptions);
 			ResolveChoice(0);
 		}
+		return;
+	}
+
+	if (validOptions.length == 1)
+	{
+		ResolveChoice(0);
 		return;
 	}
 
