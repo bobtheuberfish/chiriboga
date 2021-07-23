@@ -66,6 +66,7 @@ function Init()
 	corp.RnD = NewServer("R&D",true);
 	corp.archives = NewServer("Archives",true);
 	corp.remoteServers = [];
+	corp.serverIncrementer = 0; //keep track of remote server ID even when destroyed
 	corp.maxHandSize = 5;
 	corp._renderOnlyHandSize = corp.maxHandSize; //don't use this for anything
 	corp.resolvingCards = [];

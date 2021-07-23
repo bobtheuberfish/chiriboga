@@ -869,7 +869,7 @@ function ResetProperties(card)
 	}
 }
 /**
- * Called by MoveCard and MoveCardByIndex.<br/>Nothing is logged.<br/>To make sure all cardmove triggers fire, preferably call either MoveCard or MoveCardByIndex. Never use splice/pop/push directly on card arrays.
+ * Called by MoveCard and MoveCardByIndex after moving.<br/>Nothing is logged.<br/>To make sure all cardmove triggers fire, preferably call either MoveCard or MoveCardByIndex. Never use splice/pop/push directly on card arrays.
  *
  * @method MoveCardTriggers
  * @param {Card} card the card being moved
@@ -902,6 +902,19 @@ function MoveCardTriggers(card, locationfrom, locationto)
 	if (locationfrom !== null)
 	{
 		if (locationfrom == corp.archives.cards) card.faceUp = false;
+		
+		//check for servers that need to be destroyed (destroyed means has nothing both in or front) see FAQ 1.1, p. 2
+		for (var i=0; i<corp.remoteServers.length; i++)
+		{
+			if ((locationfrom == corp.remoteServers[i].root)||(locationfrom == corp.remoteServers[i].ice))
+			{
+				if ((corp.remoteServers[i].root.length == 0)&&(corp.remoteServers[i].ice.length == 0))
+				{
+					corp.remoteServers.splice(i,1);
+					break;
+				}
+			}
+		}
 	}
 	card.cardLocation = locationto;
 }
@@ -1410,8 +1423,7 @@ function ChoicesExistingServers()
 	ret.push({ server:corp.archives, label:"Archives" });
 	for (var j=0; j<corp.remoteServers.length; j++)
 	{
-		//only include servers that have not been destroyed (destroyed means had nothing both in or front) see FAQ 1.1, p. 2
-		if ((corp.remoteServers[j].root.length > 0)||(corp.remoteServers[j].ice.length > 0)) ret.push({ server:corp.remoteServers[j], label:"Remote "+j });
+		ret.push({ server:corp.remoteServers[j], label:corp.remoteServers[j].serverName });
 	}
 	return ret;
 }
@@ -1603,8 +1615,7 @@ function ChoicesCardInstall(card)
 				//all can be added to remote servers (things can be trashed at install time if necessary)
 				for (var j=0; j<corp.remoteServers.length; j++)
 				{
-					//only include servers that have not been destroyed (destroyed means had nothing both in or front) see FAQ 1.1, p. 2
-					if ((corp.remoteServers[j].root.length > 0)||(corp.remoteServers[j].ice.length > 0)) ret.push({ card:card, server:corp.remoteServers[j], label:GetTitle(card,true)+" -> "+corp.remoteServers[j].serverName });
+					ret.push({ card:card, server:corp.remoteServers[j], label:GetTitle(card,true)+" -> "+corp.remoteServers[j].serverName });
 				}
 
 				//ice and upgrades can be installed in front of/root of centrals

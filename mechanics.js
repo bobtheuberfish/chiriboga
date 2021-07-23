@@ -171,7 +171,7 @@ function Install(installingCard,destination=null,ignoreAllCosts=false,position=n
  	{
  		if (destination == null)
  		{
- 			destination = NewServer("Remote "+corp.remoteServers.length,false);
+ 			destination = NewServer("Remote "+(corp.serverIncrementer++),false);
  			corp.remoteServers.push(destination);
  		}
  	}

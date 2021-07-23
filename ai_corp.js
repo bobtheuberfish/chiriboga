@@ -37,6 +37,7 @@ class CorpAI
   _unrezzedIce(server)
   {
 	  var ret = [];
+	  if (server == null) return ret;
 	  for (var i=0; i<server.ice.length; i++)
 	  {
 		  if (!server.ice[i].rezzed) ret.push(server.ice[i]);
@@ -254,13 +255,13 @@ class CorpAI
 	  if (!CheckCardType(card,["ice"])) return 0;
 	  var ret = 0;
 	  ret++; //1 point for any ice
-	  if (!card.rezzed)
-	  {
-		  ret++; //plus 1 for being unrezzed
-	  }
 	  if ((card.rezCost > 4)||(Strength(card) > 3))
 	  {
 		  ret++; //plus bonus point for high rez cost (based on printed value) or strong
+	  }
+	  if (!card.rezzed)
+	  {
+		  ret*=2; //x2 for being unrezzed
 	  }
 	  //weaker if threatened
 	  if (this._aCompatibleBreakerIsInstalled(card)) ret--;
@@ -294,7 +295,7 @@ class CorpAI
 		  ret += this._iceProtectionValue(server.ice[i]);
 	  }
 	  //if it is being run successfully a lot, need extra protection
-	  if (typeof(server.AISuccessfulRuns) !== 'undefined') ret -= server.AISuccessfulRuns;
+	  if (typeof(server.AISuccessfulRuns) !== 'undefined') ret -= Math.round(Math.sqrt(server.AISuccessfulRuns));
 	  //if it is a remote or archives we will deprioritise protection by default
 	  if (server == corp.archives) ret+=2; //archives
 	  if (bonusForRemotes)
@@ -328,11 +329,20 @@ class CorpAI
 	  
 	  for (var i=0; i<corp.remoteServers.length; i++)
 	  {
-		  protectionScores["Remote"+i] = this._protectionScore(corp.remoteServers[i]);
-		  if (protectionScores["Remote"+i] < protectionScore)
+		  protectionScores[corp.remoteServers[i].serverName] = this._protectionScore(corp.remoteServers[i]);
+		  if (protectionScores[corp.remoteServers[i].serverName] < protectionScore)
 		  {
 			  serverToProtect = corp.remoteServers[i];
-			  protectionScore = protectionScores["Remote"+i];
+			  protectionScore = protectionScores[corp.remoteServers[i].serverName];
+		  }
+	  }
+	  if (this._emptyProtectedRemotes().length == 0)
+	  {
+		  protectionScores["null"] = this._protectionScore(null);
+		  if (protectionScores["null"] < protectionScore)
+		  {
+			  serverToProtect = null;
+			  protectionScore = protectionScores["null"];
 		  }
 	  }
 	  if (!ignoreArchives)
@@ -344,6 +354,7 @@ class CorpAI
 			  protectionScore = protectionScores.archives;
 		  }
 	  }
+      this._log("Server protection scores: "+JSON.stringify(protectionScores));
 	  return serverToProtect;
   }
 
@@ -508,7 +519,10 @@ class CorpAI
 	  }
 	  
 	  //none found in options list? I guess we just need to return a default
-	  this._log("No desired install options were available, using arbitrary option.");
+	  LogError("bestInstallOption failed to find any desired install options with this optionList and preferred:");
+	  console.log(optionList);
+	  console.log(this.preferred);
+
 	  return 0;
    }
 
@@ -1019,7 +1033,10 @@ this._log("I have no choice, will trash an arbitrary card");
 		for (var i=0; i<rnics.length; i++)
 		{
 			var card = rnics[i];
-			if (card.AIWouldRezBeforeScore.call(card,cardToScore,serverToScoreIn)) return this._returnPreference(optionList, "rez", { cardToRez:card });
+			if (typeof(card.AIWouldRezBeforeScore) !== 'undefined')
+			{
+				if (card.AIWouldRezBeforeScore.call(card,cardToScore,serverToScoreIn)) return this._returnPreference(optionList, "rez", { cardToRez:card });
+			}
 		}
 	}
 	//are there things we could install first to benefit?
@@ -1307,6 +1324,10 @@ this._log("Oh I know, I'll install something");
 						}
 					}
 				}
+			    LogError("preferred option not matched with this optionList and preferred:");
+			    console.log(optionList);
+			    console.log(this.preferred);
+ 			    this.preferred = null; //reset (don't reuse the preference)
 			}
 		}
   	}

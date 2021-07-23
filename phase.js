@@ -305,8 +305,11 @@ phaseTemplates.globalTriggers = {
 		{
 			Log("Run successful");
 			//store a little extra info to help AIs with decisionmaking
-			if (typeof(attackedServer.AISuccessfulRuns) !== 'undefined') attackedServer.AISuccessfulRuns++;
-			else attackedServer.AISuccessfulRuns = 1;
+			if ((typeof(attackedServer.cards) !== 'undefined')||(attackedServer.root.length > 0)) //ignore random runs on empty remotes
+			{
+				if (typeof(attackedServer.AISuccessfulRuns) !== 'undefined') attackedServer.AISuccessfulRuns++;
+				else attackedServer.AISuccessfulRuns = 1;
+			}
 		}
 		
 		//build trigger list
