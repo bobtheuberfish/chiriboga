@@ -1420,11 +1420,20 @@ this._log("Oh I know, I'll install something");
 	{
 		if (optionList.indexOf(this.preferred.command) > -1) return optionList.indexOf(this.preferred.command);
 	}
+	if (optionList.length == 1) return 0;
     return this.Choice(optionList,"command");
   }
 
   SelectChoice(optionList)
   {
+	if (optionList.length == 1)
+	{
+		if (this.preferred !== null)
+		{
+			if (executingCommand == this.preferred.command) this.preferred = null; //whether it succeeded or not, the preference is done
+		}
+		return [0];
+	}
     return this.Choice(optionList,"select");
   }
 
