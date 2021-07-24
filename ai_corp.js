@@ -9,29 +9,32 @@ class CorpAI
 	  console.log("AI: "+message);
   }	  
   
-  _iceInHandCommon(serverToInstallTo, affordable) //utility used by affordable/not ice listers (affordable is a boolean)
+  _iceInCardsCommon(serverToInstallTo, affordable, cards) //utility used by affordable/not ice listers (affordable is a boolean)
   {
+	  if (typeof(cards) == 'undefined') cards = corp.HQ.cards; //usually installing from hand but this makes other options possible
 	  var extraCost = 0;
 	  if (serverToInstallTo != null) extraCost += serverToInstallTo.ice.length; //take into account install cost if not first ice in server
-	  var relevantIceInHand = [];
-	  for (var i=0; i<corp.HQ.cards.length; i++)
+	  var relevantIceInCards = [];
+	  for (var i=0; i<cards.length; i++)
 	  {
-		  if (corp.HQ.cards[i].cardType == "ice")
+		  if (cards[i].cardType == "ice")
 		  {
-			  if (affordable == (corp.HQ.cards[i].rezCost <= corp.creditPool)) relevantIceInHand.push(corp.HQ.cards[i]);
+			  if (affordable == (cards[i].rezCost <= corp.creditPool)) relevantIceInCards.push(cards[i]);
 		  }
 	  }
-	  return relevantIceInHand;
+	  return relevantIceInCards;
   }
   
-  _affordableIce(serverToInstallTo) //returns all ice in hand with cost equal to or less than credit pool
+  _affordableIce(serverToInstallTo, cards) //returns all ice in hand with cost equal to or less than credit pool
   {
-	  return this._iceInHandCommon(serverToInstallTo, true);
+	  if (typeof(cards) == 'undefined') cards = corp.HQ.cards; //usually installing from hand but this makes other options possible
+	  return this._iceInCardsCommon(serverToInstallTo, true, cards);
   }
   
-  _notAffordableIce(serverToInstallTo) //returns all ice in hand with cost greater than credit pool
+  _notAffordableIce(serverToInstallTo, cards) //returns all ice in hand with cost greater than credit pool
   {
-	  return this._iceInHandCommon(serverToInstallTo, false);
+	  if (typeof(cards) == 'undefined') cards = corp.HQ.cards; //usually installing from hand but this makes other options possible
+	  return this._iceInCardsCommon(serverToInstallTo, false, cards);
   }
 
   _unrezzedIce(server)
@@ -76,6 +79,7 @@ class CorpAI
   
   _isAScoringServer(server) //note that this can includes servers with and without non-upgrade cards installed (so be careful what you would need to trash to install)
   {
+	  if (server == null) return false; //protection is too weak
 	  if (typeof(server.cards) == 'undefined') //is remote
 	  {
 		//no if its protection is too weak
@@ -127,14 +131,15 @@ class CorpAI
 	  return false;
   }
   
-  _upgradeInstallPreferences(server) //if server is not specified, the best server for each card will be chosen
+  _upgradeInstallPreferences(server,cards) //if server is not specified, the best server for each card will be chosen
   {
 	  var ret = [];
-	  for (var i=0; i<corp.HQ.cards.length; i++)
+	  if (typeof(cards) == 'undefined') cards = corp.HQ.cards; //usually installing from hand but this makes other options possible
+	  for (var i=0; i<cards.length; i++)
 	  {
-		  var serverToInstallTo = this._bestServerToUpgrade(corp.HQ.cards[i]);
+		  var serverToInstallTo = this._bestServerToUpgrade(cards[i]);
 		  if (typeof(server) !== 'undefined') serverToInstallTo = server;
-		  if (this._shouldUpgradeServerWithCard(serverToInstallTo,corp.HQ.cards[i])) ret.push({ cardToInstall:corp.HQ.cards[i], serverToInstallTo:serverToInstallTo });
+		  if (this._shouldUpgradeServerWithCard(serverToInstallTo,cards[i])) ret.push({ cardToInstall:cards[i], serverToInstallTo:serverToInstallTo });
 	  }
 	  return ret;
   }
@@ -261,6 +266,8 @@ class CorpAI
 	  }
 	  if (!card.rezzed)
 	  {
+		  var server = GetServer(card); //returns null if not installed
+		  if ((server==corp.HQ)||(server==corp.RnD)) ret += 1; //due to the random 'mystery' nature of R&D and HQ
 		  ret*=2; //x2 for being unrezzed
 	  }
 	  //weaker if threatened
@@ -326,10 +333,10 @@ class CorpAI
 		  serverToProtect = corp.RnD;
 		  protectionScore = protectionScores.RnD;
 	  }
-	  
 	  for (var i=0; i<corp.remoteServers.length; i++)
 	  {
 		  protectionScores[corp.remoteServers[i].serverName] = this._protectionScore(corp.remoteServers[i]);
+	      if (this._isAScoringServer(corp.remoteServers[i])) protectionScores[corp.remoteServers[i].serverName] -= 2; //scoring servers need more protection than other remotes
 		  if (protectionScores[corp.remoteServers[i].serverName] < protectionScore)
 		  {
 			  serverToProtect = corp.remoteServers[i];
@@ -509,7 +516,17 @@ class CorpAI
 
   _bestInstallOption(optionList)
   {
-	  var rankedInstallOptions = this._rankedInstallOptions();
+	  //make a cards list from optionList (since this could be hand, archives, card-generated list, etc)
+	  var cards = [];
+	  for (var i=0; i<optionList.length; i++)
+	  {
+		  if (typeof(optionList[i].card) !== 'undefined')
+		  {
+			if (!cards.includes(optionList[i].card)) cards.push(optionList[i].card);
+		  }
+	  }
+	  //now rank them
+	  var rankedInstallOptions = this._rankedInstallOptions(cards);
 	  for (var j=0; j<rankedInstallOptions.length; j++)
 	  {
 			for (var i=0; i<optionList.length; i++)
@@ -519,9 +536,10 @@ class CorpAI
 	  }
 	  
 	  //none found in options list? I guess we just need to return a default
-	  LogError("bestInstallOption failed to find any desired install options with this optionList and preferred:");
+	  LogError("bestInstallOption failed to find any desired install options with this optionList, cards and rankedInstallOptions:");
 	  console.log(optionList);
-	  console.log(this.preferred);
+	  console.log(cards);
+	  console.log(rankedInstallOptions);
 
 	  return 0;
    }
@@ -555,7 +573,6 @@ this._log("a click ability could provide economy");
 	  economyCards.push('Melange Mining Corp.');
 	  economyCards.push('PAD Campaign');	  
 	  economyCards.push('Predictive Planogram');
-	  economyCards.push('Tithe');
 	  
 	  for (var j=0; j<economyCards.length; j++)
 	  {
@@ -704,60 +721,60 @@ this._log("No desired install options were available, using arbitrary option.");
 	  return true;
   }
  
-  _rankedInstallOptions() //return list of preferred install options (0 highest preference) or empty array if don't want to install
+  _rankedInstallOptions(cards) //return list of preferred install options (0 highest preference) or empty array if don't want to install
   {
 	  var ret = [];
+
+	  if (typeof(cards) == 'undefined') cards = corp.HQ.cards; //usually installing from hand but this makes other options possible
 
 	  //Check if there are any assets in hand that are worth installing
 	  var emptyProtectedRemotes = this._emptyProtectedRemotes();
 	  //Include relevant checks in their function e.g. emptyProtectedRemotes.length > 0
 	  //And return -1 (don't install), 0 to emptyProtectedRemotes.length-1 (install in this server), or emptyProtectedRemotes.length (install in a new server)
-	  for (var i=0; i<corp.HQ.cards.length; i++)
+	  for (var i=0; i<cards.length; i++)
 	  {
-		  if (typeof(corp.HQ.cards[i].AIWorthInstalling) == 'function')
+		  if (typeof(cards[i].AIWorthInstalling) == 'function')
 		  {
-			  var installPreference = corp.HQ.cards[i].AIWorthInstalling(emptyProtectedRemotes);
+			  var installPreference = cards[i].AIWorthInstalling(emptyProtectedRemotes);
 			  if (installPreference > -1)
 			  {
-				  if (installPreference > emptyProtectedRemotes.length-1) ret.push({ cardToInstall:corp.HQ.cards[i], serverToInstallTo:null }); //new server
-				  else ret.push({ cardToInstall:corp.HQ.cards[i], serverToInstallTo:emptyProtectedRemotes[installPreference] });
+				  if (installPreference > emptyProtectedRemotes.length-1) ret.push({ cardToInstall:cards[i], serverToInstallTo:null }); //new server
+				  else ret.push({ cardToInstall:cards[i], serverToInstallTo:emptyProtectedRemotes[installPreference] });
 			  }
 		  }
 	  }
-
 	  //Find out if any servers need protection. If so, we will choose an ice card if possible.
 	  var serverToInstallTo = this._serverToProtect(); //never null, will be HQ by default
 	  if ((this._unrezzedIce(serverToInstallTo).length == 0)||(this._sufficientEconomy(false,4))) //this is our worst-protected server. if the server already has unrezzed ice, let's not install ice unless super rich (the 4 is arbitrary)
 	  {
 		//prioritise placing ice that I can afford to rez (for now we make no effort to sort them)
-		var affordableIce = this._affordableIce(serverToInstallTo);
+		var affordableIce = this._affordableIce(serverToInstallTo,cards);
 		for (var i=0; i<affordableIce.length; i++)
 		{
 			ret.push({ cardToInstall:affordableIce[i], serverToInstallTo:serverToInstallTo });
 		}
-		var notAffordableIce = this._notAffordableIce(serverToInstallTo);
+		var notAffordableIce = this._notAffordableIce(serverToInstallTo,cards);
 		for (var i=0; i<notAffordableIce.length; i++)
 		{
 			ret.push({ cardToInstall:notAffordableIce[i], serverToInstallTo:serverToInstallTo });
 		}
 	  }
-	  
 	  //Installing ice is unnecessary or impossible, let's install something else into a server
 	  if (emptyProtectedRemotes.length > 0)
 	  {
 		  //choose an card and server to install to
-		  for (var i=0; i<corp.HQ.cards.length; i++)
+		  for (var i=0; i<cards.length; i++)
 		  {
-			  if (CheckCardType(corp.HQ.cards[i],["agenda"])||CheckSubType(corp.HQ.cards[i],"Ambush"))
+			  if (CheckCardType(cards[i],["agenda"])||CheckSubType(cards[i],"Ambush"))
 			  {
 				  //loop through possible scoring servers (in order from strongest to weakest)
 				  for (var j=0; j<emptyProtectedRemotes.length; j++)
 				  {
 					  serverToInstallTo = emptyProtectedRemotes[j];
-					  if (this._isAScoringServer(serverToInstallTo)) ret.push({ cardToInstall:corp.HQ.cards[i], serverToInstallTo:serverToInstallTo });
+					  if (this._isAScoringServer(serverToInstallTo)) ret.push({ cardToInstall:cards[i], serverToInstallTo:serverToInstallTo });
 				  }
 			  }
-			  else if (CheckCardType(corp.HQ.cards[i],["asset"]))
+			  else if (CheckCardType(cards[i],["asset"]))
 			  {
 				  //loop through unlikely scoring servers (in order from strongest to weakest)
 				  for (var j=0; j<emptyProtectedRemotes.length; j++)
@@ -766,32 +783,30 @@ this._log("No desired install options were available, using arbitrary option.");
 					  if (!this._isAScoringServer(serverToInstallTo))
 					  {
 						  serverToInstallTo = emptyProtectedRemotes[RandomRange(0,emptyProtectedRemotes.length-1)]; //just whatever for now
-						  ret.push({ cardToInstall:corp.HQ.cards[i], serverToInstallTo:serverToInstallTo });
+						  ret.push({ cardToInstall:cards[i], serverToInstallTo:serverToInstallTo });
 					  }
 				  }
 			  }
 		  }
 	  }
-	  
 	  //Upgrade?
 	  serverToInstallTo = this._bestProtectedRemote();
 	  if (serverToInstallTo == null) serverToInstallTo = this._serverToProtect(true); //true means don't install to archives
-	  ret = ret.concat(this._upgradeInstallPreferences(serverToInstallTo));
+	  ret = ret.concat(this._upgradeInstallPreferences(serverToInstallTo,cards));
 	  
 	  //If no protected empty remote exists, let's make one if possible (otherwise just add ice to whatever server needs it most)
 	  serverToInstallTo = null;
 	  if (emptyProtectedRemotes.length > 0) serverToInstallTo = this._serverToProtect();
-	  var affordableIce = this._affordableIce(serverToInstallTo);
+	  var affordableIce = this._affordableIce(serverToInstallTo,cards);
 	  for (var i=0; i<affordableIce.length; i++)
 	  {
 		ret.push({ cardToInstall:affordableIce[i], serverToInstallTo:serverToInstallTo });
 	  }
-	  var notAffordableIce = this._notAffordableIce(serverToInstallTo);
+	  var notAffordableIce = this._notAffordableIce(serverToInstallTo,cards);
 	  for (var i=0; i<notAffordableIce.length; i++)
 	  {
 		ret.push({ cardToInstall:notAffordableIce[i], serverToInstallTo:serverToInstallTo });
 	  }
-			  
 	  return ret;
   }
   
