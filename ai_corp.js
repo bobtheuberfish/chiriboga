@@ -50,7 +50,7 @@ class CorpAI
   
   _uniqueCopyAlreadyInstalled(card) //returns true if is unique and a copy already in play (rezzed or unrezzed)
   {
-	if (!card.unique) return false; //i.e. .unique = false or undefined
+	if (!card.unique) return false; //i.e. .unique == false or undefined
 	var installedCards = InstalledCards(card.player);
 	for (var i=0; i<installedCards.length; i++)
 	{
@@ -736,13 +736,16 @@ this._log("No desired install options were available, using arbitrary option.");
 	  //And return -1 (don't install), 0 to emptyProtectedRemotes.length-1 (install in this server), or emptyProtectedRemotes.length (install in a new server)
 	  for (var i=0; i<cards.length; i++)
 	  {
-		  if (typeof(cards[i].AIWorthInstalling) == 'function')
+		  if (!this._uniqueCopyAlreadyInstalled(cards[i]))
 		  {
-			  var installPreference = cards[i].AIWorthInstalling(emptyProtectedRemotes);
-			  if (installPreference > -1)
+			  if (typeof(cards[i].AIWorthInstalling) == 'function')
 			  {
-				  if (installPreference > emptyProtectedRemotes.length-1) ret.push({ cardToInstall:cards[i], serverToInstallTo:null }); //new server
-				  else ret.push({ cardToInstall:cards[i], serverToInstallTo:emptyProtectedRemotes[installPreference] });
+				  var installPreference = cards[i].AIWorthInstalling(emptyProtectedRemotes);
+				  if (installPreference > -1)
+				  {
+					  if (installPreference > emptyProtectedRemotes.length-1) ret.push({ cardToInstall:cards[i], serverToInstallTo:null }); //new server
+					  else ret.push({ cardToInstall:cards[i], serverToInstallTo:emptyProtectedRemotes[installPreference] });
+				  }
 			  }
 		  }
 	  }
@@ -931,7 +934,7 @@ this._log("I will rez the approached ice");
 	  return optionList.indexOf("approach");
   }
   
-  Phase_EOT(optionList)
+  Phase_EOT(optionList) //that is, end of Runner turn
   {	  
 	  if (optionList.indexOf("rez") > -1)
 	  {
@@ -957,7 +960,30 @@ this._log("I will rez the approached ice");
 				  if (wouldUse) return this._returnPreference(optionList, "rez", { cardToRez:copyOfCard });
 			  }
 		  }
+		  //some cards we should use if we have another copy in hand instead of hogging a server
+		  var cardsToRezIfDuplicate = [
+			'Spin Doctor'
+		  ];
+		  for (var i=0; i<cardsToRezIfDuplicate.length; i++)
+		  {
+			  var copyOfCard = this._copyOfCardExistsIn(cardsToRezIfDuplicate[i], rezzableNonIceCards);
+			  if (copyOfCard)
+			  {
+				  for (var j=0; j<corp.HQ.cards.length; j++)
+				  {
+					if (GetTitle(corp.HQ.cards[j]) == GetTitle(copyOfCard))
+					{
+this._log("Might as well use this");
+						return this._returnPreference(optionList, "rez", { cardToRez:copyOfCard });
+					}
+				  }
+			  }
+		  }
 	  }
+
+	  //if trigger is an option, use it by default
+	  if (optionList.indexOf("trigger") > -1) return optionList.indexOf("trigger");
+
 	  return optionList.indexOf("n");
   }
   
@@ -1225,14 +1251,17 @@ this._log("Some ice would be nice");
 		  var emptyProtectedRemotes = this._emptyProtectedRemotes();
 		  for (var i=0; i<corp.HQ.cards.length; i++)
 		  {
-			  if (typeof(corp.HQ.cards[i].AIWorthInstalling) == 'function')
+			  if (!this._uniqueCopyAlreadyInstalled(corp.HQ.cards[i]))
 			  {
-				  var installPreference = corp.HQ.cards[i].AIWorthInstalling(emptyProtectedRemotes);
-				  if (installPreference > -1)
+				  if (typeof(corp.HQ.cards[i].AIWorthInstalling) == 'function')
 				  {
+					  var installPreference = corp.HQ.cards[i].AIWorthInstalling(emptyProtectedRemotes);
+					  if (installPreference > -1)
+					  {
 this._log("Thinking of installing something...");
-					  if (installPreference > emptyProtectedRemotes.length-1) this._returnPreference(optionList, "install", { cardToInstall:corp.HQ.cards[i], serverToInstallTo:null }); //new server
-					  else this._returnPreference(optionList, "install", { cardToInstall:corp.HQ.cards[i], serverToInstallTo:emptyProtectedRemotes[installPreference] });
+						  if (installPreference > emptyProtectedRemotes.length-1) this._returnPreference(optionList, "install", { cardToInstall:corp.HQ.cards[i], serverToInstallTo:null }); //new server
+						  else this._returnPreference(optionList, "install", { cardToInstall:corp.HQ.cards[i], serverToInstallTo:emptyProtectedRemotes[installPreference] });
+					  }
 				  }
 			  }
 		  }

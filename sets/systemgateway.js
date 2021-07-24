@@ -1915,7 +1915,7 @@ systemGateway[52] = { title:"Tomorrow's Headline", imageFile:'30052.png', player
 	}
 };
 systemGateway[53] = { title:'Spin Doctor', imageFile:'30053.png', player:corp, faction:'NBN', influence:1, cardType:'asset', subTypes:["Character"], rezCost:0, unique:true, trashCost:2,
-	//When you rez this asset, load 9[c] onto it.
+	//When you rez this asset, draw 2 cards.
 	cardRezzed: {
 		Resolve: function(card){
 			if (card == this) Draw(corp,2);
@@ -1976,12 +1976,23 @@ systemGateway[53] = { title:'Spin Doctor', imageFile:'30053.png', player:corp, f
 			}
 		}
 	],
-	//**AI code for installing (return -1 to not install, index of remote to install in a specific server, or emptyProtectedRemotes.length to install in a new server)
+	//**AI code for installing (return -1 to not install, index in emptyProtectedRemotes to install in a specific server, or emptyProtectedRemotes.length to install in a new server)
 	AIWorthInstalling: function(emptyProtectedRemotes) {
 		for (var i=0; i<corp.archives.cards.length; i++)
 		{
-			if ((!IsFaceUp(corp.archives.cards[i]))||(CheckCardType(corp.archives.cards[i],["agenda"]))) return 0; //could choose a server but this will do for now
-			//could also do it with face up cards that we want to reuse but this is fine for now
+			if ((!IsFaceUp(corp.archives.cards[i]))||(CheckCardType(corp.archives.cards[i],["agenda"]))) //could also do it with face up cards that we want to reuse but this is fine for now
+			{
+				//choose the first non-scoring server (create one if necessary)
+				for (var j=0; j<emptyProtectedRemotes.length; j++)
+				{
+					if (!corp.AI._isAScoringServer(emptyProtectedRemotes[j]))
+					{
+console.log(ServerName(emptyProtectedRemotes[j])+" is not for scoring");
+						return j;
+					}
+				}
+				return emptyProtectedRemotes.length;
+			}
 		}
 		return -1; //don't install
 	}
