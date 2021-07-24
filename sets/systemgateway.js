@@ -2100,7 +2100,6 @@ systemGateway[57] = { title:'Public Trail', imageFile:'30057.png', player:corp, 
 		}
 		DecisionPhase(runner,choices,decisionCallback,"Public Trail","Public Trail",this);
 	}
-	//TODO AI for when to play this
 };
 systemGateway[58] = { title:'AMAZE Amusements', imageFile:'30058.png', player:corp, faction:'NBN', influence:3, cardType:'upgrade', rezCost:1, trashCost:3, unique:true,
 	AIIsScoringUpgrade:true,

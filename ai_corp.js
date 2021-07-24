@@ -1045,14 +1045,17 @@ this._log("I have no choice, will trash an arbitrary card");
 		for (var i=0; i<corp.HQ.cards.length; i++)
 		{
 			var card = corp.HQ.cards[i];
-			if (card.AIWouldRezBeforeScore.call(card,cardToScore,serverToScoreIn))
+			if (typeof(card.AIWouldRezBeforeScore) !== 'undefined')
 			{
-				if (CheckCredits(RezCost(card),corp,"rezzing",card))
+				if (card.AIWouldRezBeforeScore.call(card,cardToScore,serverToScoreIn))
 				{
-					//only handling scoring upgrades at the moment (may need to add consideration of assets being put in a server other than this one)
-					if (card.AIIsScoringUpgrade)
+					if (CheckCredits(RezCost(card),corp,"rezzing",card))
 					{
-						if (this._shouldUpgradeServerWithCard(serverToScoreIn,card)) return this._returnPreference(optionList, "install", { serverToInstallTo:serverToScoreIn, cardToInstall:card });
+						//only handling scoring upgrades at the moment (may need to add consideration of assets being put in a server other than this one)
+						if (card.AIIsScoringUpgrade)
+						{
+							if (this._shouldUpgradeServerWithCard(serverToScoreIn,card)) return this._returnPreference(optionList, "install", { serverToInstallTo:serverToScoreIn, cardToInstall:card });
+						}
 					}
 				}
 			}
@@ -1064,6 +1067,28 @@ this._log("I have no choice, will trash an arbitrary card");
   Phase_Main(optionList)
   {
 	  var cardToPlay = null; //used for checks
+
+	  //take advantage of a temporary window of opportunity (i.e., play right away)
+	  if (optionList.includes("play"))
+	  {
+		  var useWhenCanCards = [
+			'Neurospike', //agendas scored
+			'Public Trail' //successful run
+		  ];
+		  for (var i=0; i<useWhenCanCards.length; i++)
+		  {
+			cardToPlay = this._copyOfCardExistsIn(useWhenCanCards[i],corp.HQ.cards);
+			if (cardToPlay)
+			{
+	this._log("there is a card with a window of opportunity");
+				if (FullCheckPlay(cardToPlay))
+				{
+	this._log("I could play it");
+					return this._returnPreference(optionList, "play", { cardToPlay:cardToPlay });
+				}
+			}
+		  }
+	  }
 
 	  //should I take advantage of the runner being tagged?
 	  if (CheckTags(1))
@@ -1078,8 +1103,8 @@ this._log("I have no choice, will trash an arbitrary card");
 			cardToPlay = this._copyOfCardExistsIn(useWhenTaggedCards[i],corp.HQ.cards);
 			if (cardToPlay)
 			{
-	this._log("there is an card that benefits from tags");
-				if (CheckPlay(cardToPlay)&&(optionList.includes("play")))
+	this._log("there is a card that benefits from tags");
+				if (FullCheckPlay(cardToPlay)&&(optionList.includes("play")))
 				{
 	this._log("I could play it");
 					return this._returnPreference(optionList, "play", { cardToPlay:cardToPlay });
@@ -1126,7 +1151,7 @@ this._log("I could advance a card");
 						  if (cardToPlay)
 						  {
 this._log("there is an economy advance");
-							  if (CheckPlay(cardToPlay)&&(optionList.includes("play")))
+							  if (FullCheckPlay(cardToPlay)&&(optionList.includes("play")))
 							  {
 this._log("I could play it");
 								  if (corp.remoteServers[i].root[j].advancement < corp.remoteServers[i].root[j].advancementRequirement - 1)

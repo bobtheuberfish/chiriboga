@@ -1754,35 +1754,31 @@ function ChoicesAbility(card,limitTo='')
 }
 
 /**
- * Create a choices list from the given player's triggerables.</br>Nothing is logged.
+ * Check whether the card can be played, including all costs.</br>Nothing is logged.
  *
- * @method ChoicesTriggerableOptions
- * @param {Player} player corp or runner
- * @param {String} limitTo set to include abilities which check for specific things: 'click': clicks remaining, 'access': accessing a card
- * @returns {Params[]} list of options to choose from (each object has .card, .ability, .choice and .label)
+ * @method FullCheckPlay
+ * @param {Card} card to full check play
+ * @returns {Boolean} true if can play, false if not
  */
- //TODO delete this as it is now obsolete?
-function ChoicesTriggerableOptions(player,limitTo='')
+function FullCheckPlay(card)
 {
-	//each option for each ability on each card
-	var ret = [];
-	var activeCards = ActiveCards(player);
-	for (var i=0; i<activeCards.length; i++)
+	if (card == null) return false;
+	if (CheckActionClicks(1))
 	{
-		var abilities = ChoicesAbility(activeCards[i], limitTo);
-		for (var j=0; j<abilities.length; j++)
+		if (CheckPlay(card))
 		{
-			for (var k=0; k<abilities[j].choices.length; k++)
+			if (CheckCredits(card.playCost,card.player,"playing",card))
 			{
-				var choiceLabel = "("+GetTitle(activeCards[i],true)+") ";
-				if (typeof(abilities[j].ability.text) !== 'undefined') choiceLabel+= abilities[j].ability.text;
-				if ((typeof(abilities[j].ability.text) !== 'undefined')&&(typeof(abilities[j].choices[k].label) !== 'undefined')) choiceLabel += " -> ";
-				if (typeof(abilities[j].choices[k].label) !== 'undefined') choiceLabel += abilities[j].choices[k].label;
-				ret.push({card:activeCards[i], ability:abilities[j].ability, choice:abilities[j].choices[k], label:choiceLabel });
+				if (typeof(card.Enumerate) !== 'undefined')
+				{
+					var choices = card.Enumerate.call(card);
+					if (choices.length > 0) return true; //valid by Enumerate
+				}
+				else return true; //no Enumerate, assumed valid
 			}
 		}
 	}
-	return ret;
+	return false;
 }
 
 /**

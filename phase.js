@@ -395,26 +395,11 @@ phases.corpActionMain = {
 		},
 		play: function() {
 			var ret = [];
-			if (CheckActionClicks(1))
+			var hand = PlayerHand(corp);
+			for (var i=0; i<hand.length; i++)
 			{
-				//include each affordable operation in hand that has no card Enumerate (assume always valid) or if Enumerate returns one or more choices
-				var hand = PlayerHand(corp);
-				for (var i=0; i<hand.length; i++)
-				{
-					var card = hand[i];
-					if (CheckPlay(card))
-					{
-						if (CheckCredits(card.playCost,corp,"playing",card))
-						{
-							if (typeof(card.Enumerate) !== 'undefined')
-							{
-								var choices = card.Enumerate.call(card);
-								if (choices.length > 0) ret.push({ card:card, label:GetTitle(card,true) }); //valid by Enumerate
-							}
-							else ret.push({ card:card, label:GetTitle(card,true) }); //no Enumerate, assumed valid
-						}
-					}
-				}
+				var card = hand[i];
+				if (FullCheckPlay(card)) ret.push({ card:card, label:GetTitle(card,true) });
 			}
 			return ret;
 		},
@@ -580,26 +565,11 @@ phases.runnerActionMain = {
 		},
 		play: function() {
 			var ret = [];
-			if (CheckActionClicks(1))
+			var hand = PlayerHand(runner);
+			for (var i=0; i<hand.length; i++)
 			{
-				//include each affordable event in hand that has no card Enumerate (assume always valid) or if Enumerate returns one or more choices
-				var hand = PlayerHand(runner);
-				for (var i=0; i<hand.length; i++)
-				{
-					var card = hand[i];
-					if (CheckPlay(card))
-					{
-						if (CheckCredits(card.playCost,runner,"playing",card))
-						{
-							if (typeof(card.Enumerate) !== 'undefined')
-							{
-								var choices = card.Enumerate.call(card);
-								if (choices.length > 0) ret.push({ card:card, label:GetTitle(card,true) }); //valid by Enumerate
-							}
-							else ret.push({ card:card, label:GetTitle(card,true) }); //no Enumerate, assumed valid
-						}
-					}
-				}
+				var card = hand[i];
+				if (FullCheckPlay(card)) ret.push({ card:card, label:GetTitle(card,true) });
 			}
 			return ret;
 		},
