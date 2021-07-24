@@ -1356,7 +1356,7 @@ systemGateway[38] = { title:'Ansel 1.0', imageFile:'30038.png', player:corp, fac
 							function decisionCallbackB(params) {
 								if (params.card !== null) Install(params.card,params.server);
 							}
-							DecisionPhase(corp,choicesB,decisionCallbackB,"Ansel 1.0","Install",this,"install"); //TODO AI for choosing best install from Archives
+							DecisionPhase(corp,choicesB,decisionCallbackB,"Ansel 1.0","Install",this,"install");
 						}
 					}
 					DecisionPhase(corp,choicesA,decisionCallbackA,"Ansel 1.0","Ansel 1.0",this);
@@ -2005,7 +2005,9 @@ systemGateway[54] = { title:'Funhouse', imageFile:'30054.png', player:corp, fact
 		{
 			text: "Give the Runner 1 tag unless they pay 4[c].",
 			Resolve: function(params) {
-				var choices = [{id:0, label:"Pay 4[c]", button:"Pay 4[c]"},{id:1, label:"End the run", button:"End the run"}];
+				var choices = [];
+				if (CheckCredits(4,runner)) choices.push({id:0, label:"Pay 4[c]", button:"Pay 4[c]"});
+				choices.push({id:1, label:"End the run", button:"End the run"});
 				function decisionCallback(params) {
 					if (params.id == 0) SpendCredits(runner,4);
 					else EndTheRun();

@@ -266,9 +266,12 @@ class CorpAI
 	  }
 	  if (!card.rezzed)
 	  {
-		  var server = GetServer(card); //returns null if not installed
-		  if ((server==corp.HQ)||(server==corp.RnD)) ret += 1; //due to the random 'mystery' nature of R&D and HQ
 		  ret*=2; //x2 for being unrezzed
+		  var server = GetServer(card); //returns null if not installed
+		  if (server != null)
+		  {
+			if (typeof(server.cards) !== 'undefined') ret += 3; //due to the random 'mystery' nature of central servers
+		  }
 	  }
 	  //weaker if threatened
 	  if (this._aCompatibleBreakerIsInstalled(card)) ret--;
