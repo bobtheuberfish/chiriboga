@@ -83,7 +83,7 @@ class CorpAI
 	  if (typeof(server.cards) == 'undefined') //is remote
 	  {
 		//no if its protection is too weak
-		var protScore = this._protectionScore(server,false); //false means remotes get no bonus points
+		var protScore = this._protectionScore(server);
 		var minProt = RandomRange(3,4); //arbitrary: tweak as needed
 		if (protScore < minProt) return false;
 		
@@ -264,15 +264,13 @@ class CorpAI
 	  {
 		  ret++; //plus bonus point for high rez cost (based on printed value) or strong
 	  }
-	  if (!card.rezzed)
+	  //ice on centrals is essentially better due to the random 'mystery' nature of central servers
+	  var server = GetServer(card); //returns null if not installed
+	  if (server != null)
 	  {
-		  ret*=2; //x2 for being unrezzed
-		  var server = GetServer(card); //returns null if not installed
-		  if (server != null)
-		  {
-			if (typeof(server.cards) !== 'undefined') ret += 3; //due to the random 'mystery' nature of central servers
-		  }
+		if (typeof(server.cards) !== 'undefined') ret += 2;
 	  }
+	  if (!card.rezzed) ret*=2; //x2 for being unrezzed
 	  //weaker if threatened
 	  if (this._aCompatibleBreakerIsInstalled(card)) ret--;
 	  //and modify value based on hosted cards and virus counters
@@ -291,13 +289,10 @@ class CorpAI
 	  return ret;
   }
 
-  _protectionScore(server,bonusForRemotes=true) //higher number = more protected
+  _protectionScore(server) //higher number = more protected
   {
 	  //new servers have a score of 1 (because they are empty)
-	  if (bonusForRemotes)
-	  {
-		if (server == null) return 1;
-	  }
+	  if (server == null) return 1;
 	  //for 'protecting' check we build a score considering how much ice and how effective the ice is
 	  var ret = 0;
 	  for (var i=0; i<server.ice.length; i++)
@@ -306,12 +301,8 @@ class CorpAI
 	  }
 	  //if it is being run successfully a lot, need extra protection
 	  if (typeof(server.AISuccessfulRuns) !== 'undefined') ret -= Math.round(Math.sqrt(server.AISuccessfulRuns));
-	  //if it is a remote or archives we will deprioritise protection by default
-	  if (server == corp.archives) ret+=2; //archives
-	  if (bonusForRemotes)
-	  {
-		if (typeof(server.cards) === 'undefined') ret++; //remote
-	  }
+	  //if it is archives we will deprioritise protection by default
+	  if (server == corp.archives) ret+=3; //archives
 	  return ret;
   }
   
@@ -339,7 +330,7 @@ class CorpAI
 	  for (var i=0; i<corp.remoteServers.length; i++)
 	  {
 		  protectionScores[corp.remoteServers[i].serverName] = this._protectionScore(corp.remoteServers[i]);
-	      if (this._isAScoringServer(corp.remoteServers[i])) protectionScores[corp.remoteServers[i].serverName] -= 2; //scoring servers need more protection than other remotes
+	      if (this._isAScoringServer(corp.remoteServers[i])) protectionScores[corp.remoteServers[i].serverName] -= this._agendasInHand(); //scoring servers need more protection than other remotes (and the more agendas in hand, the more need to strengthen them
 		  if (protectionScores[corp.remoteServers[i].serverName] < protectionScore)
 		  {
 			  serverToProtect = corp.remoteServers[i];
@@ -374,10 +365,10 @@ class CorpAI
 	  var protectionScore = 0;
 	  for (var i=0; i<corp.remoteServers.length; i++)
 	  {
-		  if (this._protectionScore(corp.remoteServers[i],false) > protectionScore) //false means remotes get no bonus points
+		  if (this._protectionScore(corp.remoteServers[i]) > protectionScore)
 		  {
 			  bestProtectedRemote = corp.remoteServers[i];
-			  protectionScore = this._protectionScore(bestProtectedRemote,false); //false means remotes get no bonus points
+			  protectionScore = this._protectionScore(bestProtectedRemote);
 		  }
 	  }
 	  return bestProtectedRemote;
@@ -400,7 +391,7 @@ class CorpAI
 		  if ((corp.remoteServers[i].ice.length > 0)&&hasRoom)
 		  {
 			  //insert into ret in order by finding the relevant index
-			  var thisProtectionScore = this._protectionScore(corp.remoteServers[i],false); //false means remotes get no bonus points
+			  var thisProtectionScore = this._protectionScore(corp.remoteServers[i]);
 			  var k = 0;
 			  while ((k < protectionScores.length)&&(protectionScores[k] > thisProtectionScore)) k++;
 			  ret.splice(k,0,corp.remoteServers[i]);

@@ -369,6 +369,10 @@ function LoadDecks()
 	$("#editdeck").attr('onclick',"window.location.href='decklauncher.html?r="+compressedDeckString+"';");
 	PrintDeck(runner.identityCard,runner.stack);
 
+	//InstanceCardsPush(cheat,1,runner.grip,1,cardBackTexturesRunner,glowTextures,strengthTextures);
+	//var newCard = InstanceCardsPush(systemGateway,33,runner.rig.resources,1,cardBackTexturesRunner,glowTextures,strengthTextures)[0];
+	//newCard.faceUp = true;
+
 	//CORP
 	var cardsChosen = [];
 	var influenceUsed = 0;
@@ -377,39 +381,50 @@ function LoadDecks()
 	var agendaCards = [60,44,36,67,68,69,70,52];
 	DeckBuildRandomAgendas(corp.identityCard,systemGateway,agendaCards,corp.RnD.cards,44,cardBackTexturesCorp,glowTextures,strengthTextures);
 	var economyCards = [37,48,56,64,71,75]; //(credit economy only)
-	cardsChosen = DeckBuildRandomly(corp.identityCard,systemGateway,economyCards,corp.RnD.cards,corp.RnD.cards.length+RandomRange(10,14),5,cardBackTexturesCorp,glowTextures,strengthTextures);
+	cardsChosen = DeckBuildRandomly(corp.identityCard,systemGateway,economyCards,corp.RnD.cards,corp.RnD.cards.length+RandomRange(9,11),3,cardBackTexturesCorp,glowTextures,strengthTextures);
 	influenceUsed += CountInfluence(corp.identityCard,systemGateway,cardsChosen);
 	var iceCards = [38,62,39,46,54,47,72,63,55,73,74];
-	cardsChosen = DeckBuildRandomly(corp.identityCard,systemGateway,iceCards,corp.RnD.cards,corp.RnD.cards.length+RandomRange(14,17),10-influenceUsed,cardBackTexturesCorp,glowTextures,strengthTextures);
+	cardsChosen = DeckBuildRandomly(corp.identityCard,systemGateway,iceCards,corp.RnD.cards,corp.RnD.cards.length+RandomRange(15,18),9-influenceUsed,cardBackTexturesCorp,glowTextures,strengthTextures);
 	influenceUsed += CountInfluence(corp.identityCard,systemGateway,cardsChosen);
 	var otherCards = [40,41,42,45,49,50,53,57,58,61,65,66];
 	DeckBuildRandomly(corp.identityCard,systemGateway,otherCards,corp.RnD.cards,44,15-influenceUsed,cardBackTexturesCorp,glowTextures,strengthTextures);
 	PrintDeck(corp.identityCard,corp.RnD.cards);
 	
-	//InstanceCardsPush(systemGateway,62,corp.RnD.cards,10,cardBackTexturesCorp,glowTextures,strengthTextures);
+	/*
+	//for testing, replace R&D with custom list
+	while (corp.RnD.cards.length > 0)
+	{
+		RemoveFromGame(corp.RnD.cards[0]);
+	}
+	InstanceCardsPush(systemGateway,67,corp.RnD.cards,4,cardBackTexturesCorp,glowTextures,strengthTextures);
+	*/
+	//InstanceCardsPush(systemGateway,42,corp.archives.cards,1,cardBackTexturesCorp,glowTextures,strengthTextures);
+	//InstanceCardsPush(systemGateway,73,corp.archives.cards,1,cardBackTexturesCorp,glowTextures,strengthTextures);
+	//InstanceCardsPush(systemGateway,67,corp.HQ.cards,4,cardBackTexturesCorp,glowTextures,strengthTextures);
+	
+	//InstanceCardsPush(systemGateway,38,corp.RnD.ice,3,cardBackTexturesCorp,glowTextures,strengthTextures);
+	//var newIce = InstanceCardsPush(systemGateway,38,corp.HQ.ice,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
+	//Rez(newIce);	
+	
+	
 	/*
 	var newServer = NewServer("Remote 0",false);
 	corp.remoteServers.push(newServer);
 	var newCard = InstanceCardsPush(systemGateway,60,newServer.root,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
 	Advance(newCard);
 	Advance(newCard);
-	var newIce = InstanceCardsPush(systemGateway,72,newServer.ice,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
-	Rez(newIce);
-	
-	while (corp.RnD.cards.length > 0)
-	{
-		MoveCard(corp.RnD.cards[0],corp.archives.cards);
-	}
-	InstanceCardsPush(systemGateway,70,corp.RnD.cards,10,cardBackTexturesCorp,glowTextures,strengthTextures);
-	//InstanceCardsPush(systemGateway,66,newServer.root,1,cardBackTexturesCorp,glowTextures,strengthTextures);
+	*/
+	//var newIce = InstanceCardsPush(systemGateway,72,newServer.ice,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
+	//Rez(newIce);
 	
 	
 	
+	/*
 	newServer = NewServer("Remote 1",false);
 	corp.remoteServers.push(newServer);
-	newIce = InstanceCardsPush(systemGateway,72,newServer.ice,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
-	Rez(newIce);
-	*/
+	newIce = InstanceCardsPush(systemGateway,38,newServer.ice,1,cardBackTexturesCorp,glowTextures,strengthTextures)[0];
+	Rez(newIce);*/
+	
 	/*
 	newServer = NewServer("Remote 2",false);
 	corp.remoteServers.push(newServer);
@@ -466,8 +481,11 @@ function LoadDecks()
 	*/
 	
 		//ChangePhase(phases.corpStartDraw);
+		//GainCredits(corp,50);
+		//skipShuffleAndDraw = true;
 		//ChangePhase(phases.runnerStartResponse);
-		//attackedServer = corp.archives;
+		//MakeRun(corp.HQ);
+		//attackedServer = corp.HQ;
 		//ChangePhase(phases.runApproachServer);
 		
 	/*
