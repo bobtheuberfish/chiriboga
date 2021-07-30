@@ -600,6 +600,12 @@ function MakeChoice()
 		footerHtml += '<button class="button" onclick="AccessAllInArchives();">Access All</button>';
 	}
 	
+	//some actions need advice
+	if (footerHtml == '')
+	{
+		if (executingCommand == 'trigger') footerHtml = "<h2>Choose next to trigger</h2>";
+	}
+	
 	if (footerHtml != '') $("#footer").html(footerHtml);
 
 	//return before rendering modal if it's not required
@@ -632,7 +638,7 @@ function MakeChoice()
 					var useViewingGrid = false;
 					for (var j=0; j<validOptions.length; j++)
 					{
-						if (typeof(validOptions[j].card) !== 'undefined')
+						if (validOptions[j].card) //i.e. defined and not null
 						{
 							if (typeof(validOptions[j].card.cardLocation) !== 'undefined')
 							{

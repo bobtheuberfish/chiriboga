@@ -544,7 +544,7 @@ function Render()
 		}
 		cardRenderer.UpdateGlow(attackedServer.ice[approachIce].renderer,glow);
 	}
-	else if (attackedServer != null)
+	else if ((attackedServer != null)&&(attackedServerGlow.x !== 0))
 	{
 		cardRenderer.UpdateGlow(null,1,attackedServerGlow.x,attackedServerGlow.y);
 	}
