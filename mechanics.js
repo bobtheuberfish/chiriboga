@@ -866,6 +866,7 @@ function AddTags(num)
 		if (intended.addTags == 1) Log("1 tag added");
 		else Log(intended.addTags+" tags added");
 		UpdateCounters();
+		TriggeredResponsePhase(playerTurn,"tagsTaken"); //currently giving whoever's turn it is priority...not sure this is always going to be right
 	});
 }
 
