@@ -48,7 +48,7 @@ systemGateway[2] = { title:'Wildcat Strike', imageFile:'30002.png', player:runne
 		{
 			corp.AI._log("I know this one");
 			var choice = choices[1];
-			if (Credits(runner) - PlayerHand(runner).length + runner.clickTracker >= 4) choice = choices[0];
+			if (Credits(runner) - PlayerHand(runner).length + runner.clickTracker >= 4) choice = choices[0]; //TODO take into account max hand size
 			corp.AI.preferred = { title:"Wildcat Strike", option:choice };
 		}
 	}
@@ -2018,10 +2018,10 @@ systemGateway[54] = { title:'Funhouse', imageFile:'30054.png', player:corp, fact
 			Resolve: function(params) {
 				var choices = [];
 				if (CheckCredits(4,runner)) choices.push({id:0, label:"Pay 4[c]", button:"Pay 4[c]"});
-				choices.push({id:1, label:"End the run", button:"End the run"});
+				choices.push({id:1, label:"Take 1 tag", button:"Take 1 tag"});
 				function decisionCallback(params) {
 					if (params.id == 0) SpendCredits(runner,4);
-					else EndTheRun();
+					else AddTags(1);
 				}
 				DecisionPhase(runner,choices,decisionCallback,"Funhouse","Funhouse",this);
 			},
