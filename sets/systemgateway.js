@@ -2457,7 +2457,7 @@ systemGateway[69] = { title:'Send a Message', imageFile:'30069.png', player:corp
 				var mostExpensiveCost = RezCost(choices[0]);
 				for (var i=0; i<choices.length; i++)
 				{
-					var iRezCost = RezCost(choices[i]);
+					var iRezCost = RezCost(choices[i].card);
 					if (iRezCost > mostExpensiveCost)
 					{
 						mostExpensiveCost = iRezCost;
@@ -2479,7 +2479,7 @@ systemGateway[69] = { title:'Send a Message', imageFile:'30069.png', player:corp
 		{
 			corp.AI._log("I know this one");
 			var choice = binaryChoices[0]; //activate by default
-			if (RezCost(params.card) - Credits(corp) < 3) choice = binaryChoices[1]; //don't activate if it's not too expensive (in future could consider some potential dire reasons)
+			if (RezCost(params.card) - Credits(corp) < -1) choice = binaryChoices[1]; //don't activate if it's not too expensive (in future could consider some potential dire reasons)
 			corp.AI.preferred = { title:"Send a Message", option:choice }; //title must match currentPhase.title for AI to fire
 		}
 	},
