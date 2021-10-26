@@ -922,6 +922,7 @@ function ShuffleInto(cards,destination)
  */
 function Derez(card)
 {
+	if (card.rezzed) card.knownToRunner = true;
 	card.rezzed = false;
 	Log(GetTitle(card,true)+" derezzed");
 }
