@@ -58,7 +58,7 @@ function DownloadCapturedLog() {
     var file = new Blob(logOutput, {type: "application/json"});
 	var d = new Date();
 	var n = d.toISOString();
-	var filename = "chiriboga-log-"+n+".json";
+	var filename = "chiriboga-log-"+n+".txt";
     if (window.navigator.msSaveOrOpenBlob) // IE10+
         window.navigator.msSaveOrOpenBlob(file, filename);
     else { // Others
