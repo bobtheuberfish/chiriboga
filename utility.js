@@ -878,6 +878,7 @@ function ResetProperties(card)
  */
 function MoveCardTriggers(card, locationfrom, locationto)
 {
+	card.renderer.sprite.visible = true; //all card moves are visible
 	if (locationto !== null)
 	{
 		if ((locationto == corp.archives.cards)||(locationto == runner.heap)||(locationto == corp.HQ.cards)||(locationto == runner.grip))
