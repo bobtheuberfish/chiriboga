@@ -54,6 +54,9 @@ globalProperties.agendaPointsToWin = 7; //don't modify this or access it directl
 function Init() {
   Log("Game begins");
 
+  //Base change to agenda points to win if required
+  if (URIParameter("ap") !== "") globalProperties.agendaPointsToWin = parseInt(URIParameter("ap"));
+
   //Determine whether to view as the Runner or Corp (and therefore which player is to be AI)
   if (URIParameter("faceoff") !== "") {
     //AI faces off against AI
