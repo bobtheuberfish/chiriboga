@@ -63,7 +63,12 @@ function Init() {
     viewingPlayer = runner;
     runner.AI = new RunnerAI(); //computer control
     corp.AI = new CorpAI(); //computer control
-  } else if (URIParameter("r") !== "") {
+  } else if (URIParameter("p") == "c") {
+    viewingPlayer = corp;
+    corp.AI = null; //human control
+    runner.AI = new RunnerAI(); //computer control
+    corp.testAI = null; //new CorpAI(); //use for testing
+  } else if ((URIParameter("p") == "r")||(URIParameter("r") !== "")) {
     viewingPlayer = runner;
     corp.AI = new CorpAI(); //computer control
     runner.AI = null; //human control
