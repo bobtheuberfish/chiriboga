@@ -837,12 +837,12 @@ function LoadDecks() {
 		cardBackTexturesRunner,glowTextures,strengthTextures);
 	
 	CorpTestField([73,73], //archivesCards
-		[73,73], //rndCards
-		[65,65,65], //hqCards
+		[47,47], //rndCards
+		[47,47,47,47], //hqCards
 		[], //archivesInstalled
-		[73], //rndInstalled
-		[73], //hqInstalled
-		[[65,73]], //remotes (array of arrays)
+		[72], //rndInstalled
+		[73,55], //hqInstalled
+		[[67,74,54]], //remotes (array of arrays)
 		[], //scored
 		cardBackTexturesCorp,glowTextures,strengthTextures);
 	*/
@@ -859,24 +859,35 @@ function LoadDecks() {
   //corp.archives.cards[1].rezzed = true;
 
   //Rez(corp.archives.ice[0]);
+  
   //Rez(corp.HQ.ice[0]);
   //Rez(corp.RnD.ice[0]);
   //Rez(corp.HQ.ice[1]);
   //Rez(corp.RnD.ice[1]);
+  //Rez(corp.remoteServers[0].ice[0]);
+  //Rez(corp.remoteServers[0].ice[1]);
+  
   //Rez(corp.RnD.ice[2]);
   //Rez(corp.remoteServers[0].root[0]);
   //Rez(corp.remoteServers[1].root[0]);
   //Advance(corp.HQ.ice[0]);
   //Advance(corp.RnD.ice[0]);
   //Advance(corp.remoteServers[0].root[0]);
+  //Advance(corp.remoteServers[0].root[0]);
+  //Advance(corp.remoteServers[0].root[0]);
+  //Advance(corp.remoteServers[0].root[0]);
+  //Advance(corp.remoteServers[0].root[0]);
   //Advance(corp.remoteServers[1].root[0]);
   //Advance(corp.remoteServers[1].root[0]);
 
   /*
-	corp.HQ.ice[1].hostedCards = [];
-	var botulus = InstanceCardsPush(systemGateway,4,corp.HQ.ice[1].hostedCards,1,cardBackTexturesRunner,glowTextures,strengthTextures)[0];
+	corp.remoteServers[0].ice[1].hostedCards = [];
+	var botulus = InstanceCardsPush(systemGateway,4,corp.remoteServers[0].ice[1].hostedCards,1,cardBackTexturesRunner,glowTextures,strengthTextures)[0];
 	botulus.host = corp.HQ.ice[1];
 	botulus.faceUp = true;
+	console.log(JSON.stringify(corp.remoteServers[0].ice[1].hostedCards));
+	Trash(botulus);
+	console.log(JSON.stringify(corp.remoteServers[0].ice[1].hostedCards));
 	*/
 
   //runner.rig.programs[0].virus = 2;

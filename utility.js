@@ -997,10 +997,13 @@ function MoveCardByIndex(i, locationfrom, locationto, position = null) {
     //null is an option to move the card to no zone
     if (position !== null) {
       locationto.splice(position, 0, card);
-      if (CheckCardType(card, ["ice"]) && attackedServer.ice == locationto) {
-        //check for any effects on ice protecting
-        if (position <= approachIce) approachIce++; //ice currently being approached/encountered has been pushed outwards
-      }
+	  //check for any effects on ice protecting
+	  if (attackedServer !== null)
+	  {
+		  if (CheckCardType(card, ["ice"]) && attackedServer.ice == locationto) {
+			if (position <= approachIce) approachIce++; //ice currently being approached/encountered has been pushed outwards
+		  }
+	  }
     } else locationto.push(card);
   }
   //fire relevant triggers
