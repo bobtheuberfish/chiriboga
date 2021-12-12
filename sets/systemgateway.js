@@ -1227,8 +1227,10 @@ systemGateway[19] = {
     if (typeof iceToSwap !== "undefined") {
       var firstServer = GetServer(iceToSwap[0]);
       var secondServer = GetServer(iceToSwap[1]);
-      firstServer.ice[firstServer.ice.indexOf(iceToSwap[0])] = iceToSwap[1];
-      secondServer.ice[secondServer.ice.indexOf(iceToSwap[1])] = iceToSwap[0];
+	  var firstIndex = firstServer.ice.indexOf(iceToSwap[0]);
+	  var secondIndex = secondServer.ice.indexOf(iceToSwap[1]);
+	  MoveCard(iceToSwap[0], secondServer.ice, secondIndex)
+	  MoveCard(iceToSwap[1], firstServer.ice, firstIndex)
       if (firstServer == secondServer)
         Log(
           GetTitle(iceToSwap[0], true) +
