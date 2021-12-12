@@ -249,6 +249,7 @@ canvas {
 }
 
 #footer h2, #header h2 {
+	margin-right: 12%;
 	font-size: 150%;
 	text-shadow: 0px 0px 5px black, 0px 0px 5px black;
 	-webkit-touch-callout: none; /* iOS Safari */
@@ -403,4 +404,16 @@ canvas {
 
 .tooltip:hover .tooltiptext {
   visibility: visible;
+}
+
+p.acknowledgements {
+	font-size: 90%;
+}
+
+.acknowledgements em {
+	color:#7C9396;
+}
+
+p.disclaimer {
+	font-size: 80%;
 }

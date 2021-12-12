@@ -9,18 +9,15 @@
  * @returns {Boolean} true if card can be advanced, false if not
  */
 function CheckAdvance(card) {
-	if (card != null)
-	{
-		if (card.canBeAdvanced)
-		{
-			LogDebug(GetTitle(card)+" can be advanced");
-			return true;
-		}
-		LogDebug(GetTitle(card)+" cannot be advanced");
-		return false;
-	}
-	else LogDebug("Card not found to advance");
-	return false;
+  if (card != null) {
+    if (card.canBeAdvanced) {
+      LogDebug(GetTitle(card) + " can be advanced");
+      return true;
+    }
+    LogDebug(GetTitle(card) + " cannot be advanced");
+    return false;
+  } else LogDebug("Card not found to advance");
+  return false;
 }
 
 /**
@@ -31,60 +28,52 @@ function CheckAdvance(card) {
  * @param {String[]} validCardTypes array of card type strings that can be rezzed
  * @returns {Boolean} true if card can be rezzed, false if not
  */
-function CheckRez(card,validCardTypes) {
-	if (card != null)
-	{
-		if (CheckCardType(card,validCardTypes))
-		{
-			if (typeof(card.rezzed) !== 'undefined')
-			{
-				if (card.rezzed)
-				{
-					LogDebug(GetTitle(card)+" is already rezzed");
-					return false;
-				}
-			}
-			if (typeof(card.rezCost) !== 'undefined') //only check if it has a rez cost, doesn't check whether we have the credits for it
-			{
-				LogDebug("\""+GetTitle(card)+"\" can be rezzed");
-				return true;
-			}
-			else LogDebug(GetTitle(card)+" does not have a rez cost");
-		}
-	}
-	else LogDebug("Card not found to rez");
-	return false;
+function CheckRez(card, validCardTypes) {
+  if (card != null) {
+    if (CheckCardType(card, validCardTypes)) {
+      if (typeof card.rezzed !== "undefined") {
+        if (card.rezzed) {
+          LogDebug(GetTitle(card) + " is already rezzed");
+          return false;
+        }
+      }
+      if (typeof card.rezCost !== "undefined") {
+        //only check if it has a rez cost, doesn't check whether we have the credits for it
+        LogDebug('"' + GetTitle(card) + '" can be rezzed');
+        return true;
+      } else LogDebug(GetTitle(card) + " does not have a rez cost");
+    }
+  } else LogDebug("Card not found to rez");
+  return false;
 }
 
 /**
  * Checks whether the player is in action phase and has at least the required clicks remaining.<br/>LogDebugs the result.
  *
  * @method CheckActionClicks
+ * @param {Player} player whose action phase is required
  * @param {int} num number of clicks required
- * @param {Player} [player] omit to use active player
  * @returns {Boolean} true if check passes, false if not
  */
-function CheckActionClicks(num,player)
-{
-	if (typeof(player) === 'undefined') player = activePlayer;
-	checkedClick = true;
-	//clicks can only be spent during action phase (and they all have to be spent so maybe this check should not be required)
-	var actionPhase = false;
-	if ((player == corp)&&(currentPhase.identifier == "Corp 2.2")) actionPhase = true;
-	else if ((player == runner)&&(currentPhase.identifier == "Runner 1.3")) actionPhase = true;
-	if (!actionPhase)
-	{
-		LogDebug("Not currently in action phase");
-		return false;
-	}
-	//check quantity remaining
-	if (player.clickTracker < num)
-	{
-		LogDebug("Less than "+num+" clicks remaining");
-		return false;
-	}
-	LogDebug("At least "+num+" clicks remaining");
-	return true;
+function CheckActionClicks(player, num) {
+  checkedClick = true;
+  //clicks can only be spent during action phase (and they all have to be spent so maybe this check should not be required)
+  var actionPhase = false;
+  if (player == corp && currentPhase.identifier == "Corp 2.2")
+    actionPhase = true;
+  else if (player == runner && currentPhase.identifier == "Runner 1.3")
+    actionPhase = true;
+  if (!actionPhase) {
+    LogDebug("Not currently in action phase");
+    return false;
+  }
+  //check quantity remaining
+  if (player.clickTracker < num) {
+    LogDebug("Less than " + num + " clicks remaining");
+    return false;
+  }
+  LogDebug("At least " + num + " clicks remaining");
+  return true;
 }
 
 /**
@@ -93,12 +82,11 @@ function CheckActionClicks(num,player)
  * @method CheckAccessing
  * @returns {Boolean} true if check passes, false if not
  */
-function CheckAccessing()
-{
-	if (typeof(player) === 'undefined') player = activePlayer;
-	checkedAccess = true;
-	if (accessingCard == null) return false;
-	return true;
+function CheckAccessing() {
+  if (typeof player === "undefined") player = activePlayer;
+  checkedAccess = true;
+  if (accessingCard == null) return false;
+  return true;
 }
 
 /**
@@ -106,19 +94,16 @@ function CheckAccessing()
  *
  * @method CheckClicks
  * @param {int} num number of clicks required
- * @param {Player} [player] omit to use active player
+ * @param {Player} player to check clicks for
  * @returns {Boolean} true if check passes, false if not
  */
-function CheckClicks(num,player)
-{
-	if (typeof(player) === 'undefined') player = activePlayer;
-	if (player.clickTracker < num)
-	{
-		LogDebug("Less than "+num+" clicks remaining");
-		return false;
-	}
-	LogDebug("At least "+num+" clicks remaining");
-	return true;
+function CheckClicks(num, player) {
+  if (player.clickTracker < num) {
+    LogDebug("Less than " + num + " clicks remaining");
+    return false;
+  }
+  LogDebug("At least " + num + " clicks remaining");
+  return true;
 }
 
 /**
@@ -130,16 +115,18 @@ function CheckClicks(num,player)
  * @param {int} [num] number of counters required (1 if omitted)
  * @returns {Boolean} true if check passes, false if not
  */
-function CheckCounters(card,counter,num=1)
-{
-	var numCounters = Counters(card,counter);
-	if (numCounters < num)
-	{
-		LogDebug("Less than "+num+" "+counter+" counters on "+GetTitle(card));
-		return false;
-	}
-	LogDebug("At least "+num+" "+counter+" counters on "+GetTitle(card));
-	return true;
+function CheckCounters(card, counter, num = 1) {
+  var numCounters = Counters(card, counter);
+  if (numCounters < num) {
+    LogDebug(
+      "Less than " + num + " " + counter + " counters on " + GetTitle(card)
+    );
+    return false;
+  }
+  LogDebug(
+    "At least " + num + " " + counter + " counters on " + GetTitle(card)
+  );
+  return true;
 }
 
 /**
@@ -147,34 +134,19 @@ function CheckCounters(card,counter,num=1)
  *
  * @method CheckCredits
  * @param {int} num number of credits required
- * @param {Player} [player] omit to use active player
+ * @param {Player} player to check clicks for
  * @param {String} [doing] for 'recurring credit' checks
  * @param {Card} [card] for 'recurring credit' checks
  * @returns {Boolean} true if check passes, false if not
  */
-function CheckCredits(num,player,doing="",card=null)
-{
-	if (typeof(player) === 'undefined') player = activePlayer;
-	var availableCred = Credits(player);
-	//include recurring credit possibilities
-	var activeCards = ActiveCards(player);
-	for (var i=0; i<activeCards.length; i++)
-	{
-		if (typeof(activeCards[i].credits) !== 'undefined')
-		{
-			if (typeof(activeCards[i].canUseCredits) === 'function')
-			{
-				if (activeCards[i].canUseCredits(doing,card)) availableCred += activeCards[i].credits;
-			}
-		}
-	}
-	if (availableCred < num)
-	{
-		LogDebug("Less than "+num+" credits remaining");
-		return false;
-	}
-	LogDebug("At least "+num+" credits remaining");
-	return true;
+function CheckCredits(num, player, doing = "", card = null) {
+  var availableCred = AvailableCredits(player, doing, card); //unlike Credits(player) this includes recurring credit possibilities
+  if (availableCred < num) {
+    LogDebug("Less than " + num + " credits remaining");
+    return false;
+  }
+  LogDebug("At least " + num + " credits remaining");
+  return true;
 }
 
 /**
@@ -184,16 +156,14 @@ function CheckCredits(num,player,doing="",card=null)
  * @param {int} num number of tags required
  * @returns {Boolean} true if check passes, false if not
  */
-function CheckTags(num)
-{
-	if (runner.tags >= num)
-	{
-		LogDebug("Runner has at least "+num+" tags");
-		return true;
-	}
-	if (num == 1) LogDebug("Runner is not tagged");
-	else LogDebug("Runner has less than "+num+" tags");
-	return false;
+function CheckTags(num) {
+  if (runner.tags >= num) {
+    LogDebug("Runner has at least " + num + " tags");
+    return true;
+  }
+  if (num == 1) LogDebug("Runner is not tagged");
+  else LogDebug("Runner has less than " + num + " tags");
+  return false;
 }
 
 /**
@@ -204,26 +174,22 @@ function CheckTags(num)
  * @param {String[]} valid array of card type strings to check against
  * @returns {Boolean} true if card contains one of the types in valid, false if not
  */
-function CheckCardType(card, valid)
-{
-	for (var i=0; i<valid.length; i++)
-	{
-		if (card.cardType == valid[i])
-		{
-			LogDebug("\""+GetTitle(card)+"\" is card type \""+card.cardType+"\"");
-			return true;
-		}
-	}
-	var outstr = "Card type must be ";
-	for (var i=0; i<valid.length; i++)
-	{
-		outstr += valid[i];
-		if (i < valid.length-2) outstr += ", ";
-		else if (i < valid.length-1) outstr += " or ";
-	}
-	outstr += " ("+GetTitle(card)+" is "+card.cardType+")";
-	LogDebug(outstr);
-	return false;
+function CheckCardType(card, valid) {
+  for (var i = 0; i < valid.length; i++) {
+    if (card.cardType == valid[i]) {
+      LogDebug('"' + GetTitle(card) + '" is card type "' + card.cardType + '"');
+      return true;
+    }
+  }
+  var outstr = "Card type must be ";
+  for (var i = 0; i < valid.length; i++) {
+    outstr += valid[i];
+    if (i < valid.length - 2) outstr += ", ";
+    else if (i < valid.length - 1) outstr += " or ";
+  }
+  outstr += " (" + GetTitle(card) + " is " + card.cardType + ")";
+  LogDebug(outstr);
+  return false;
 }
 
 /**
@@ -234,22 +200,20 @@ function CheckCardType(card, valid)
  * @param {String} str subtype to check for
  * @returns {Boolean} true if card object contains the subtype, otherwise false
  */
-function CheckSubType(card,str)
-{
-	if (card)
-	{
-		if (typeof(card.subTypes) === 'undefined') return false;
-		for (var i=0; i<card.subTypes.length; i++)
-		{
-			if (card.subTypes[i] == str)
-			{
-				LogDebug("\""+GetTitle(card)+"\" has subtype \""+card.subTypes[i]+"\"");
-				return true;
-			}
-		}
-	}
-	LogDebug("Lacking subtype (requires \""+str+"\")");
-	return false;
+function CheckSubType(card, str) {
+  if (card) {
+    if (typeof card.subTypes === "undefined") return false;
+    for (var i = 0; i < card.subTypes.length; i++) {
+      if (card.subTypes[i] == str) {
+        LogDebug(
+          '"' + GetTitle(card) + '" has subtype "' + card.subTypes[i] + '"'
+        );
+        return true;
+      }
+    }
+  }
+  LogDebug('Lacking subtype (requires "' + str + '")');
+  return false;
 }
 
 /**
@@ -259,23 +223,20 @@ function CheckSubType(card,str)
  * @param {Card} card card object to check
  * @returns {Boolean} true if card's strength is >= encountered ice, otherwise false
  */
-function CheckStrength(card)
-{
-	if ((attackedServer==null)||(approachIce<0)||(!encountering))
-	{
-		LogDebug("Not currently encountering ice");
-		return false;
-	}
+function CheckStrength(card) {
+  if (attackedServer == null || approachIce < 0 || !encountering) {
+    LogDebug("Not currently encountering ice");
+    return false;
+  }
 
-	var cardStrength = Strength(card);
-	var iceStrength = Strength(attackedServer.ice[approachIce]);
-	if (cardStrength >= iceStrength)
-	{
-		LogDebug("\""+GetTitle(card)+"\" has sufficient strength");
-		return true;
-	}
-	LogDebug("\""+GetTitle(card)+"\" has insufficient strength");
-	return false;
+  var cardStrength = Strength(card);
+  var iceStrength = Strength(attackedServer.ice[approachIce]);
+  if (cardStrength >= iceStrength) {
+    LogDebug('"' + GetTitle(card) + '" has sufficient strength');
+    return true;
+  }
+  LogDebug('"' + GetTitle(card) + '" has insufficient strength');
+  return false;
 }
 
 /**
@@ -284,15 +245,13 @@ function CheckStrength(card)
  * @method CheckRunning
  * @returns {Boolean} true if a run is in progress, false otherwise
  */
-function CheckRunning()
-{
-	if (attackedServer != null)
-	{
-		LogDebug("Currently running");
-		return true;
-	}
-	LogDebug("Not currently running");
-	return false;
+function CheckRunning() {
+  if (attackedServer != null) {
+    LogDebug("Currently running");
+    return true;
+  }
+  LogDebug("Not currently running");
+  return false;
 }
 
 /**
@@ -301,15 +260,18 @@ function CheckRunning()
  * @method CheckApproach
  * @returns {Boolean} true if ice is being approached, false otherwise
  */
-function CheckApproach()
-{
-	if ((attackedServer != null)&&(approachIce > -1)&&(!encountering)&&(!movement))
-	{
-		LogDebug("Currently approaching ice");
-		return true;
-	}
-	LogDebug("Not currently approaching ice");
-	return false;
+function CheckApproach() {
+  if (
+    attackedServer != null &&
+    approachIce > -1 &&
+    !encountering &&
+    !movement
+  ) {
+    LogDebug("Currently approaching ice");
+    return true;
+  }
+  LogDebug("Not currently approaching ice");
+  return false;
 }
 
 /**
@@ -318,16 +280,14 @@ function CheckApproach()
  * @method CheckEncounter
  * @returns {Boolean} true if ice is being encountered, false otherwise
  */
-function CheckEncounter()
-{
-	//you might be tempted to check things to do with runs and approaches but don't! Encounters can be triggered outside such structures.
-	if (encountering)
-	{
-		LogDebug("Currently encountering ice");
-		return true;
-	}
-	LogDebug("Not currently encountering ice");
-	return false;
+function CheckEncounter() {
+  //you might be tempted to check things to do with runs and approaches but don't! Encounters can be triggered outside such structures.
+  if (encountering) {
+    LogDebug("Currently encountering ice");
+    return true;
+  }
+  LogDebug("Not currently encountering ice");
+  return false;
 }
 
 /**
@@ -337,26 +297,22 @@ function CheckEncounter()
  * @param {Card} card card object to check
  * @returns {Boolean} true if card can be trashed, false otherwise
  */
-function CheckTrash(card)
-{
-	if (card == null)
-	{
-		LogDebug("Cannot trash null card");
-		return false;
-	}
-	if (card.cardLocation == corp.archives.cards)
-	{
-		LogDebug("Cannot trash cards from archives");
-		return false;
-	}
-	if (card.cardLocation == runner.heap)
-	{
-		LogDebug("Cannot trash cards from heap");
-		return false;
-	}
-	if (CardEffectsForbid("trash",card)) return false; //forbidden by card effects
-	LogDebug("\""+GetTitle(card)+"\" can be trashed");
-	return true;
+function CheckTrash(card) {
+  if (card == null) {
+    LogDebug("Cannot trash null card");
+    return false;
+  }
+  if (card.cardLocation == corp.archives.cards) {
+    LogDebug("Cannot trash cards from archives");
+    return false;
+  }
+  if (card.cardLocation == runner.heap) {
+    LogDebug("Cannot trash cards from heap");
+    return false;
+  }
+  if (CardEffectsForbid("trash", card)) return false; //forbidden by card effects
+  LogDebug('"' + GetTitle(card) + '" can be trashed');
+  return true;
 }
 
 /**
@@ -366,34 +322,30 @@ function CheckTrash(card)
  * @param {Card} card card object to check
  * @returns {Boolean} true if card can be installed, false otherwise
  */
-function CheckInstall(card)
-{
-	//check card exists
-	if (card == null)
-	{
-		LogDebug("Card not found to install");
-		return false;
-	}
+function CheckInstall(card) {
+  //check card exists
+  if (card == null) {
+    LogDebug("Card not found to install");
+    return false;
+  }
 
-	//make sure card is correct type
-	if ((card.cardType == "operation")||(card.cardType == "event"))
-	{
-		LogDebug("Cannot install "+card.cardType+"s (try \"play\")");
-		return false;
-	}
+  //make sure card is correct type
+  if (card.cardType == "operation" || card.cardType == "event") {
+    LogDebug("Cannot install " + card.cardType + 's (try "play")');
+    return false;
+  }
 
-	//check some special cases like limit 1 console per player
-	if (CheckSubType(card,"Console")) //console subtype
-	{
-		var cardlist = runner.rig.hardware; //assuming for now this is the only place you'll find a console (and chances are a hosted console is probably not installed)
-		for (var i=0; i<cardlist.length; i++)
-		{
-			if (CheckSubType(cardlist[i],"Console")) return false;
-		}
-	}
+  //check some special cases like limit 1 console per player
+  if (CheckSubType(card, "Console")) {
+    //console subtype
+    var cardlist = runner.rig.hardware; //assuming for now this is the only place you'll find a console (and chances are a hosted console is probably not installed)
+    for (var i = 0; i < cardlist.length; i++) {
+      if (CheckSubType(cardlist[i], "Console")) return false;
+    }
+  }
 
-	LogDebug("Card can be installed");
-	return true;
+  LogDebug("Card can be installed");
+  return true;
 }
 
 /**
@@ -403,26 +355,22 @@ function CheckInstall(card)
  * @param {Card} card card object to check
  * @returns {Boolean} true if card can be played, false otherwise
  */
-function CheckPlay(card)
-{
-	//check card exists
-	if (card == null)
-	{
-		LogDebug("Card not found to play");
-		return false;
-	}
+function CheckPlay(card) {
+  //check card exists
+  if (card == null) {
+    LogDebug("Card not found to play");
+    return false;
+  }
 
-	//make sure card is correct type
-	if ((card.cardType != "operation")&&(card.cardType != "event"))
-	{
-		LogDebug("Cannot play "+card.cardType+" (try \"install\")");
-		return false;
-	}
+  //make sure card is correct type
+  if (card.cardType != "operation" && card.cardType != "event") {
+    LogDebug("Cannot play " + card.cardType + ' (try "install")');
+    return false;
+  }
 
-	LogDebug("Card can be played");
-	return true;
+  LogDebug("Card can be played");
+  return true;
 }
-
 
 /**
  * Checks whether currently encountered ice has any unbroken subroutines.<br/>LogDebugs the result.
@@ -430,19 +378,16 @@ function CheckPlay(card)
  * @method CheckUnbrokenSubroutines
  * @returns {Boolean} true if there are unbroken subroutines, false otherwise
  */
-function CheckUnbrokenSubroutines()
-{
-	if (!CheckRunning()) return false;
-	for (var i=0; i<attackedServer.ice[approachIce].subroutines.length; i++)
-	{
-		if (!attackedServer.ice[approachIce].subroutines[i].broken)
-		{
-			LogDebug("Not all subroutines broken");
-			return true;
-		}
-	}
-	LogDebug("No unbroken subroutines");
-	return false;
+function CheckUnbrokenSubroutines() {
+  if (!CheckRunning()) return false;
+  for (var i = 0; i < attackedServer.ice[approachIce].subroutines.length; i++) {
+    if (!attackedServer.ice[approachIce].subroutines[i].broken) {
+      LogDebug("Not all subroutines broken");
+      return true;
+    }
+  }
+  LogDebug("No unbroken subroutines");
+  return false;
 }
 
 /**
@@ -452,42 +397,36 @@ function CheckUnbrokenSubroutines()
  * @param {Subroutine} subroutine the subroutine to check
  * @returns {Boolean} true if subroutine can be broken, false otherwise
  */
-function CheckBreak(subroutine)
-{
-	if (!CheckRunning()) return false;
+function CheckBreak(subroutine) {
+  if (!CheckRunning()) return false;
 
-	//check subroutine exists
-	if (subroutine == null)
-	{
-		LogDebug("Subroutine not found to break");
-		return false;
-	}
+  //check subroutine exists
+  if (subroutine == null) {
+    LogDebug("Subroutine not found to break");
+    return false;
+  }
 
-	//make sure it's on the currently encountered ice
-	var srExist = false;
-	for (var i=0; i<attackedServer.ice[approachIce].subroutines.length; i++)
-	{
-		if (attackedServer.ice[approachIce].subroutines[i] == subroutine)
-		{
-			srExist = true
-			break;
-		}
-	}
-	if (!srExist)
-	{
-		LogDebug("Subroutine must be on ice being encountered");
-		return false;
-	}
+  //make sure it's on the currently encountered ice
+  var srExist = false;
+  for (var i = 0; i < attackedServer.ice[approachIce].subroutines.length; i++) {
+    if (attackedServer.ice[approachIce].subroutines[i] == subroutine) {
+      srExist = true;
+      break;
+    }
+  }
+  if (!srExist) {
+    LogDebug("Subroutine must be on ice being encountered");
+    return false;
+  }
 
-	//and not already broken
-	if (subroutine.broken)
-	{
-		LogDebug("Subroutine already broken");
-		return false;
-	}
+  //and not already broken
+  if (subroutine.broken) {
+    LogDebug("Subroutine already broken");
+    return false;
+  }
 
-	LogDebug("Subroutine can be broken");
-	return true;
+  LogDebug("Subroutine can be broken");
+  return true;
 }
 
 /**
@@ -496,13 +435,12 @@ function CheckBreak(subroutine)
  * @method CheckSteal
  * @returns {Boolean} true if can be stolen, false otherwise (e.g. not an agenda)
  */
-function CheckSteal()
-{
-	if (typeof(accessingCard) === 'undefined') return false;
-	if (accessingCard == null) return false;
-	if (accessingCard.cardType != 'agenda') return false;
-	if (CardEffectsForbid("steal",accessingCard)) return false; //forbidden by card effects
-	return true;
+function CheckSteal() {
+  if (typeof accessingCard === "undefined") return false;
+  if (accessingCard == null) return false;
+  if (accessingCard.cardType != "agenda") return false;
+  if (CardEffectsForbid("steal", accessingCard)) return false; //forbidden by card effects
+  return true;
 }
 
 /**
@@ -511,13 +449,12 @@ function CheckSteal()
  * @method CheckScore
  * @returns {Boolean} true if can be scored, false otherwise (e.g. not an agenda)
  */
-function CheckScore(card)
-{
-	if (card.cardType !== 'agenda') return false;
-	if (typeof(card.advancement) == 'undefined') return false;
-	if (card.advancement < AdvancementRequirement(card)) return false;
-	if (CardEffectsForbid("score",card)) return false; //forbidden by card effects
-	return true;
+function CheckScore(card) {
+  if (card.cardType !== "agenda") return false;
+  if (typeof card.advancement == "undefined") return false;
+  if (card.advancement < AdvancementRequirement(card)) return false;
+  if (CardEffectsForbid("score", card)) return false; //forbidden by card effects
+  return true;
 }
 
 /**
@@ -527,39 +464,33 @@ function CheckScore(card)
  * @param {Card} card card object to check
  * @returns {Boolean} true if card is installed, false otherwise
  */
-function CheckInstalled(card)
-{
-	var ret = false;
-	if (typeof(card.host) !== 'undefined') //hosted cards are assumed to be installed by default
-	{
-		if (card.host != null) ret = true;
-	}
-	if (card.player==corp)
-	{
-		if (card.cardLocation == corp.RnD.root) ret = true;
-		else if (card.cardLocation == corp.RnD.ice) ret = true;
-		else if (card.cardLocation == corp.HQ.root) ret = true;
-		else if (card.cardLocation == corp.HQ.ice) ret = true;
-		else if (card.cardLocation == corp.archives.root) ret = true;
-		else if (card.cardLocation == corp.archives.ice) ret = true;
-		else
-		{
-			for (var i=0; i<corp.remoteServers.length; i++)
-			{
-				if (card.cardLocation == corp.remoteServers[i].root) ret = true;
-				else if (card.cardLocation == corp.remoteServers[i].ice) ret = true;
-			}
-		}
-	}
-	else if (card.player==runner)
-	{
-		if (card.cardLocation == runner.rig.programs) ret = true;
-		else if (card.cardLocation == runner.rig.hardware) ret = true;
-		else if (card.cardLocation == runner.rig.resources) ret = true;
-	}
-	if (ret == true) LogDebug(GetTitle(card)+" is installed");
-	else LogDebug(GetTitle(card)+" is not installed");
-	return ret;
+function CheckInstalled(card) {
+  var ret = false;
+  if (typeof card.host !== "undefined") {
+    //hosted cards are assumed to be installed by default
+    if (card.host != null) ret = true;
+  }
+  if (card.player == corp) {
+    if (card.cardLocation == corp.RnD.root) ret = true;
+    else if (card.cardLocation == corp.RnD.ice) ret = true;
+    else if (card.cardLocation == corp.HQ.root) ret = true;
+    else if (card.cardLocation == corp.HQ.ice) ret = true;
+    else if (card.cardLocation == corp.archives.root) ret = true;
+    else if (card.cardLocation == corp.archives.ice) ret = true;
+    else {
+      for (var i = 0; i < corp.remoteServers.length; i++) {
+        if (card.cardLocation == corp.remoteServers[i].root) ret = true;
+        else if (card.cardLocation == corp.remoteServers[i].ice) ret = true;
+      }
+    }
+  } else if (card.player == runner) {
+    if (card.cardLocation == runner.rig.programs) ret = true;
+    else if (card.cardLocation == runner.rig.hardware) ret = true;
+    else if (card.cardLocation == runner.rig.resources) ret = true;
+  }
+  if (ret == true) LogDebug(GetTitle(card) + " is installed");
+  else LogDebug(GetTitle(card) + " is not installed");
+  return ret;
 }
 
 /**
@@ -569,38 +500,31 @@ function CheckInstalled(card)
  * @param {Card} card card object to check
  * @returns {Boolean} true if card is active, false otherwise
  */
-function CheckActive(card)
-{
-	//check card exists
-	if (card == null)
-	{
-		LogDebug("Card not found to check");
-		return false;
-	}
+function CheckActive(card) {
+  //check card exists
+  if (card == null) {
+    LogDebug("Card not found to check");
+    return false;
+  }
 
-	var ret = false;
-	if (card.player == corp)
-	{
-		if (CheckInstalled(card)) ret = card.rezzed;
-		else if (card.cardLocation == corp.scoreArea) ret = true;
-		else if (card == corp.identityCard) ret = true;
-		else if (card.cardLocation == corp.resolvingCards) ret = true;
-	}
-	else if (card.player == runner)
-	{
-		if (CheckInstalled(card)) ret = true;
-		else if (card == runner.identityCard) ret = true;
-		else if (card.cardLocation == runner.resolvingCards) ret = true;
-	}
-	else
-	{
-			LogError(GetTitle(card)+" does not have .player set");
-			return false;
-	}
+  var ret = false;
+  if (card.player == corp) {
+    if (CheckInstalled(card)) ret = card.rezzed;
+    else if (card.cardLocation == corp.scoreArea) ret = true;
+    else if (card == corp.identityCard) ret = true;
+    else if (card.cardLocation == corp.resolvingCards) ret = true;
+  } else if (card.player == runner) {
+    if (CheckInstalled(card)) ret = true;
+    else if (card == runner.identityCard) ret = true;
+    else if (card.cardLocation == runner.resolvingCards) ret = true;
+  } else {
+    LogError(GetTitle(card) + " does not have .player set");
+    return false;
+  }
 
-	if (ret == true) LogDebug(GetTitle(card)+" is active");
-	else LogDebug(GetTitle(card)+" is not active");
-	return ret;
+  if (ret == true) LogDebug(GetTitle(card) + " is active");
+  else LogDebug(GetTitle(card) + " is not active");
+  return ret;
 }
 
 /**
@@ -611,16 +535,24 @@ function CheckActive(card)
  * @param {String} callbackName callback name to check
  * @returns {Boolean} true if card is should be called, false otherwise
  */
-function CheckCallback(card,callbackName)
-{
-	var ret = false;
-	if (typeof(card[callbackName]) !== 'undefined')
-	{
-		if (CheckActive(card)||(card[callbackName].availableWhenInactive==true)||((callbackName=="cardAccessed")&&(card==accessingCard))||((callbackName=="stolen")&&(card==intended.steal))) ret = true;
-	}
-	if (ret == true) LogDebug(GetTitle(card)+" has valid "+callbackName+" available");
-	else LogDebug(GetTitle(card)+" does not have valid "+callbackName+" available");
-	return ret;
+function CheckCallback(card, callbackName) {
+  var ret = false;
+  if (typeof card[callbackName] !== "undefined") {
+    if (
+      CheckActive(card) ||
+      card[callbackName].availableWhenInactive == true ||
+      (callbackName == "cardAccessed" && card == accessingCard) ||
+      (callbackName == "stolen" && card == intended.steal)
+    )
+      ret = true;
+  }
+  if (ret == true)
+    LogDebug(GetTitle(card) + " has valid " + callbackName + " available");
+  else
+    LogDebug(
+      GetTitle(card) + " does not have valid " + callbackName + " available"
+    );
+  return ret;
 }
 
 /**
@@ -629,32 +561,25 @@ function CheckCallback(card,callbackName)
  * @method CheckPurge
  * @returns {Boolean} true if purge is possible, false otherwise
  */
-function CheckPurge()
-{
-	var installedRunnerCards = InstalledCards(runner);
-	for (var i=0; i<installedRunnerCards.length; i++)
-	{
-		if (typeof(installedRunnerCards[i].virus) !== 'undefined')
-		{
-			if (installedRunnerCards[i].virus > 0)
-			{
-				LogDebug("There are virus counters");
-				return true;
-			}
-		}
-	}
-	var installedCorpCards = InstalledCards(corp);
-	for (var i=0; i<installedCorpCards.length; i++)
-	{
-		if (typeof(installedCorpCards[i].virus) !== 'undefined')
-		{
-			if (installedCorpCards[i].virus > 0)
-			{
-				LogDebug("There are virus counters");
-				return true;
-			}
-		}
-	}
-	LogDebug("There are no virus counters");
-	return false;
+function CheckPurge() {
+  var installedRunnerCards = InstalledCards(runner);
+  for (var i = 0; i < installedRunnerCards.length; i++) {
+    if (typeof installedRunnerCards[i].virus !== "undefined") {
+      if (installedRunnerCards[i].virus > 0) {
+        LogDebug("There are virus counters");
+        return true;
+      }
+    }
+  }
+  var installedCorpCards = InstalledCards(corp);
+  for (var i = 0; i < installedCorpCards.length; i++) {
+    if (typeof installedCorpCards[i].virus !== "undefined") {
+      if (installedCorpCards[i].virus > 0) {
+        LogDebug("There are virus counters");
+        return true;
+      }
+    }
+  }
+  LogDebug("There are no virus counters");
+  return false;
 }
