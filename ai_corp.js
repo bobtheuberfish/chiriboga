@@ -94,7 +94,7 @@ class CorpAI {
       var minProt = RandomRange(3, 4); //arbitrary: tweak as needed
       if (this._agendasInHand() > 2) minProt = 2; //these values are also arbitrary but basically don't hoard agendas
       if (this._agendasInHand() > 4)
-        minProt = this._protectionScore(corp.Archives); //if it's going to be thrown out, it just has to be better protection than Archives
+        minProt = this._protectionScore(corp.archives); //if it's going to be thrown out, it just has to be better protection than Archives
       if (protScore < minProt) return false;
 
       //yes if it has a scoring upgrade, an agenda or an ambush installed

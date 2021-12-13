@@ -80,7 +80,7 @@ class RunCalculator {
           if (installedPrograms.length > 0) result.sr.push([["misc_serious"]]);
           else result.sr.push([["misc_moderate"]]);
         } else result.sr.push([[]]); //push a blank sr so that indices match
-        if ((corp.HQ.cards.length == 0)&&(corp.Archives.cards.length == 0)) result.sr.push([[]]); //push a blank sr so that indices match
+        if ((corp.HQ.cards.length == 0)&&(corp.archives.cards.length == 0)) result.sr.push([[]]); //push a blank sr so that indices match
 		else result.sr.push([["misc_moderate"]]);
         if (incomplete) result.sr.push([[]]); //push a blank sr so that indices match
 		else result.sr.push([["misc_serious"]]); //cannot steal or trash cards
