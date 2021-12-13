@@ -34,7 +34,7 @@ class RunCalculator {
   // misc_moderate e.g. trash 1 program
   // misc_serious e.g. install another ice inward (like endTheRun, paths that fire these will be avoided)
   //encounterEffects is an array of OR arrays of effects
-  IceAI(ice, maxCorpCred, assumeWeakerUnknown = false) {
+  IceAI(ice, maxCorpCred, assumeWeakerUnknown = false, incomplete = false) {
     var result = {
       ice: ice,
       subTypes: [],
@@ -80,8 +80,10 @@ class RunCalculator {
           if (installedPrograms.length > 0) result.sr.push([["misc_serious"]]);
           else result.sr.push([["misc_moderate"]]);
         } else result.sr.push([[]]); //push a blank sr so that indices match
-        result.sr.push([["misc_moderate"]]);
-        result.sr.push([["misc_serious"]]); //cannot steal or trash cards (could make this depend on what we want to do)
+        if ((corp.HQ.cards.length == 0)&&(corp.Archives.cards.length == 0)) result.sr.push([[]]); //push a blank sr so that indices match
+		else result.sr.push([["misc_moderate"]]);
+        if (incomplete) result.sr.push([[]]); //push a blank sr so that indices match
+		else result.sr.push([["misc_serious"]]); //cannot steal or trash cards
       } else if (title == "Brân 1.0") {
         result.sr = [[["misc_serious"]], [["endTheRun"]], [["endTheRun"]]];
       } else if (title == "Diviner") {
@@ -810,16 +812,27 @@ class RunCalculator {
     if (typeof p.valid == "undefined") {
       //check for already calculated and stored value
       p.valid = false; //by default, then set to true if check succeed
-      if (p.runner_clicks_spent <= clickLimit) {
-        if (p.runner_credits_spent <= creditLimit) {
+	  var clicksLeft = clickLimit - p.runner_clicks_spent;
+	  var creditsLeft = creditLimit - p.runner_credits_spent
+      if (clicksLeft >= 0) {
+        if (creditsLeft >= 0) {
           var totalEffect = this.TotalEffect(p);
           var totalDamage = 0;
           if (totalEffect.netDamage) totalDamage += totalEffect.netDamage;
           if (totalEffect.meatDamage) totalDamage += totalEffect.meatDamage;
           if (totalEffect.brainDamage) totalDamage += totalEffect.brainDamage;
+		  //update damage limit based on clicks spent
+		  if (clicksLeft < 1) damageLimit = runner.grip.length - MaxHandSize(runner); //try to keep a full hand at end of turn	
+		  if (damageLimit < 0) damageLimit = 0;
+		  //now check damage against limit
           if (totalDamage <= damageLimit) {
             var totalTag = 0;
             if (totalEffect.tag) totalTag += totalEffect.tag;
+			//update tag limit based on clicks and credits spent
+			var tagLimit =
+			  Math.min(clicksLeft, Math.floor(creditsLeft * 0.5)) - runner.tags; //allow 1 tag for each click+2[c] remaining but less if tagged
+			if (tagLimit < 0) tagLimit = 0;
+			//now check tags against limit
             if (totalTag <= tagLimit) p.valid = true;
           }
         }
@@ -975,13 +988,18 @@ class RunCalculator {
       var maxCorpCred = AvailableCredits(corp);
       for (var i = startIceIdx; i > -1; i--) {
         if (unknownIce == 0)
-          this.precalculated.iceAIs[i] = this.IceAI(server.ice[i], maxCorpCred);
-        //just assume the next unknown ice is dangerous
+          this.precalculated.iceAIs[i] = this.IceAI(
+			server.ice[i], 
+			maxCorpCred, 
+			false, 
+			incomplete
+		  ); //just assume the next unknown ice is dangerous
         else
           this.precalculated.iceAIs[i] = this.IceAI(
             server.ice[i],
             maxCorpCred,
-            true
+            true,
+			incomplete
           ); //the true here means 'assume weaker unknown ice'
         if (!PlayerCanLook(runner, server.ice[i])) unknownIce++;
         else maxCorpCred++; //very rough heuristic but essentially allows for rezzed unbroken Tithe

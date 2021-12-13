@@ -955,6 +955,12 @@ function MoveCardTriggers(card, locationfrom, locationto) {
         if (locationto == corp.HQ.cards && viewingPlayer != corp)
           Shuffle(corp.HQ.cards);
       }
+	  //for ice, unbreak subroutines
+	  if (CheckCardType(card, ["ice"])) {
+		  for (var i = 0; i < card.subroutines.length; i++) {
+			  card.subroutines[i].broken = false;
+		  }
+	  }
     }
   }
   if (locationfrom !== null) {

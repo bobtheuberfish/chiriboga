@@ -387,15 +387,14 @@ class RunnerAI {
   ) {
     var clickLimit = runner.clickTracker + clickOffset;
     var creditLimit = AvailableCredits(runner) + creditOffset;
-    var damageLimit = runner.grip.length + damageOffset;
+    var damageLimit = runner.grip.length + damageOffset; //(this gets updated during the run calculation if clickLimit is used up)
     //this works because potentials are calculated before costs in (optionList.includes("run")). Note the false here prevents an infinite loop
     if (this._getCachedPotential(server, false) < 2.0)
       damageLimit -= this.cardsWorthKeeping.length; //the 2.0 is arbitrary but basically don't risk stuff for lowish potential
-    var tagLimit =
-      Math.min(clickLimit, Math.floor(creditLimit * 0.5)) - runner.tags; //allow 1 tag for each click+2[c] remaining (this currently doesn't include credit cost of the run) but less if tagged
-    if (tagLimit < 0) tagLimit = 0;
-    if (clickLimit < 1) damageLimit = runner.grip.length - MaxHandSize(runner); //try to keep a full hand at end of turn
     if (damageLimit < 0) damageLimit = 0;
+	var tagLimit =
+      Math.min(clickLimit, Math.floor(creditLimit * 0.5)) - runner.tags; //allow 1 tag for each click+2[c] remaining but less if tagged (this gets updated during the run calculation)
+    if (tagLimit < 0) tagLimit = 0;
     var paths = this.rc.Calculate(
       server,
       clickLimit,
