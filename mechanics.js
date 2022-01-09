@@ -76,7 +76,7 @@ function Rez(card) {
         );
     }
   }
-  Log("Rezzed " + GetTitle(card, true));
+  Log("Corp rezzed " + GetTitle(card, true));
   //if unique, old one is immediately and unpreventably trashed (except if facedown, and facedown cards don't count for check)
   if (typeof card.unique !== "undefined") {
     if (card.unique == true) {
@@ -466,10 +466,10 @@ function Break(subroutine) {
  * @param {Triggerable} triggerable object which has .text and .Resolve(params) or .Resolve()
  * @param {Params} params parameters to use (omit if triggerable.Resolve doesn't require it)
  */
-function Trigger(card, triggerable, params) {
+function Trigger(card, triggerable, params, customVerb='Using') {
   if (typeof triggerable.text !== "undefined")
-    Log('Using "' + triggerable.text + '" on ' + GetTitle(card) + ":");
-  else Log("Using " + GetTitle(card) + ":");
+    Log(customVerb+' "' + triggerable.text + '" on ' + GetTitle(card) + ":");
+  else Log(customVerb+" " + GetTitle(card) + ":");
   triggerable.Resolve.call(card, params); //call in context of the card
 }
 
@@ -530,7 +530,7 @@ function TriggerAbility(card, ability, onTriggerResolve, context) {
  */
 function Discard(card) {
   if (card.player == runner) card.faceUp = true;
-  Log('Discarded "' + GetTitle(card, true) + '"');
+  Log(PlayerName(card.player)+' discarded "' + GetTitle(card, true) + '"');
   MoveCard(card, PlayerTrashPile(card.player));
   return card;
 }

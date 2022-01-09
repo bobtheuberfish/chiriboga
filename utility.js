@@ -78,6 +78,90 @@ function DownloadCapturedLog() {
   }
 }
 
+//function to narrate the stackedLog and then, if specified, call a function
+//returns false if stacked log is empty or narration is off
+let stackedLog = [];
+function Narrate() {
+  if ( ($('#narration').prop('checked')) && (stackedLog.length > 0) ) {
+	let src = stackedLog.join(', ');
+	stackedLog = [];
+	//parse stacked log for more natural language
+	//Corp
+	src = src.replace(/Corp spent(.*?), Corp spent (\S*)/gm, function(match, p1, p2, offset, string) {
+		return "Corp spent"+p1+" and "+p2;
+	});
+	src = src.replace(/Corp spent(.*?), Played/gm, function(match, p1, offset, string) {
+		return "Corp spent"+p1+" to play";
+	});
+	src = src.replace(/Corp spent(.*?), Card advanced/gm, function(match, p1, offset, string) {
+		return "Corp spent"+p1+" to advance a card";
+	});
+	src = src.replace(/Corp spent(.*?), Corp (\S*)/gm, function(match, p1, p2, offset, string) {
+		let output = "Corp spent"+p1+" to ";
+		if (p2=='gained') output+='gain';
+		else if (p2=='drew') output+='draw';
+		else if (p2=='installed') output+='install';
+		else if (p2=='rezzed') output+='rez';
+		else return match; //unknown, return unmodified
+		return output;
+	});
+	src = src.replace(/^Corp(.*?), Corp/gm, function(match, p1, offset, string) {
+		return "Corp"+p1+" and";
+	});
+	//Runner
+	src = src.replace(/Runner spent(.*?), Runner spent (\S*)/gm, function(match, p1, p2, offset, string) {
+		return "Runner spent"+p1+" and "+p2;
+	});
+	src = src.replace(/Runner spent(.*?), Played/gm, function(match, p1, offset, string) {
+		return "Runner spent"+p1+" to play";
+	});
+	src = src.replace(/Runner spent(.*?), Runner (\S*)/gm, function(match, p1, p2, offset, string) {
+		let output = "Runner spent"+p1+" to ";
+		if (p2=='gained') output+='gain';
+		else if (p2=='drew') output+='draw';
+		else if (p2=='installed') output+='install';
+		return output;
+	});
+	src = src.replace(/Runner spent(.*?), Run initiated attacking/gm, function(match, p1, offset, string) {
+		return "Runner spent"+p1+" to run";
+	});
+	src = src.replace(/^Runner(.*?), Runner/gm, function(match, p1, offset, string) {
+		return "Runner"+p1+" and";
+	});
+	//Both corp and runner
+	src = src.replace(/ to(.*?) to/gm, function(match, p1, offset, string) {
+		return " to"+p1+" and";
+	});
+	src = src.replace(/Remote [0-9]/gm, function(match, offset, string) {
+		return "remote server";
+	});
+	src = src.replace(/([0]|[2-9])\[c\]/gm, function(match, p1, offset, string) {
+		return p1+" credits";
+	});
+	src = src.replace(/1\[c\]/gm, function(match, offset, string) {
+		return "one credit";
+	});
+	src = src.replace(/spent(.*), ([0-9]*) (credit|credits) taken/gm, function(match, p1, p2, p3, offset, string) {
+		return "spent"+p1+" to take "+p2+" "+p3;
+	});
+	src = src.replace(/spent(.*), ([0-9]*) (credit|credits) placed/gm, function(match, p1, p2, p3, offset, string) {
+		return "spent"+p1+" to place "+p2+" "+p3;
+	});
+	//replace words that don't sound right
+	src = src.replaceAll('rezzed','rezd');
+	src = src.replaceAll('Whitespace','white space');
+	//replace unspeakable characters with unaccented letters
+	src = src.normalize('NFD');
+	//now speak
+	let utterance = new SpeechSynthesisUtterance(src);
+	utterance.lang = 'en-US';
+	utterance.onend = Main;
+	speechSynthesis.speak(utterance);
+	return true;
+  }
+  return false;
+}
+
 /**
  * Outputs a standard style message to the console and ends with carriage return.
  *
@@ -89,12 +173,6 @@ function Log(src) {
   //$("#output").append(src+"<br/>");
   //window.scrollTo(0,Math.max( document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight ) - window.innerHeight);
 
-  /*
-	let utterance = new SpeechSynthesisUtterance(src);
-	utterance.lang = 'en-US';
-	speechSynthesis.speak(utterance);
-	*/
-
   console.log(src);
   $("#history")
     .children()
@@ -102,6 +180,10 @@ function Log(src) {
     .children("pre")
     .first()
     .append("<br/>" + Iconify(src));
+  
+  if (activePlayer) {
+    if ( $('#narration').prop('checked') && activePlayer.AI ) stackedLog.push(src); //only narrate AI player
+  }
 }
 
 /**

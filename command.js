@@ -71,7 +71,10 @@ function ResolveChoice(idx) {
       if (phaseOptions.score.includes(chosenOption)) executingCommand = "score";
     }
   }
-  mainLoop = window.setTimeout(Main, mainLoopDelay); //set before execution to allow for things to clear it
+  //set before execution to allow for things to clear it
+  mainLoop = window.setTimeout(function(){
+	if (!Narrate(Main)) Main(); //either narrate then call Main, or if no narration just proc Main now
+  }, ($('#narration').prop('checked') ? 1 : mainLoopDelay) ); 
   currentPhase.Resolve[executingCommand](chosenOption);
 }
 
