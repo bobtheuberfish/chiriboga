@@ -192,6 +192,10 @@ function ZeroRotationNoTint(card, i) {
   card.renderer.SetRotation(0);
   card.renderer.Tint(0, 0, 100);
 }
+function PiRotationNoTint(card, i) {
+  card.renderer.SetRotation(180);
+  card.renderer.Tint(0, 0, 100);
+}
 function FaceUpNoTint(card, i) {
   card.renderer.FaceUp();
   card.renderer.Tint(0, 0, 100);
@@ -855,26 +859,29 @@ function Render() {
       ) {
         gridViewRowCards.push(uniqueGrid[i]);
       }
+	  var gridViewModifier = FaceUpNoTint;
+	  if ( (viewingPile == corp.archives.cards) && (viewingPlayer == runner) ) gridViewModifier = ZeroRotationNoTint;
+	  else if ( (viewingPile == runner.heap) && (viewingPlayer == corp) ) gridViewModifier = PiRotationNoTint;
       var gridViewCascade = new CardRenderer.Cascade(
-        RenderCards(gridViewRowCards, FaceUpNoTint),
+        RenderCards(gridViewRowCards, gridViewModifier),
         gridViewXStep,
         0,
         0
       );
-      if (viewingPlayer == corp)
-        gridViewCascade.Apply(
-          cardRenderer.app,
-          5 + arbitraryHistorySpacer,
-          gridViewY,
-          0,
-          0,
-          0
-        );
-      else if (viewingPile == runner.heap)
+      if (viewingPile == runner.heap)
         gridViewCascade.Apply(
           cardRenderer.app,
           w - gridViewCascade.width,
           runner.heap.yCards - gridViewCascade.height - gridViewY,
+          0,
+          0,
+          0
+        );
+      else if (viewingPlayer == corp)
+        gridViewCascade.Apply(
+          cardRenderer.app,
+          5 + arbitraryHistorySpacer,
+          gridViewY,
           0,
           0,
           0
@@ -1214,10 +1221,6 @@ function StartGame() {
       MoveCardByIndex(runner.stack.length - 1, runner.stack, runner.grip);
     }
     Log("Each player has taken five credits and drawn five cards");
-	
-	//Narrate();
-	stackedLog = []; //skip narration
-	
     IncrementPhase();
   }
   Render(); //to show cards have moved from decks

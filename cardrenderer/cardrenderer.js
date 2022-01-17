@@ -1155,10 +1155,8 @@ var CardRenderer = {
       //click-to-view pile
       if (viewingPile == null) {
         if (
-          (this.card.card.cardLocation == corp.archives.cards &&
-            viewingPlayer == corp) ||
-          (this.card.card.cardLocation == runner.heap &&
-            viewingPlayer == runner)
+          (this.card.card.cardLocation == corp.archives.cards) ||
+          (this.card.card.cardLocation == runner.heap)
         ) {
           viewingPile = this.card.card.cardLocation;
           Render(); //force the visual change
