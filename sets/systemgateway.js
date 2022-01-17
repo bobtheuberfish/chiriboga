@@ -1229,8 +1229,17 @@ systemGateway[19] = {
       var secondServer = GetServer(iceToSwap[1]);
 	  var firstIndex = firstServer.ice.indexOf(iceToSwap[0]);
 	  var secondIndex = secondServer.ice.indexOf(iceToSwap[1]);
-	  MoveCard(iceToSwap[0], secondServer.ice, secondIndex)
-	  MoveCard(iceToSwap[1], firstServer.ice, firstIndex)
+	  //store server info to make sure servers aren't destroyed here (see below)
+      var serverIndex = corp.remoteServers.indexOf(firstServer);
+	  //move the first card
+	  MoveCard(iceToSwap[0], secondServer.ice, secondIndex);
+      //if this move destroyed a remote server, it shouldn't have (see CR1.5 8.5.9)
+      if (serverIndex > -1) {
+        if (GetServerByArray(firstServer.ice) == null)
+          corp.remoteServers.splice(serverIndex, 0, firstServer);
+      }
+	  //move the second card
+	  MoveCard(iceToSwap[1], firstServer.ice, firstIndex);
       if (firstServer == secondServer)
         Log(
           GetTitle(iceToSwap[0], true) +
