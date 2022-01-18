@@ -1252,7 +1252,7 @@ var CardRenderer = {
 
       //set up font styles (https://pixijs.io/pixi-text-style/)
       this.counterStyle = new PIXI.TextStyle({
-        fontFamily: "Arial",
+        fontFamily: "PlayBoldUnambig",
         fontSize: 48,
         fontWeight: "bold",
         fill: "#ffffff",
