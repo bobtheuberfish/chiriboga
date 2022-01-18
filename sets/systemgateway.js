@@ -2416,12 +2416,25 @@ systemGateway[40] = {
   },
   //Place 2 advancement counters on 1 installed card that you did not install this turn.
   Enumerate: function () {
-    var choices = ChoicesInstalledCards(corp, CheckAdvance);
+    var choices = ChoicesInstalledCards(corp, function(card) {
+		if (CheckAdvance(card)) {
+			//**AI code
+			if (corp.AI != null)
+			{
+				if (typeof(card.AIAdvancementLimit) !== 'undefined') {
+					if (card.AIOverAdvance || CheckCounters(card, "advancement", card.AIAdvancementLimit-1)) return false; //don't overadvance unless appropriate
+				}
+			}
+			return true;
+		}
+	});
     //now remove choices which were installed this turn
     for (var i = choices.length - 1; i > -1; i--) {
       if (this.cardsInstalledThisTurn.includes(choices[i].card))
         choices.splice(i, 1);
     }
+	//**AI code
+	if (corp.AI != null) Shuffle(choices); //make the advance target unpredictable (could use a heuristic instead maybe?)
     return choices;
   },
   Resolve: function (params) {

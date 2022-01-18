@@ -1287,7 +1287,8 @@ class CorpAI {
                   this._log("I could play it");
                   if (
                     corp.remoteServers[i].root[j].advancement <
-                    corp.remoteServers[i].root[j].advancementRequirement - 1
+                    corp.remoteServers[i].root[j].advancementRequirement - 1 ||
+					corp.remoteServers[i].root[j].AIOverAdvance
                   ) {
                     this._log("I intend to");
                     return this._returnPreference(optionList, "play", {
