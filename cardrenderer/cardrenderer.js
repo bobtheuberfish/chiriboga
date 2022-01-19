@@ -662,7 +662,8 @@ var CardRenderer = {
         var useCropped =
           (forceCropped || !this.zoomed) &&
           !isEncounter &&
-          pixi_draggingCard !== this;
+          pixi_draggingCard !== this &&
+		  !PlayerHand(viewingPlayer).includes(this.card);
         if (useCropped) {
           if (this.costSprite != null) {
             if (showFace && 1 * this.costText.text != this.printedCost) {
