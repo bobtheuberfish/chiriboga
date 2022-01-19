@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html data-destination="engine.php">
+  <body>
+	This page has moved. Redirecting...
+	<script>
+		var destination = document.documentElement.getAttribute('data-destination');
+		window.location.href = destination + (window.location.search || '') + (window.location.hash || '');
+	</script>
+  </body>
+</html>
