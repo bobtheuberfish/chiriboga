@@ -1184,6 +1184,7 @@ function Setup() {
     0.5,
     false
   );
+  /*
   countersUI.brain_damage.runner = cardRenderer.CreateCounter(
     countersUI.brain_damage.texture,
     runner,
@@ -1191,6 +1192,7 @@ function Setup() {
     0.5,
     false
   );
+  */
 
   LoadDecks();
   corp.identityCard.faceUp = true;
