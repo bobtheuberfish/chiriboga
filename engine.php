@@ -81,8 +81,9 @@
 				<button id="exittomenu" onclick="window.location.href='index.html';" class="button">Exit to main menu</button>
 				<button id="editdeck" onclick="window.location.href='decklauncher.html';" class="button">Edit this deck</button>
 				<button onclick="window.location.href='decklauncher.html';" class="button">Edit new random deck</button>
-				&emsp;
-				<label for="narration"><input type="checkbox" id="narration">Narrate AI (experimental)</label>
+				<div class="options">
+					<label for="narration"><input type="checkbox" id="narration">Narrate AI (experimental)</label>
+				</div>
 				<p>Chiriboga implements the game <a href="https://nisei.net/about/netrunner/">Android: Netrunner</a> with an AI opponent. Source is <a href="https://github.com/bobtheuberfish/chiriboga">available on github</a>.</p>
 				<p>Includes all cards in NISEI's <a href="https://nisei.net/products/system-gateway/">System Gateway</a> set. Card front art is the property of NISEI.<br/>
 				Includes <a href="https://nisei.net/about/nisei-visual-assets/">game symbols permitted for use by NISEI</a> under CC BY-ND 4.0.<br/>

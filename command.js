@@ -14,9 +14,25 @@ function Execute(cmd) {
   var originalPhase = currentPhase;
   LogSubtle(TurnPhaseStr() + cmd);
 
-  validOptions = [{}];
-  if (typeof phaseOptions[cmd] !== "undefined")
-    validOptions = phaseOptions[cmd];
+  if (typeof(TutorialCommandMessage[cmd]) !== 'undefined') TutorialMessage(TutorialCommandMessage[cmd]);
+
+  validOptions = [];
+  if (typeof phaseOptions[cmd] !== "undefined") {
+	for (var i=0; i<phaseOptions[cmd].length; i++) {
+	  var isValid = true;
+	  var thisOption = phaseOptions[cmd][i];
+      //check tutorial black/whitelist
+      if (TutorialWhitelist !== null) { //use an actions whitelist
+  	    if (!TutorialWhitelist.includes(thisOption) && !TutorialWhitelist.includes(thisOption.card) && !TutorialWhitelist.includes(thisOption.server)) isValid=false; //not allowed by whitelist
+      }
+      if (TutorialBlacklist !== null) { //use an actions blacklist
+ 	    if (TutorialBlacklist.includes(thisOption) || TutorialBlacklist.includes(thisOption.card) || TutorialBlacklist.includes(thisOption.server)) isValid=false; //not allowed by blacklist
+      }
+	  if (isValid) validOptions.push(thisOption);
+	}
+  }
+  if (validOptions.length == 0) validOptions = [{}];
+
   if (typeof currentPhase.Resolve[cmd] == "function") {
     MakeChoice();
   } else Log('"' + cmd + '" is unknown or not permitted at this time');
@@ -100,7 +116,7 @@ function GetAvailability(renderer) {
     if (renderer == countersUI.credits.runner) {
       if (activePlayer == viewingPlayer && activePlayer == runner) {
         if (
-          typeof currentPhase.Resolve.gain == "function" &&
+          typeof phaseOptions.gain !== 'undefined' &&
           executingCommand == "n"
         )
           return 1; //available when listed and not mid-decision
@@ -108,7 +124,7 @@ function GetAvailability(renderer) {
     } else if (renderer == countersUI.credits.corp) {
       if (activePlayer == viewingPlayer && activePlayer == corp) {
         if (
-          typeof currentPhase.Resolve.gain == "function" &&
+          typeof phaseOptions.gain !== 'undefined' &&
           executingCommand == "n"
         )
           return 1; //available when listed and not mid-decision
@@ -116,7 +132,7 @@ function GetAvailability(renderer) {
     } else if (renderer == countersUI.tag.runner) {
       if (activePlayer == viewingPlayer && activePlayer == runner) {
         if (
-          typeof currentPhase.Resolve.remove == "function" &&
+          typeof phaseOptions.remove !== 'undefined' &&
           executingCommand == "n" &&
           currentPhase.Enumerate.remove().length > 0
         )
@@ -132,7 +148,7 @@ function GetAvailability(renderer) {
 
   //special cases for cards
   if (
-    typeof currentPhase.Resolve.draw == "function" &&
+    typeof phaseOptions.draw !== 'undefined' &&
     activePlayer == viewingPlayer &&
     executingCommand == "n"
   ) {
@@ -454,14 +470,23 @@ function EnumeratePhase() {
   }
   for (var id in currentPhase.Resolve) {
     if (typeof currentPhase.Resolve[id] === "function") {
-      phaseOptions[id] = [{}]; //by default no check required so assume one legal option, no properties
-      if (typeof currentPhase.Enumerate !== "undefined") {
-        //if it has an inbuilt check
-        if (typeof currentPhase.Enumerate[id] === "function") {
-          LogDebug("Enumerating " + id);
-          phaseOptions[id] = currentPhase.Enumerate[id]();
+	  var actionPermitted = true;
+	  if (TutorialWhitelist !== null) { //use an actions whitelist
+		if (!TutorialWhitelist.includes(id)) actionPermitted = false; //not allowed by whitelist
+	  }
+	  if (TutorialBlacklist !== null) { //use an actions blacklist
+		if (TutorialBlacklist.includes(id)) actionPermitted = false; //not allowed by blacklist
+	  }
+	  if (actionPermitted) {
+        phaseOptions[id] = [{}]; //by default no check required so assume one legal option, no properties
+        if (typeof currentPhase.Enumerate !== "undefined") {
+          //if it has an inbuilt check
+          if (typeof currentPhase.Enumerate[id] === "function") {
+            LogDebug("Enumerating " + id);
+            phaseOptions[id] = currentPhase.Enumerate[id]();
+          }
         }
-      }
+	  }
     }
   }
 

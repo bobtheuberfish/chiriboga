@@ -8,6 +8,11 @@ tutorial[0] = {
   cardType: "identity",
   subTypes: ["Natural"],
   hideTags: true,
+  hideCredits: true,
+  hideClicks: true,
+  hideMU: true,
+  hideBrainDamage: true,
+  hideHandSize: true,
   modifyAgendaPointsToWin: {
     Resolve: function () {
       return -1; //i.e. 6 by default
@@ -55,7 +60,60 @@ tutorial[0] = {
         MoveCardByIndex(runner.stack.length - 1, runner.stack, runner.grip);
         //ChangePhase(phases.corpStartDraw);
         ChangePhase(phases.runnerStartResponse);
-        TutorialMessage("Welcome to Netrunner!\nYou are the runner...", true);
+        TutorialMessage("Welcome to Netrunner!\n\nYou are the RUNNER (your cards have red backs), and your opponent is the CORP (cards with blue backs).",true);
+      },
+    },
+    {
+      //Try a run
+      str: "Runner 1.3",
+      action: function () {
+        currentPhase.requireHumanInput=true;
+		TutorialMessage(
+		 "Runs are attacks you make against SERVERS (groups of cards at the top of the screen).\n\nEach turn you have four CLICKS (actions) to use.\nUse your first click to make a RUN by clicking the button below."
+        );
+		runner.identityCard.hideClicks = false;
+		TutorialCommandMessage.run = "The corp has three starting servers: ARCHIVES (discard pile), HQ (hand of cards) and R&D (deck of cards).\nSince Archives is empty, choose R&D or HQ.";
+		TutorialWhitelist = null; //not using whitelist
+		TutorialBlacklist = ['gain','draw',corp.archives];
+        TutorialReplacer = function (input) {
+          //return false to use normal action
+          return false;
+        };
+      },
+    },
+    {
+	  //Approaching server
+      str: "Run 4.3",
+      action: function () {
+		TutorialCommandMessage = {}
+		TutorialWhitelist = null; //not using whitelist
+        TutorialMessage("You are now APPROACHING the server. You are given one last opportunity to JACK OUT (stop the run) in case you have changed your mind.\nIn this case, let's continue.");
+        TutorialReplacer = function (input) {
+          if (input == "jack")
+            TutorialMessage(
+              "We want to get into the server and there would be no benefit jacking out right now, so choose Continue."
+            );
+          else return false;
+          return true;
+        };
+      },
+    },
+    {
+	  //Run successful
+	  //TODO
+      str: "Run successful",
+      action: function () {
+		TutorialCommandMessage = {}
+		TutorialWhitelist = null; //not using whitelist
+        TutorialMessage("You are now APPROACHING the server. You are given one last opportunity to JACK OUT (stop the run) in case you have changed your mind.\nIn this case, let's continue.");
+        TutorialReplacer = function (input) {
+          if (input == "jack")
+            TutorialMessage(
+              "We want to get into the server and there would be no benefit jacking out right now, so choose Continue."
+            );
+          else return false;
+          return true;
+        };
       },
     },
     {

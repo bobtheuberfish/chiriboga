@@ -547,7 +547,7 @@ function LoadDecks() {
   var deckJson = {};
 
   //*RUNNER*
-  //LOAD Runner deck, if specified (as an LZ compressed JSON object containing .identity= and .systemGateway=[], wth cards specified by number in the set)
+  //LOAD Runner deck, if specified (as an LZ compressed JSON object containing .identity= and .systemGateway=[], with cards specified by number in the set)
   var specifiedRunnerDeck = URIParameter("r");
   if (specifiedRunnerDeck != "") {
     deckJson = JSON.parse(
@@ -701,6 +701,18 @@ function LoadDecks() {
   }
   PrintDeck(runner.identityCard, runner.stack);
 
+  //run the intro tutorial, if specified
+  var specifiedMentor = URIParameter("mentor");
+  if (specifiedMentor != "") { //later, more options?
+    runner.identityCard = InstanceCard(
+      tutorial,
+      0, //later, more options?
+      cardBackTexturesRunner,
+      glowTextures,
+      strengthTextures
+    ); //note that card.location is not set for identity cards
+  }
+  
   //InstanceCardsPush(cheat,1,runner.grip,1,cardBackTexturesRunner,glowTextures,strengthTextures);
   //var newCard = InstanceCardsPush(systemGateway,33,runner.rig.resources,1,cardBackTexturesRunner,glowTextures,strengthTextures)[0];
   //newCard.faceUp = true;
@@ -828,35 +840,40 @@ function LoadDecks() {
 	leech.faceUp = true;
 	AddCounters(leech,"virus",3);
 	*/
-  /*
-	RunnerTestField([], //heapCards
-		[31,31,31,31,31,31], //stackCards
-		[28,28,28,25,25], //gripCards
-		[32], //installed
+   /*
+	RunnerTestField([2,3,4], //heapCards
+		[26,26,26], //stackCards
+		[26,26,26,26,26], //gripCards
+		[26,16,18], //installed
 		[], //stolen
 		cardBackTexturesRunner,glowTextures,strengthTextures);
-	
-	CorpTestField([73,73], //archivesCards
-		[47,47], //rndCards
-		[47,47,47,47], //hqCards
+	*/
+	/*
+	CorpTestField([], //archivesCards
+		[40,40,40,40], //rndCards
+		[40,40,40,40], //hqCards
 		[], //archivesInstalled
-		[72], //rndInstalled
-		[73,55], //hqInstalled
-		[[67,74,54]], //remotes (array of arrays)
+		[74,54,42], //rndInstalled
+		[74,54], //hqInstalled
+		[[74],[54]], //remotes (array of arrays)
 		[], //scored
 		cardBackTexturesCorp,glowTextures,strengthTextures);
-	*/
+  */
   //AddCounters(runner.rig.programs[0],"virus");
   //AddCounters(runner.rig.programs[1],"virus");
   //AddCounters(runner.rig.resources[0],"credits",5);
 
   //Rez(corp.remoteServers[0].ice[0]);
+  //Rez(corp.remoteServers[1].ice[0]);
   //Trash(corp.remoteServers[0].ice[0]);
   //Rez(corp.remoteServers[0].ice[0]);
   //Trash(corp.remoteServers[0].ice[0]);
 
   //corp.archives.cards[0].rezzed = true;
   //corp.archives.cards[1].rezzed = true;
+  
+  //runner.heap[0].faceUp = true;
+  //runner.heap[1].faceUp = true;
 
   //Rez(corp.archives.ice[0]);
   
@@ -870,8 +887,11 @@ function LoadDecks() {
   //Rez(corp.RnD.ice[2]);
   //Rez(corp.remoteServers[0].root[0]);
   //Rez(corp.remoteServers[1].root[0]);
+  
   //Advance(corp.HQ.ice[0]);
   //Advance(corp.RnD.ice[0]);
+  //Advance(corp.RnD.ice[0]);
+
   //Advance(corp.remoteServers[0].root[0]);
   //Advance(corp.remoteServers[0].root[0]);
   //Advance(corp.remoteServers[0].root[0]);
@@ -895,8 +915,8 @@ function LoadDecks() {
   //corp.RnD.cards[corp.RnD.cards.length-2].knownToRunner = true;
   //corp.RnD.cards[corp.RnD.cards.length-3].knownToRunner = true;
 
-  //GainCredits(runner,5);
-  //GainCredits(corp,12);
+  //GainCredits(runner,10);
+  //GainCredits(corp,20);
   //ChangePhase(phases.corpStartDraw);
   //ChangePhase(phases.runnerEndOfTurn);
   //ChangePhase(phases.runnerStartResponse);

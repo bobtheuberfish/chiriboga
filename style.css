@@ -417,3 +417,8 @@ p.acknowledgements {
 p.disclaimer {
 	font-size: 80%;
 }
+
+div.options {
+	display:inline-block;
+	padding:15px;
+}

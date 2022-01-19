@@ -579,7 +579,7 @@ function Render() {
   }
   w -= arbitraryHistorySpacer; //leave space for history sidebar
   cardRenderer.tutorialText.x = 15;
-  cardRenderer.tutorialText.y = h - 300;
+  cardRenderer.tutorialText.y = h - 170;
   //scale interface to match game zoom
   $("#footer").css("transform-origin", "bottom left");
   $("#footer").css("transform", "scale(" + interfaceScale + ")");
@@ -931,6 +931,20 @@ function Render() {
   var runnerFooterHeight = 65;
   guiWOffset = originalGuiWOffset;
   //if (viewingPlayer != runner) runnerFooterHeight = 0;
+  counterPositionings = [];
+  if (!runner.identityCard.hideCredits) counterPositionings.push({ e: countersUI.credits.runner, w: 40, h: 40 });
+  if (!runner.identityCard.hideClicks) counterPositionings.push({ e: countersUI.click.runner, w: 70, h: 40 });
+  if (!runner.identityCard.hideTags) counterPositionings.push({ e: countersUI.tag.runner, w: 85, h: 39 });
+  if (!runner.identityCard.hideMU) counterPositionings.push({ e: countersUI.mu.runner, w: 80, h: 38 });
+  //if (!runner.identityCard.hideBrainDamage) counterPositionings.push({ e: countersUI.brain_damage.runner, w: 207, h: 38 });
+  if (!runner.identityCard.hideHandSize) counterPositionings.push({ e: countersUI.hand_size.runner, w: 93, h: 38 });
+  var counterUIWOffset = 0;
+  for (var i=0; i<counterPositionings.length; i++) {
+	  counterUIWOffset += counterPositionings[i].w;
+	  counterPositionings[i].e.SetPosition(guiWOffset + counterUIWOffset, h - counterPositionings[i].h - runnerFooterHeight);
+	  guiWOffset -= guiWSpacingModifier;
+  }
+  /* **OLD UI PLACEMENT **
   countersUI.credits.runner.SetPosition(
     guiWOffset + 40,
     h - 40 - runnerFooterHeight
@@ -973,6 +987,7 @@ function Render() {
     guiWOffset + 384,
     h - 38 - runnerFooterHeight
   );
+  */
   runner._renderOnlyHandSize = MaxHandSize(runner);
   countersUI.hand_size.runner.prefix = runner.grip.length + "/";
   countersUI.hand_size.runner.richText.text =
@@ -1221,6 +1236,10 @@ function StartGame() {
       MoveCardByIndex(runner.stack.length - 1, runner.stack, runner.grip);
     }
     Log("Each player has taken five credits and drawn five cards");
+	
+	//Narrate();
+	stackedLog = []; //skip narration
+	
     IncrementPhase();
   }
   Render(); //to show cards have moved from decks
@@ -1228,7 +1247,10 @@ function StartGame() {
 }
 
 var TutorialReplacer = null;
-function TutorialMessage(message, prompt = false) {
+var TutorialWhitelist = null;
+var TutorialBlacklist = null;
+var TutorialCommandMessage = {};
+function TutorialMessage(message, prompt = false, callback=null) {
   cardRenderer.tutorialText.text = message;
   if (prompt) {
     var decisionPhase = DecisionPhase(
@@ -1237,6 +1259,7 @@ function TutorialMessage(message, prompt = false) {
       function () {
         cardRenderer.tutorialText.text = "";
         TutorialReplacer = null;
+		if (callback) callback();
       },
       "Tutorial",
       "",

@@ -1266,7 +1266,7 @@ var CardRenderer = {
         miterLimit: 1,
         strokeThickness: 4,
         wordWrap: true,
-        wordWrapWidth: 300,
+        wordWrapWidth: 420,
       });
       this.tutorialText = new PIXI.Text("", this.tutorialStyle);
       this.tutorialText.anchor.set(0, 1);
