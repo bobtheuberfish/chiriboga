@@ -37,7 +37,7 @@
 			  //console.log(json);
 			  var string = JSON.stringify(json);
 			  var compressed = LZString.compressToEncodedURIComponent(string);
-			  var launchAddress = "engine.html?" + dC + "=" + compressed;
+			  var launchAddress = "engine.php?" + dC + "=" + compressed;
 			  $("#launch").prop("href", launchAddress);
 			  history.replaceState(
 				null,
