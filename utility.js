@@ -383,7 +383,8 @@ function CardIsInArray(card, array) {
  * @returns {Server} the server or null
  */
 function GetServer(card) {
-  //TODO could use cardLocation for more efficiency?
+  //could use cardLocation for more efficiency but this method works and we don't know what weird things could happen
+  //e.g. at the moment we can temporarily put a dummy copy of ice into a hypothetical server when choosing which one to install
   //for now for efficiency we will rule out runner cards - though these might be possible later
   if (card.player != corp) return null;
   //now check cards in roots

@@ -2421,8 +2421,8 @@ systemGateway[40] = {
 			//**AI code
 			if (corp.AI != null)
 			{
-				if (typeof(card.AIAdvancementLimit) !== 'undefined') {
-					if (card.AIOverAdvance || CheckCounters(card, "advancement", card.AIAdvancementLimit-1)) return false; //don't overadvance unless appropriate
+				if (typeof(card.AIAdvancementLimit) == 'function') {
+					if (card.AIOverAdvance || CheckCounters(card, "advancement", card.AIAdvancementLimit()-1)) return false; //don't overadvance unless appropriate
 				}
 			}
 			return true;
@@ -3726,7 +3726,14 @@ systemGateway[63] = {
   strength: 5,
   canBeAdvanced: true,
   //You can advance this ice.
-  AIAdvancementLimit: 3,
+  AIAdvancementLimit: function() {
+	  //if unrezzed, only advance it if can afford to fully advance and rez
+	  if (!this.rezzed) {
+		  var costToFullyAdvanceAndRez = 3 - Counters(this, "advancement") + RezCost(this);
+		  if (!CheckCredits(costToFullyAdvanceAndRez, corp)) return 0;
+	  }
+	  return 3;
+  },
   //It gets +5 strength while there are 3 or more hosted advancement counters
   modifyStrength: {
     Resolve: function (card) {

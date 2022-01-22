@@ -688,11 +688,11 @@ phases.corpActionMain = {
                 allowAdvance = false;
             }
             if (
-              typeof possibleAdvance[i].card.AIAdvancementLimit !== "undefined"
+              typeof possibleAdvance[i].card.AIAdvancementLimit == "function"
             ) {
               if (
                 Counters(possibleAdvance[i].card, "advancement") >=
-                possibleAdvance[i].card.AIAdvancementLimit
+                possibleAdvance[i].card.AIAdvancementLimit()
               )
                 allowAdvance = false;
             }

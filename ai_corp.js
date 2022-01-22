@@ -213,8 +213,8 @@ class CorpAI {
     //currently just chooses first reasonable option (need to do more work here to rank them)
     for (var i = 0; i < optionList.length; i++) {
       var advancementLimit = 5;
-      if (typeof optionList[i].card.AIAdvancementLimit !== "undefined")
-        advancementLimit = optionList[i].card.AIAdvancementLimit;
+      if (typeof optionList[i].card.AIAdvancementLimit == "function")
+        advancementLimit = optionList[i].card.AIAdvancementLimit();
       if (
         typeof optionList[i].card.advancement === "undefined" ||
         optionList[i].card.advancement < advancementLimit ||
@@ -1293,11 +1293,11 @@ class CorpAI {
             //don't advance past 5 (thats the largest agenda in this deck) or some other limit if specified
             var advancementLimit = 5;
             if (
-              typeof corp.remoteServers[i].root[j].AIAdvancementLimit !==
-              "undefined"
+              typeof corp.remoteServers[i].root[j].AIAdvancementLimit ==
+              "function"
             )
               advancementLimit =
-                corp.remoteServers[i].root[j].AIAdvancementLimit;
+                corp.remoteServers[i].root[j].AIAdvancementLimit();
             if (
               typeof corp.remoteServers[i].root[j].advancement ===
                 "undefined" ||
@@ -1339,8 +1339,8 @@ class CorpAI {
         if (installedCards[i].canBeAdvanced) {
           if (CheckCardType(installedCards[i], ["ice"])) {
             var advancementLimit = 5; //arbitrary
-            if (typeof installedCards[i].AIAdvancementLimit !== "undefined")
-              advancementLimit = installedCards[i].AIAdvancementLimit;
+            if (typeof installedCards[i].AIAdvancementLimit == "function")
+              advancementLimit = installedCards[i].AIAdvancementLimit();
             if (
               typeof installedCards[i].advancement === "undefined" ||
               installedCards[i].advancement < advancementLimit ||
