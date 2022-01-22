@@ -65,9 +65,38 @@ class CorpAI {
     return false;
   }
 
-  //returns the ice
-  _bestIceToInstall(iceToChooseFrom) {
-    //assumes all ice and at least one present
+  _iceInstallScore(ice, serverToInstallTo) {
+	//higher is better
+	var ret = 0;
+	//put a temporary copy of this card into the server to test for effects (if it's null we'll need a pretend remote)
+	if (serverToInstallTo == null) corp.remoteServers.push({ice:[ice], root:[]});
+	else serverToInstallTo.ice.push(ice);
+	//start with strength as a base
+	ret = Strength(ice);
+	//include rez cost as an assumption of value
+	ret += RezCost(ice);
+	//special specifics
+	if (ice.title == "Palisade" && serverToInstallTo != null && typeof(serverToInstallTo.cards) !== 'undefined') ret -= 3; //arbitrary, encourage to save Palisade for remotes
+    //weaker if threatened
+    if (this._aCompatibleBreakerIsInstalled(ice)) ret *= 0.5;
+    //remove the temporary copy
+	if (serverToInstallTo == null) corp.remoteServers.splice(corp.remoteServers.length-1,1); //by removing the pretend server
+	else serverToInstallTo.ice.splice(serverToInstallTo.ice.length-1,1); //by removing the temporary ice copy
+    return ret;
+  }
+
+  //returns the ice (assumes list is all ice and at least one present)
+  _bestIceToInstall(iceToChooseFrom, serverToInstallTo) {
+	if (iceToChooseFrom.length < 2) return iceToChooseFrom[0];
+	//calculate an install score for each (higher is better)
+	for (var i=0; i<iceToChooseFrom.length; i++) {
+		iceToChooseFrom[i].AIIceInstallScore = this._iceInstallScore(iceToChooseFrom[i], serverToInstallTo);
+	}
+	//now sort
+	iceToChooseFrom.sort(function(a,b) {
+	  return b.AIIceInstallScore - a.AIIceInstallScore;
+	});
+	//console.log(iceToChooseFrom);
     return iceToChooseFrom[0]; //just random for now
   }
 
@@ -1338,7 +1367,7 @@ class CorpAI {
           this._log("Some ice would be nice");
           return this._returnPreference(optionList, "install", {
             serverToInstallTo: serverToInstallTo,
-            cardToInstall: this._bestIceToInstall(affordIceThisServer),
+            cardToInstall: this._bestIceToInstall(affordIceThisServer, serverToInstallTo),
           });
         }
       }
