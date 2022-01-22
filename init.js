@@ -930,19 +930,25 @@ function Render() {
 
   var runnerFooterHeight = 65;
   guiWOffset = originalGuiWOffset;
-  //if (viewingPlayer != runner) runnerFooterHeight = 0;
   counterPositionings = [];
-  if (!runner.identityCard.hideCredits) counterPositionings.push({ e: countersUI.credits.runner, w: 40, h: 40 });
-  if (!runner.identityCard.hideClicks) counterPositionings.push({ e: countersUI.click.runner, w: 70, h: 40 });
-  if (!runner.identityCard.hideTags) counterPositionings.push({ e: countersUI.tag.runner, w: 85, h: 39 });
-  if (!runner.identityCard.hideMU) counterPositionings.push({ e: countersUI.mu.runner, w: 80, h: 38 });
-  //if (!runner.identityCard.hideBrainDamage) counterPositionings.push({ e: countersUI.brain_damage.runner, w: 207, h: 38 });
-  if (!runner.identityCard.hideHandSize) counterPositionings.push({ e: countersUI.hand_size.runner, w: 93, h: 38 });
+  //e is element, rw is width when viewing as runner, cw is that but as corp, h is height, s is whether to show it
+  counterPositionings.push({ e: countersUI.credits.runner, rw: 40, cw: 40, h: 40, s: !runner.identityCard.hideCredits });
+  counterPositionings.push({ e: countersUI.click.runner, rw: 70, cw: 70, h: 40, s: !runner.identityCard.hideClicks });
+  counterPositionings.push({ e: countersUI.tag.runner, rw: 85, cw: 85, h: 39, s: (!runner.identityCard.hideTags && globalProperties.agendaPointsToWin == 7) }); //hide for tutorial deck
+  counterPositionings.push({ e: countersUI.mu.runner, rw: 80, cw: 100, h: 38, s: !runner.identityCard.hideMU });
+  //counterPositionings.push({ e: countersUI.brain_damage.runner, rw: 207, cw: 207, h: 38, s: !runner.identityCard.hideBrainDamage });
+  counterPositionings.push({ e: countersUI.hand_size.runner, rw: 93, cw: 85, h: 38, s: !runner.identityCard.hideHandSize });
   var counterUIWOffset = 0;
   for (var i=0; i<counterPositionings.length; i++) {
-	  counterUIWOffset += counterPositionings[i].w;
-	  counterPositionings[i].e.SetPosition(guiWOffset + counterUIWOffset, h - counterPositionings[i].h - runnerFooterHeight);
-	  guiWOffset -= guiWSpacingModifier;
+	  if (!counterPositionings[i].s) {
+		counterPositionings[i].e.SetPosition(-100, -100); //moved off-screen for basic tutorial game  //hide offscreen
+	  }
+	  else {
+		  if (viewingPlayer == runner) counterUIWOffset += counterPositionings[i].rw;
+		  else counterUIWOffset += counterPositionings[i].cw;
+		  counterPositionings[i].e.SetPosition(guiWOffset + counterUIWOffset, h - counterPositionings[i].h - runnerFooterHeight);
+		  guiWOffset -= guiWSpacingModifier;
+	  }
   }
   /* **OLD UI PLACEMENT **
   countersUI.credits.runner.SetPosition(
