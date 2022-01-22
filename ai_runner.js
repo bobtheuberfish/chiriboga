@@ -148,8 +148,10 @@ class RunnerAI {
     this.runsEverCalculated = []; //used to check whether calculation is needed to return cachedCost
     this.cachedCosts = []; //for all servers, updated each time a *complete* run is calculated
     this.cachedPotentials = []; //for all servers, calculated each time "run" action is available
-    this.cachedPaths = []; //just for the most recently calculated server
-    this.cachedComplete = false; //indicates whether or not cachedPaths represents complete or incomplete paths (never a mix)
+    this.cachedBestPath = null; //just for the most recently calculated server
+    this.cachedComplete = false; //indicates whether or not cachedBestPath represents a complete or incomplete path
+	this.cachedPathServer = null; //to remember which server cachedBestPath applies to
+	this.processingPoint = null; //used when when following a calculated run path
     this.rc = new RunCalculator();
     this.serverList = [];
 
@@ -342,7 +344,26 @@ class RunnerAI {
     return 0; //arbitrary
   }
 
-  //meta-wrappers for run calculator
+  //meta-wrappers for run calculator (all return the best path or null if no path found)
+
+  //for efficiency, use cached path unless none is available
+  _cachedOrBestRun(server, startIceIdx) {
+	  if (!this.cachedBestPath || this.cachedPathServer !== server) { //need to recalculate
+		this.processingPoint = null;
+		//ideally complete runs
+		this._calculateBestCompleteRun(server, 0, 0, 0, startIceIdx);  //0 means no credit/click/damage offset
+		//but if not, use an exit strategy (incomplete run)
+		if (!this.cachedBestPath)
+		  this._calculateBestExitStrategy(server, 0, 0, 0, startIceIdx);  //0 means no credit/click/damage offset
+	  } else {
+		  //remove ice before this one
+		  for (var i=this.cachedBestPath.length-1; i>-1; i--) {
+			if (this.cachedBestPath[i].iceIdx > startIceIdx) this.cachedBestPath.splice(i,1);
+		  }
+	  }
+	  return this.cachedBestPath;
+  }
+
   _calculateBestCompleteRun(
     server,
     creditOffset,
@@ -350,7 +371,7 @@ class RunnerAI {
     damageOffset,
     startIceIdx
   ) {
-    return this._calculateRunPaths(
+    return this._calculateRunPath(
       server,
       creditOffset,
       clickOffset,
@@ -366,7 +387,7 @@ class RunnerAI {
     damageOffset,
     startIceIdx
   ) {
-    return this._calculateRunPaths(
+    return this._calculateRunPath(
       server,
       creditOffset,
       clickOffset,
@@ -376,8 +397,8 @@ class RunnerAI {
     ); //true means include incomplete runs
   }
 
-  //wrapper for run calculator
-  _calculateRunPaths(
+  //wrapper for run calculator (returns null if no path found)
+  _calculateRunPath(
     server,
     creditOffset,
     clickOffset,
@@ -385,6 +406,7 @@ class RunnerAI {
     incomplete,
     startIceIdx
   ) {
+	//console.error("crp "+ServerName(server)+(incomplete?" incomplete":" complete"));
     var clickLimit = runner.clickTracker + clickOffset;
     var creditLimit = AvailableCredits(runner) + creditOffset;
     var damageLimit = runner.grip.length + damageOffset; //(this gets updated during the run calculation if clickLimit is used up)
@@ -406,20 +428,24 @@ class RunnerAI {
       incomplete,
       startIceIdx
     );
-    this.cachedPaths = paths;
+    this.cachedBestPath = null; //by default assume no paths were found
     this.cachedComplete = !incomplete;
+	this.cachedPathServer = server;
     if (!this.runsEverCalculated.includes(server))
       this.runsEverCalculated.push(server);
     //update/store cached cost
     var bestpath = [];
-    if (paths.length > 0) bestpath = paths[paths.length - 1];
+    if (paths.length > 0) {
+		bestpath = paths[paths.length - 1];
+		this.cachedBestPath = bestpath;
+	}
     var bestcost = Infinity;
     if (bestpath.length > 0) {
       if (typeof bestpath[bestpath.length - 1].cost !== "undefined")
         bestcost = bestpath[bestpath.length - 1].cost;
       else bestcost = this.rc.PathCost(bestpath);
     }
-    var alreadyCached = false; //TODO only update cached cost for complete runs
+    var alreadyCached = false; //or consider maybe only updating cached cost for complete runs?
     for (var i = 0; i < this.cachedCosts.length; i++) {
       if (this.cachedCosts[i].server == server) {
         this.cachedCosts[i].cost = bestcost;
@@ -428,7 +454,7 @@ class RunnerAI {
     }
     if (!alreadyCached)
       this.cachedCosts.push({ server: server, cost: bestcost });
-    return this.cachedPaths;
+    return this.cachedBestPath;
   }
 
   //returns something between [] and ["Fracter","Decoder","Killer"]
@@ -842,14 +868,8 @@ console.log(this.preferred);
       }
 
       //calculate complete run path from this point
-      var paths = this._calculateBestCompleteRun(
-        attackedServer,
-        0,
-        0,
-        0,
-        approachIce - 1
-      ); //0 means no credit/click/damage offset
-      if (paths.length < 1) return optionList.indexOf("jack"); //we won't make it to the server, bail out instead
+	  this._cachedOrBestRun(attackedServer, approachIce - 1);
+      if (!this.cachedBestPath || !this.cachedComplete) return optionList.indexOf("jack"); //we won't make it to the server, bail out instead
       return optionList.indexOf("n"); //by default don't jack out
     }
 
@@ -870,25 +890,21 @@ console.log(this.preferred);
       }
       if (optionList.includes("trigger")) return optionList.indexOf("trigger");
       if (optionList.includes("n")) return optionList.indexOf("n");
+	  //otherwise just choose next card
+	  return 0;
     }
 
     if (currentPhase.identifier == "Run Subroutines") {
       //subroutines have choices to be made
       //console.log("AI subroutine decision");
       //console.log(optionList);
-      //for efficiency, use cached path unless none is available
-      if (this.cachedPaths.length < 1) {
-        //ideally complete runs
-        this._calculateBestCompleteRun(attackedServer, 0, 0, 0, approachIce);
-        //but if not, use an exit strategy (incomplete run)
-        if (this.cachedPaths.length == 0)
-          this._calculateBestExitStrategy(attackedServer, 0, 0, 0, approachIce);
-      }
-      if (this.cachedPaths.length > 0) {
-        //require a path to exist (whether complete or not)
-        if (this.cachedPaths[0].length > 1) {
+	  this._cachedOrBestRun(attackedServer, approachIce);
+      if (this.cachedBestPath) {
+        //requires a path to exist (whether complete or not)
+		var bestpath = this.cachedBestPath;
+        if (bestpath.length > 1) {
           //assume the second element of the optimal path is the 'when moving on'
-          var p = this.cachedPaths[0][1];
+          var p = bestpath[1];
           if (p.alt) {
             //if no choice data stored, dunno!
             //console.log(subroutine);
@@ -923,56 +939,57 @@ console.log(this.preferred);
       //console.log("Mid-encounter bestpath:");
       //calculate run path from this point (the 0s mean no credit/click/damage offset)
       //ideally complete runs
-      var paths = this._calculateBestCompleteRun(
-        attackedServer,
-        0,
-        0,
-        0,
-        approachIce
-      );
       //but if not, use an exit strategy (incomplete run)
-      if (paths.length == 0)
-        paths = this._calculateBestExitStrategy(
-          attackedServer,
-          0,
-          0,
-          0,
-          approachIce
-        );
+	  this._cachedOrBestRun(attackedServer, approachIce);
       var bestpath = [];
-      if (paths.length > 0) {
-        bestpath = paths[paths.length - 1];
-        var p = bestpath[1];
-        //console.log(p);
+      if (this.cachedBestPath) {
+        bestpath = this.cachedBestPath;
         //console.log(optionList);
 
         //console.log("approachIce = "+approachIce);
         //console.log("subroutine = "+subroutine);
-
+		//console.log(JSON.stringify(bestpath));
         if (optionList.includes("trigger")) {
-          //e.g. str up and break srs
-          //for now assume there will only be one ability possible for this card, so we just prefer the card
-          if (p.card_str_mods.length > 0)
-            return this._returnPreference(optionList, "trigger", {
-              cardToTrigger: p.card_str_mods[0].use,
-            });
-          else if (p.sr_broken.length > 0)
-            return this._returnPreference(optionList, "trigger", {
-              cardToTrigger: p.sr_broken[0].use,
-            });
-          else if (optionList.includes("n")) return optionList.indexOf("n"); //path is to not use abilities
-        } else if (p.sr_broken.length > 0) {
+		  var p = bestpath[1]; //0th point is just for at start of encounter
+		  if (p.iceIdx == approachIce) { //don't skip ahead
+		  //console.log("trigger");
+		  //console.log(p);
+			  if (p.sr_broken.length > 0) this.processingPoint = p; //store point for choosing which subroutine(s)
+			  else this.processingPoint = null; //don't store a point for later processing
+			  bestpath.splice(1,1); //point processed, remove it
+			  //e.g. str up and break srs
+			  //for now assume there will only be one ability possible for this card, so we just prefer the card
+			  if (p.card_str_mods.length > 0)
+				return this._returnPreference(optionList, "trigger", {
+				  cardToTrigger: p.card_str_mods[p.card_str_mods.length-1].use, //assumes they are added to the array in order of use
+				});
+			  else if (p.sr_broken.length > 0)
+				return this._returnPreference(optionList, "trigger", {
+				  cardToTrigger: p.sr_broken[p.sr_broken.length-1].use, //assumes they are added to the array in order of use
+				});
+		  }
+		  //nothing specified, don't use abilities
+		  if (optionList.includes("n")) {
+			  return optionList.indexOf("n");
+		  }
+        } else if ( this.processingPoint || (bestpath[1].sr_broken.length > 0) ) {
           //assume choosing which subroutine to break
-          //console.log("AI returning "+p.sr_broken[0].idx);
-          //the index in the sr array is not necessarily the index in the optionList e.g. if sr[1] is broken then options are [0,2] and index 2 will fail
-          var sridx = p.sr_broken[0].idx;
-          var ice = GetApproachEncounterIce();
-          if (ice) {
-            var sr = ice.subroutines[sridx];
-            for (var i = 0; i < optionList.length; i++) {
-              if (optionList[i].subroutine == sr) return i;
-            }
-          }
+          var p = this.processingPoint; //continue processing point
+		  if (p == null) p = bestpath[1]; //new point
+		  //console.log("break");
+		  //console.log(p);
+		  var ice = GetApproachEncounterIce();
+		  if (ice) {
+			//loop through the point's broken sr and return one that is an option (this should also handle breaking more than one?)
+			for (var j=0; j<p.sr_broken.length; j++) {
+			  //the index in the sr array is not necessarily the index in the optionList e.g. if sr[1] is broken then options are [0,2] and index 2 will fail
+			  var sridx = p.sr_broken[j].idx;
+			  var sr = ice.subroutines[sridx];
+			  for (var i = 0; i < optionList.length; i++) {
+				  if (optionList[i].subroutine == sr) return i;
+			  }
+			}
+		  }
         }
       }
       //if no valid path found...need to handle this (for now just don't waste resources triggering)
@@ -997,6 +1014,8 @@ console.log(this.preferred);
           }
         }
       }
+	  //otherwise just choose next card
+	  return 0;
     }
 
     //print runner hand for debug purposes (in a real game this would be cheating!)
@@ -1157,10 +1176,10 @@ console.log(this.preferred);
         this.cachedPotentials.push({
           server: this.serverList[i].server,
           potential: this.serverList[i].potential,
-        }); //store potential for other use (costs are cached in _calculateRunPaths)
+        }); //store potential for other use (costs are cached in _calculateRunPath)
         //console.log(this.cachedPotentials[this.cachedPotentials.length-1].server.serverName+": "+this.cachedPotentials[this.cachedPotentials.length-1].potential);
         //and calculate best path
-        var paths = [];
+        var bestpath = null;
         var useOverclock = null; //the overclock card to use. If null, don't or can't use.
         if (optionList.includes("play")) {
           if (this.serverList[i].potential > 1.5) {
@@ -1172,29 +1191,16 @@ console.log(this.preferred);
           }
         }
         if (useOverclock)
-          paths = this._calculateBestCompleteRun(server, 4, -1, -1);
+          bestpath = this._calculateBestCompleteRun(server, 4, -1, -1);
         //Overclock effectively gives 4 extra credits, a click is needed to play it, and a card slot (reduce max damage by 1)
-        else paths = this._calculateBestCompleteRun(server, 0, -1, 0); //assume 1 click will be used to initiate the run
-        //console.log(paths);
-        var bestpath = [];
-        if (paths.length > 0) bestpath = paths[paths.length - 1];
+        else bestpath = this._calculateBestCompleteRun(server, 0, -1, 0); //assume 1 click will be used to initiate the run
         this.serverList[i].bestpath = bestpath;
         this.serverList[i].bestcost = Infinity;
-        if (bestpath.length > 0) {
-          if (typeof bestpath[bestpath.length - 1].cost !== "undefined")
+        if (bestpath && bestpath.length > 0) {
+          if (typeof bestpath[bestpath.length - 1].cost !== "undefined") //end point of path has total cost
             this.serverList[i].bestcost = bestpath[bestpath.length - 1].cost;
           else this.serverList[i].bestcost = this.rc.PathCost(bestpath);
         }
-        /*
-			if (bestpath.length > 0)
-			{
-				console.log("Best path to "+server.serverName+" with max "+clickLimit+" clicks, "+creditLimit+" credits, and "+damageLimit+" damage, with an rc cost of "+bestpath[bestpath.length-1].cost+":");
-				this.rc.Print(bestpath,server);
-				console.log("Effects: "+JSON.stringify(this.rc.TotalEffect(bestpath[bestpath.length-1])));
-				console.log("Credit cost: "+bestpath[bestpath.length-1].runner_credits_spent);
-			}
-			else console.log("No path to "+server.serverName);
-			*/
       }
 
       //check for inaccessible high-potential servers that might become accessible with some prep
@@ -1213,9 +1219,9 @@ console.log(this.preferred);
           var creditOffset = 3; //could look at more options depending on what's in hand etc
           var damageOffset = 3; //but for now this at least allows a bit of planning
           //recalculate paths
-          var paths = [];
+          var bestpath = null;
           if (useOverclock)
-            paths = this._calculateBestCompleteRun(
+            bestpath = this._calculateBestCompleteRun(
               server,
               4 + creditOffset,
               -1 + clickOffset,
@@ -1223,32 +1229,17 @@ console.log(this.preferred);
             );
           //Overclock effectively gives 4 extra credits, a click is needed to play it, and a card slot (reduce max damage by 1)
           else
-            paths = this._calculateBestCompleteRun(
+            bestpath = this._calculateBestCompleteRun(
               server,
               0 + creditOffset,
               -1 + clickOffset,
               0 + damageOffset
             ); //assume 1 click will be used to initiate the run
-          if (paths.length > 0) {
+          if (bestpath) {
             this.serverList = []; //don't run this click
             this._log("Gotta do some prep");
             break;
           }
-          /* this commented section doesn't work because if there's no valid path then the AI actually can't run (won't be able to make decisions, will jack right out, etc)
-				else //if there is only unrezzed ice, consider running it anyway
-				{
-					var anyRezzedIce = false;
-					for (var j=0; j<server.ice.length; j++)
-					{
-						if (server.ice[j].rezzed)
-						{
-							anyRezzedIce = true;
-							break;
-						}
-					}
-					if (!anyRezzedIce) this.serverList[i].bestcost = 1.0; //arbitrary
-				}
-				*/
           //maybe a compatible breaker would help
           if (runner.clickTracker > 1) {
             for (var j = 0; j < server.ice.length; j++) {
@@ -1362,6 +1353,10 @@ console.log(this.preferred);
             " cost"
         );
         this.rc.Print(this.serverList[0].bestpath, this.serverList[0].server);
+		//use this server for cached path
+	    this.cachedBestPath = this.serverList[0].bestpath;
+		this.cachedComplete = true;
+		this.cachedPathServer = this.serverList[0].server;
 
         var endPoint =
           this.serverList[0].bestpath[this.serverList[0].bestpath.length - 1];
