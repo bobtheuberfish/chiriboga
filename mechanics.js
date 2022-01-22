@@ -64,16 +64,15 @@ function Rez(card) {
     if (GetApproachEncounterIce() == card) {
       //update run calculation now that the ice is known
       //ideally complete run
-      runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, approachIce);
+      if (!runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, approachIce))
       //but if not, use an exit strategy (incomplete run)
-      if (runner.AI.cachedPaths.length == 0)
-        runner.AI._calculateBestExitStrategy(
-          attackedServer,
-          0,
-          0,
-          0,
-          approachIce
-        );
+      runner.AI._calculateBestExitStrategy(
+        attackedServer,
+        0,
+        0,
+        0,
+        approachIce
+      );
     }
   }
   Log("Corp rezzed " + GetTitle(card, true));

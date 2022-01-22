@@ -2579,21 +2579,19 @@ systemGateway[42] = {
       if (runner.AI != null) {
         runner.AI._log("I know this one");
         var choice = choices[0];
-        if (
-          runner.AI._calculateBestCompleteRun(
+        if (!runner.AI._calculateBestCompleteRun(
             attackedServer,
             0,
             0,
             0,
             approachIce
-          ).length == 0
-        ) {
+        )) {
           //no complete run path, don't bother paying the fee
           choice = choices[choices.length - 1];
         } else {
           //prefer clicks, then credits (unless rich in which case prefer credits)
           if (choices.length > 2 && AvailableCredits(runner) > 9)
-            choice = choices[1]; //the 10 min is arbitrary (should cover this tax + a trash cost or two)
+            choice = choices[1]; //the credit min is arbitrary (should cover this tax + a trash cost or two)
         }
         runner.AI.preferred = { title: "Manegarm Skunkworks", option: choice }; //title must match currentPhase.title for AI to fire
       }
@@ -3291,10 +3289,13 @@ systemGateway[54] = {
         );
         //**AI code
         if (runner.AI != null) {
-          runner.AI._log("I know this one");
           var choice = choices[0]; //take the tag by default
-          if (runner.AI.cachedPaths.length == 0 || !runner.AI.cachedComplete)
+          if (!runner.AI.cachedBestPath || !runner.AI.cachedComplete) {
+			runner.AI._log("I was not expecting this");
             choice = choices[1]; //etr preferred because no acceptable path through the run
+		  } else {
+			runner.AI._log("I've committed to this");  
+		  }
           runner.AI.preferred = { title: "Funhouse", option: choice }; //title must match currentPhase.title for AI to fire
         }
       }
