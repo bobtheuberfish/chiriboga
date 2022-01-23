@@ -8,7 +8,7 @@ logSubtleDisabled = true;
 //note we have modified stringify to be filtered to prevent cyclic object value errors
 (function () {
   var oldStringify = JSON.stringify;
-  JSON.stringify = function (message) {
+  JSON.stringify = function (message, setNumbers=false) { //if setNumbers is true, the card's set number will be output instead of title
     return oldStringify(message, function (key, val) {
       //capture undefined
       if (typeof val == "undefined") return "undefined";
@@ -25,8 +25,11 @@ logSubtleDisabled = true;
       }
       //don't try to inspect nulls
       if (val === null) return "null";
-      //prevent cyclic
-      if (typeof val.title !== "undefined") {
+      //prevent cyclic by representing rather than fully outputting card
+	  if (setNumbers && typeof val.setNumber !== "undefined") {
+		  return val.setNumber;
+	  }
+      else if (typeof val.title !== "undefined") {
         return val.title;
       } else if (val == runner) return "Runner";
       else if (val == corp) return "Corp";
@@ -50,12 +53,72 @@ var capturedLog = [];
     oldLog.apply(console, arguments);
   };
 })();
+
+// Function used to automatically create replication code (src is an array, str is its address)
+function ReplicationCode(src,str) {
+  var ret = "";
+  var countersToCheck = ["virus","credits","advancement"];
+  for (var i=0; i<src.length; i++) {
+	  var card = src[i];
+	  var addr = str+'['+i+']';
+	  if (card.player == corp) {
+		  if (card.rezzed) ret += "Rez("+addr+");\n";
+		  else if (card.faceUp) ret += addr+".faceUp=true;\n";
+		  else if (card.knownToRunner) ret += addr+".knownToRunner=true;\n";
+	  }
+	  for (var j=0; j<countersToCheck.length; j++) {
+		var counter = countersToCheck[j];
+		if (typeof(card[counter]) !== 'undefined') ret += "AddCounters("+addr+",'"+counter+"');\n";
+	  }
+  }
+  return ret;
+}
+
 // Function to download capturedlog to a file
 //source: https://stackoverflow.com/questions/13405129/javascript-create-and-save-file
 function DownloadCapturedLog() {
-  var logOutput = capturedLog.concat(
-    "Corp hand: " + JSON.stringify(corp.HQ.cards)
-  );
+  //reveal hidden information
+  var extraOutput = "Corp hand: " + JSON.stringify(corp.HQ.cards)+"\n";
+  for (var i=0; i<corp.remoteServers.length; i++) {
+	extraOutput += ServerName(corp.remoteServers[i])+": "+JSON.stringify(corp.remoteServers[i].root)+"\n";
+  }
+  //make board state fairly easy to reproduce (not comprehensive, just a starting point)
+  extraOutput += "\n";
+  var runnerHeap = JSON.stringify(runner.heap,true);
+  var runnerStack = JSON.stringify(runner.stack,true);
+  var runnerGrip = JSON.stringify(runner.grip,true);
+  var runnerInstalled = JSON.stringify(runner.rig.resources.concat(runner.rig.hardware).concat(runner.rig.programs),true);
+  var runnerStolen = JSON.stringify(runner.scoreArea,true);
+  extraOutput += "RunnerTestField("+runner.identityCard.setNumber+", "+[runnerHeap,runnerStack,runnerGrip,runnerInstalled,runnerStolen].join(', ')+", cardBackTexturesRunner,glowTextures,strengthTextures);\n";
+  var corpArchivesCards = JSON.stringify(corp.archives.cards,true);
+  var corpRndCards = JSON.stringify(corp.RnD.cards,true);
+  var corpHQCards = JSON.stringify(corp.HQ.cards,true);
+  var corpArchivesInstalled = JSON.stringify(corp.archives.root.concat(corp.archives.ice),true);
+  var corpRnDInstalled = JSON.stringify(corp.RnD.root.concat(corp.RnD.ice),true);
+  var corpHQInstalled = JSON.stringify(corp.HQ.root.concat(corp.HQ.ice),true);
+  var corpRemotesEach = [];
+  for (var i=0; i<corp.remoteServers.length; i++) {
+	corpRemotesEach.push(JSON.parse(JSON.stringify(corp.remoteServers[i].root.concat(corp.remoteServers[i].ice),true)));
+  }
+  var corpRemotes = JSON.stringify(corpRemotesEach,true); //the true isn't needed here but will keep it for visual consistency
+  var corpScored = JSON.stringify(corp.scoreArea,true);
+  extraOutput += "CorpTestField("+corp.identityCard.setNumber+", "+[corpArchivesCards,corpRndCards,corpHQCards,corpArchivesInstalled,corpRnDInstalled,corpHQInstalled,corpRemotes,corpScored].join(', ')+", cardBackTexturesCorp,glowTextures,strengthTextures);\n";
+  extraOutput += ReplicationCode(runner.rig.resources,'runner.rig.resources');
+  extraOutput += ReplicationCode(runner.rig.hardware,'runner.rig.hardware');
+  extraOutput += ReplicationCode(runner.rig.programs,'runner.rig.programs');
+  extraOutput += ReplicationCode(corp.archives.root,'corp.archives.root');
+  extraOutput += ReplicationCode(corp.archives.ice,'corp.archives.ice');
+  extraOutput += ReplicationCode(corp.archives.cards,'corp.archives.cards');
+  extraOutput += ReplicationCode(corp.RnD.root,'corp.RnD.root');
+  extraOutput += ReplicationCode(corp.RnD.ice,'corp.RnD.ice');
+  extraOutput += ReplicationCode(corp.HQ.root,'corp.HQ.root');
+  extraOutput += ReplicationCode(corp.HQ.ice,'corp.HQ.ice');
+  for (var i=0; i<corp.remoteServers.length; i++) {
+	extraOutput += ReplicationCode(corp.remoteServers[i].root,'corp.remoteServers['+i+'].root');
+	extraOutput += ReplicationCode(corp.remoteServers[i].ice,'corp.remoteServers['+i+'].ice');
+  }
+  //send extra output and log
+  var logOutput = capturedLog.concat(extraOutput);
   var file = new Blob(logOutput, { type: "application/json" });
   var d = new Date();
   var n = d.toISOString();
