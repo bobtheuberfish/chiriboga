@@ -360,7 +360,7 @@ function Render() {
   );
   var stolenCascade = new CardRenderer.Cascade(
     RenderCards(runner.scoreArea, ZeroRotationNoTint),
-    scoreAreaXStep,
+    (viewingPlayer==corp?-1:1)*scoreAreaXStep,
     -spreadYStep,
     hostingX
   );
@@ -398,7 +398,7 @@ function Render() {
     );
   var scoredCascade = new CardRenderer.Cascade(
     RenderCards(corp.scoreArea, NoTint),
-    scoreAreaXStep,
+    (viewingPlayer==runner?-1:1)*scoreAreaXStep,
     spreadYStep,
     hostingX
   );
