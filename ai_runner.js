@@ -666,7 +666,7 @@ class RunnerAI {
       var iceCard = priorityIceList[i];
       if (PlayerCanLook(runner, iceCard)) {
         if (BreakerMatchesIce(card, iceCard)) {
-          console.log("Matching breaker is " + card.title);
+          //console.log("Matching breaker is " + card.title);
           if (!this._matchingBreakerIsInstalled(iceCard)) return 1;
           //high
           else return -1; //low
@@ -678,7 +678,7 @@ class RunnerAI {
 
   //do this right after calculating run costs and priorities
   SortCardsInHandWorthKeeping() {
-    console.log("Sorting: " + JSON.stringify(this.cardsWorthKeeping));
+    //console.log("Sorting: " + JSON.stringify(this.cardsWorthKeeping));
     var high = [];
     var neither = [];
     var low = [];
@@ -705,7 +705,7 @@ class RunnerAI {
           priorityIceList.push(installedCards[i]);
       }
     }
-    console.log("Priority ice: " + JSON.stringify(priorityIceList));
+    //console.log("Priority ice: " + JSON.stringify(priorityIceList));
 
     //loop through pushing cards as high (unshift), neither or low (push) priority
     for (var i = 0; i < this.cardsWorthKeeping.length; i++) {
@@ -718,7 +718,7 @@ class RunnerAI {
       else neither.push(this.cardsWorthKeeping[i]);
     }
     this.cardsWorthKeeping = high.concat(neither).concat(low);
-    console.log("Result: " + JSON.stringify(this.cardsWorthKeeping));
+    //console.log("Result: " + JSON.stringify(this.cardsWorthKeeping));
   }
 
   //returns index of choice
@@ -913,10 +913,10 @@ console.log(this.preferred);
             for (var i = 0; i < p.alt.length; i++) {
               if (p.alt[i].srIdx == subroutine - 1) return p.alt[i].choiceIdx; //subroutine has incremented because it fired
             }
-            console.log(
+            console.error(
               "No .alt for sr " + (subroutine - 1) + "? " + JSON.stringify(p)
             );
-          } else console.log("No cached path .alt? " + JSON.stringify(p));
+          } else console.error("No cached path .alt? " + JSON.stringify(p));
         }
       }
       this._log("No acceptable path found, seeking etr");
@@ -1017,9 +1017,6 @@ console.log(this.preferred);
 	  //otherwise just choose next card
 	  return 0;
     }
-
-    //print runner hand for debug purposes (in a real game this would be cheating!)
-    this._log(JSON.stringify(runner.grip));
 
     //if run is an option, assess the possible runs
     if (optionList.includes("run")) {
@@ -1305,7 +1302,7 @@ console.log(this.preferred);
 			*/
         return -1; //assume a is better
       });
-      console.log(this.serverList);
+      //console.log(this.serverList);
 
       //if the best server has lowish potential, it might be better to do other things
       if (this.serverList.length > 0) {
@@ -1343,13 +1340,13 @@ console.log(this.preferred);
       }
 
       if (this.serverList.length > 0) {
-        console.log(
+        this._log(
           "Best server to run is " +
             this.serverList[0].server.serverName +
             " with " +
-            this.serverList[0].potential +
+            this.serverList[0].potential.toFixed(1) +
             " potential and " +
-            this.serverList[0].bestcost +
+            this.serverList[0].bestcost.toFixed(1) +
             " cost"
         );
         this.rc.Print(this.serverList[0].bestpath, this.serverList[0].server);
@@ -1841,15 +1838,15 @@ this._log("maybe play this...");
     //*** END DECISIONMAKING LOGIC ***
 
     //uncertain? choose at random
-    console.log(
+    this._log(
       "AI (" +
         currentPhase.identifier +
         "): No decision made, choosing at random from:"
     );
-    console.log(optionList);
-    console.log("Current phase identifier: " + currentPhase.identifier);
-    console.log("Current phase title: " + currentPhase.title);
-    console.log("Executing command: " + executingCommand);
+    this._log(JSON.stringify(optionList));
+    this._log("Current phase identifier: " + currentPhase.identifier);
+    this._log("Current phase title: " + currentPhase.title);
+    this._log("Executing command: " + executingCommand);
     return RandomRange(0, optionList.length - 1);
   }
 

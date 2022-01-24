@@ -1190,11 +1190,16 @@ class RunCalculator {
     else result += " " + report_as;
     return result;
   }
+  
+  //prepend "RC: "
+  _log(str) {
+	console.log("RC: "+str); 
+  }
 
   //output a path in human-readable format
   Print(p, server) {
     if (p.length < 1) {
-      console.log("No valid path to server.");
+      this._log("No valid path to server.");
       return;
     }
 
@@ -1206,14 +1211,14 @@ class RunCalculator {
       if (point.alt) {
         for (var j = 0; j < point.alt.length; j++) {
           if (point.alt[j].choiceIdx == 0)
-            console.log(
+            this._log(
               "Choose first option at subroutine " + (1 + point.alt[j].srIdx)
             );
           else if (point.alt[j].choiceIdx == 1)
-            console.log(
+            this._log(
               "Choose second option at subroutine " + (1 + point.alt[j].srIdx)
             );
-          else console.log("choiceIdx exceeds 1");
+          else this._log("choiceIdx exceeds 1");
         }
       }
       if (point.iceIdx < 0) output = "Approach server.";
@@ -1248,7 +1253,7 @@ class RunCalculator {
           " with " +
           point.card_str_mods[point.card_str_mods.length - 1].use.title;
       }
-      console.log(output);
+      this._log(output);
     }
 
     //console.log(this.TotalEffect(p[p.length-1]));
