@@ -151,7 +151,6 @@ class RunnerAI {
     this.cachedBestPath = null; //just for the most recently calculated server
     this.cachedComplete = false; //indicates whether or not cachedBestPath represents a complete or incomplete path
 	this.cachedPathServer = null; //to remember which server cachedBestPath applies to
-	this.processingPoint = null; //used when when following a calculated run path
     this.rc = new RunCalculator();
     this.serverList = [];
 
@@ -202,7 +201,7 @@ class RunnerAI {
         " " +
         this.suspectedHQCards[i].title +
         ", " +
-        (1.0 - this.suspectedHQCards[i].uncertainty) +
+        (1.0 - this.suspectedHQCards[i].uncertainty).toFixed(1) +
         " certainty]";
     }
     debugoutput += " (info HQ score: " + ret + ")";
@@ -349,7 +348,6 @@ class RunnerAI {
   //for efficiency, use cached path unless none is available
   _cachedOrBestRun(server, startIceIdx) {
 	  if (!this.cachedBestPath || this.cachedPathServer !== server) { //need to recalculate
-		this.processingPoint = null;
 		//ideally complete runs
 		this._calculateBestCompleteRun(server, 0, 0, 0, startIceIdx);  //0 means no credit/click/damage offset
 		//but if not, use an exit strategy (incomplete run)
@@ -949,55 +947,60 @@ console.log(this.preferred);
         //console.log("approachIce = "+approachIce);
         //console.log("subroutine = "+subroutine);
 		//console.log(JSON.stringify(bestpath));
-        if (optionList.includes("trigger")) {
-		  var p = bestpath[1]; //0th point is just for at start of encounter
-		  if (p.iceIdx == approachIce) { //don't skip ahead
-		  //console.log("trigger");
-		  //console.log(p);
-			  if (p.sr_broken.length > 0) this.processingPoint = p; //store point for choosing which subroutine(s)
-			  else this.processingPoint = null; //don't store a point for later processing
-			  bestpath.splice(1,1); //point processed, remove it
+		//the last point for this ice has all the info in it (and the first point is the start of encounter)
+		var p = null;
+		for (var i=bestpath.length-1; i>0; i--) {
+			if (bestpath[i].iceIdx == approachIce) {
+				p = bestpath[i];
+				break;
+			}
+		}
+		if (p != null) {
+			if (optionList.includes("trigger") && ((p.card_str_mods.length > 0)||(p.sr_broken.length > 0)) ) {
+			  //console.log("trigger");
+			  //console.log(p);
 			  //e.g. str up and break srs
 			  //for now assume there will only be one ability possible for this card, so we just prefer the card
-			  if (p.card_str_mods.length > 0)
+			  //we need to check iceIdx here in case there are persists (don't retrigger them)
+			  if (p.card_str_mods.length > 0 && p.card_str_mods[0].iceIdx == approachIce) {
 				return this._returnPreference(optionList, "trigger", {
-				  cardToTrigger: p.card_str_mods[p.card_str_mods.length-1].use, //assumes they are added to the array in order of use
+				  cardToTrigger: p.card_str_mods.splice(0,1)[0].use, //assumes they are added to the array in order of use, discard immediately
 				});
-			  else if (p.sr_broken.length > 0)
+			  }
+			  else if (p.sr_broken.length > 0) {
 				return this._returnPreference(optionList, "trigger", {
-				  cardToTrigger: p.sr_broken[p.sr_broken.length-1].use, //assumes they are added to the array in order of use
+				  cardToTrigger: p.sr_broken[0].use, //assumes they are added to the array in order of use, keep for sr choice
 				});
-		  }
-		  //nothing specified, don't use abilities
-		  if (optionList.includes("n")) {
-			  return optionList.indexOf("n");
-		  }
-        } else if ( this.processingPoint || (bestpath[1].sr_broken.length > 0) ) {
-          //assume choosing which subroutine to break
-          var p = this.processingPoint; //continue processing point
-		  if (p == null) p = bestpath[1]; //new point
-		  //console.log("break");
-		  //console.log(p);
-		  var ice = GetApproachEncounterIce();
-		  if (ice) {
-			//loop through the point's broken sr and return one that is an option (this should also handle breaking more than one?)
-			for (var j=0; j<p.sr_broken.length; j++) {
-			  //the index in the sr array is not necessarily the index in the optionList e.g. if sr[1] is broken then options are [0,2] and index 2 will fail
-			  var sridx = p.sr_broken[j].idx;
-			  var sr = ice.subroutines[sridx];
-			  for (var i = 0; i < optionList.length; i++) {
+			  }
+			  //nothing specified, don't use abilities
+			  if (optionList.includes("n")) {
+				  return optionList.indexOf("n");
+			  }
+			} else if (p.sr_broken.length > 0) {
+			  //assume choosing which subroutine to break (note that multiple breaks, even with one ability, are listed separately)
+			  //console.log("break");
+			  //console.log(p);
+			  var ice = GetApproachEncounterIce();
+			  if (ice) {
+				//the index in the sr array is not necessarily the index in the optionList e.g. if sr[1] is broken then options are [0,2] and index 2 will fail
+				var sridx = p.sr_broken.splice(0,1)[0].idx; //assumes they are added to the array in order of use, discard immediately
+				var sr = ice.subroutines[sridx];
+				for (var i = 0; i < optionList.length; i++) {
 				  if (optionList[i].subroutine == sr) return i;
+				}
 			  }
 			}
-		  }
-        }
+			//game is asking for something unanticipated. if this happens, investigate.
+			if (!optionList.includes("trigger")) {
+				console.error("Something went wrong during path resolution");
+				console.log(JSON.stringify(p));
+				console.log(JSON.stringify(optionList));
+			}
+		}
+		//nothing specified, do nothing
+		if (optionList.includes("n")) return optionList.indexOf("n");
       }
-      //if no valid path found...need to handle this (for now just don't waste resources triggering)
-      else {
-        this._log("No valid path found mid-encounter");
-        if (optionList.includes("n")) return optionList.indexOf("n");
-      }
-
+	  //no path exists? this shouldn't happen so swing wildly
       if (optionList.includes("trigger")) return optionList.indexOf("trigger"); //by default, trigger abilities if possible
     }
 

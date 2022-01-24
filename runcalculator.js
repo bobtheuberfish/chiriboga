@@ -1198,7 +1198,7 @@ class RunCalculator {
 
   //output a path in human-readable format
   Print(p, server) {
-    if (p.length < 1) {
+    if (p==null || p.length < 1) {
       this._log("No valid path to server.");
       return;
     }
