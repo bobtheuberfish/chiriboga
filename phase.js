@@ -356,6 +356,18 @@ phaseTemplates.globalTriggers = {
         if (typeof card.recurringCredits !== "undefined")
           card.credits = card.recurringCredits;
       }, currentPhase.player);
+	  //AI keeps track of how many turns (each player's turn counts as 1) a card (agenda/asset/upgrade) has been installed a server
+	  for (var i=0; i<corp.remoteServers.length; i++) {
+		for (var j=0; j<corp.remoteServers[i].root.length; j++) {
+          if (typeof corp.remoteServers[i].root[j].AITurnsInstalled !== "undefined")
+            corp.remoteServers[i].root[j].AITurnsInstalled++;
+          else corp.remoteServers[i].root[j].AITurnsInstalled = 1;
+		}
+	  }
+	  //log some stuff for debugging purposes (console/captured only, not to history bar)
+	  console.log("SPOILER: At start of "+currentPhase.identifier.substring(0,currentPhase.identifier.length-4)+" turn:");
+	  console.log("SPOILER: Corp has "+corp.creditPool+" credit(s) and "+corp.HQ.cards.length+" card(s) in hand: "+JSON.stringify(corp.HQ.cards));
+	  console.log("SPOILER: Runner has "+runner.creditPool+" credit(s), "+runner.tags+" tag(s) and "+runner.grip.length+" card(s) in hand: "+JSON.stringify(runner.grip));
     }
     //end of encounter needs to...end the encounter
     if (currentPhase.identifier == "Run EncounterEnd") encountering = false;

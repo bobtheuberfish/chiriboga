@@ -37,38 +37,57 @@ logSubtleDisabled = true;
     });
   };
 })();
-//the stringify is necessary to snapshot the objects as they are right now
+//the stringify is necessary to snapshot the objects as they are right now, and this function increases readability
+function Readablify(message) {
+	return JSON.stringify(message).replaceAll("\\\"",'').replaceAll("\"",'') + "\n";
+}
 var capturedLog = [];
 (function () {
   var oldLog = console.log;
   console.log = function (message) {
-    capturedLog.push(JSON.stringify(message) + "\n");
+    capturedLog.push(Readablify(message));
     oldLog.apply(console, arguments);
   };
 })();
 (function () {
   var oldLog = console.error;
   console.error = function (message) {
-    capturedLog.push(JSON.stringify(message) + "\n");
+    capturedLog.push("ERROR: "+Readablify(message));
     oldLog.apply(console, arguments);
   };
 })();
 
 // Function used to automatically create replication code (src is an array, str is its address)
+//TODO server properties e.g. AISuccessfulRuns
 function ReplicationCode(src,str) {
   var ret = "";
-  var countersToCheck = ["virus","credits","advancement"];
-  for (var i=0; i<src.length; i++) {
-	  var card = src[i];
-	  var addr = str+'['+i+']';
+  for (var j=0; j<src.length; j++) {
+	  var card = src[j];
+	  var addr = str+'['+j+']';
 	  if (card.player == corp) {
-		  if (card.rezzed) ret += "Rez("+addr+");\n";
+		  if (card.rezzed) ret += addr+".rezzed=true;\n";
 		  else if (card.faceUp) ret += addr+".faceUp=true;\n";
 		  else if (card.knownToRunner) ret += addr+".knownToRunner=true;\n";
 	  }
-	  for (var j=0; j<countersToCheck.length; j++) {
-		var counter = countersToCheck[j];
-		if (typeof(card[counter]) !== 'undefined') ret += "AddCounters("+addr+",'"+counter+"');\n";
+	  //counters
+	  for (var i = 0; i < counterList.length; i++) {
+		if (typeof card[counterList[i]] !== "undefined") {
+			if (card[counterList[i]] != 0) ret += addr+"."+counterList[i]+"="+card[counterList[i]]+";\n";
+		}
+	  }
+	  //custom properties
+	  for (var i = 0; i < cardPropertyResets.length; i++) {
+		if (typeof card[cardPropertyResets[i].propertyName] !== "undefined") {
+		  if (card[cardPropertyResets[i].propertyName] != cardPropertyResets[i].defaultValue) ret += addr+"."+cardPropertyResets[i].propertyName+"="+card[cardPropertyResets[i].propertyName]+";\n";
+		}
+	  }
+	  //hosted cards
+	  if (card.hostedCards) {
+		ret += addr+".hostedCards = [];\n";
+		for (var i=0; i<card.hostedCards.length; i++) {
+			ret += "InstanceCardsPush(systemGateway,"+card.hostedCards[i].setNumber+","+addr+".hostedCards,1,cardBackTextures"+PlayerName(card.hostedCards[i].player)+",glowTextures,strengthTextures)[0].host = "+addr+";\n";
+		}
+		ret += ReplicationCode(card.hostedCards,addr+".hostedCards");
 	  }
   }
   return ret;
@@ -78,11 +97,11 @@ function ReplicationCode(src,str) {
 //source: https://stackoverflow.com/questions/13405129/javascript-create-and-save-file
 function DownloadCapturedLog() {
   //reveal hidden information
-  var extraOutput = "Corp hand: " + JSON.stringify(corp.HQ.cards)+"\n";
+  var extraOutput = "\nSPOILER: Contents of remote servers:\n";
   for (var i=0; i<corp.remoteServers.length; i++) {
-	extraOutput += ServerName(corp.remoteServers[i])+": "+JSON.stringify(corp.remoteServers[i].root)+"\n";
+	extraOutput += "SPOILER: "+ServerName(corp.remoteServers[i])+": "+Readablify(corp.remoteServers[i].root);
   }
-  //make board state fairly easy to reproduce (not comprehensive, just a starting point)
+  //make board state fairly easy to reproduce (not comprehensive e.g. no hosted cards, no credit pool etc, just a starting point)
   extraOutput += "\n";
   var runnerHeap = JSON.stringify(runner.heap,true);
   var runnerStack = JSON.stringify(runner.stack,true);
@@ -119,7 +138,7 @@ function DownloadCapturedLog() {
   }
   //send extra output and log
   var logOutput = capturedLog.concat(extraOutput);
-  var file = new Blob(logOutput, { type: "application/json" });
+  var file = new Blob(logOutput, { type: "" }); //blank string means text/plain
   var d = new Date();
   var n = d.toISOString();
   var filename = "chiriboga-log-" + n + ".txt";
@@ -1055,6 +1074,7 @@ var cardPropertyResets = [
   { propertyName: "conditionsMet", defaultValue: false },
   { propertyName: "cardsToLookAt", defaultValue: null },
   { propertyName: "knownToRunner", defaultValue: false },
+  { propertyName: "AITurnsInstalled", defaultValue: 0 },
 ];
 function ResetProperties(card) {
   for (var i = 0; i < cardPropertyResets.length; i++) {
