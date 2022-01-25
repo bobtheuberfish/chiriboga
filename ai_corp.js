@@ -18,8 +18,10 @@ class CorpAI {
     var relevantIceInCards = [];
     for (var i = 0; i < cards.length; i++) {
       if (cards[i].cardType == "ice") {
-        if (affordable == cards[i].rezCost <= corp.creditPool)
-          relevantIceInCards.push(cards[i]);
+		if (extraCost < corp.creditPool) { //even not-affordable ice is excluded if it can't be installed
+			if (affordable == (cards[i].rezCost + extraCost <= corp.creditPool) )
+			  relevantIceInCards.push(cards[i]);
+		}
       }
     }
     return relevantIceInCards;
@@ -50,10 +52,9 @@ class CorpAI {
     return ret;
   }
 
-  _uniqueCopyAlreadyInstalled(
-    card //returns true if is unique and a copy already in play (rezzed or unrezzed)
+  _copyAlreadyInstalled(
+    card //returns true if a copy already installed (rezzed or unrezzed)
   ) {
-    if (!card.unique) return false; //i.e. .unique == false or undefined
     var installedCards = InstalledCards(card.player);
     for (var i = 0; i < installedCards.length; i++) {
       if (
@@ -63,6 +64,13 @@ class CorpAI {
         return true;
     }
     return false;
+  }
+
+  _uniqueCopyAlreadyInstalled(
+    card //returns true if is unique and a copy already installed (rezzed or unrezzed)
+  ) {
+    if (!card.unique) return false; //i.e. .unique == false or undefined
+    return this._copyAlreadyInstalled(card);
   }
 
   _iceInstallScore(ice, serverToInstallTo) {
@@ -120,9 +128,9 @@ class CorpAI {
       //is remote
       //no if its protection is too weak
       var protScore = this._protectionScore(server);
-      var minProt = RandomRange(3, 4); //arbitrary: tweak as needed
-      if (this._agendasInHand() > 2) minProt = 2; //these values are also arbitrary but basically don't hoard agendas
-      if (this._agendasInHand() > 4)
+      var minProt = this._protectionScore(corp.HQ); //new method: just needs to be at least as strong as HQ
+	  //var minProt = RandomRange(3, 4); //arbitrary: tweak as needed (old method)
+      if (this._agendasInHand() > MaxHandSize(corp) - 1)
         minProt = this._protectionScore(corp.archives); //if it's going to be thrown out, it just has to be better protection than Archives
       if (protScore < minProt) return false;
 
@@ -148,6 +156,25 @@ class CorpAI {
       }
     }
     return false;
+  }
+
+  //returns all scoring servers (in order from strongest to weakest, if input is in that order
+  _scoringServers(emptyProtectedRemotes) {
+	var ret = [];
+	//loop through possible scoring servers
+	for (var j = 0; j < emptyProtectedRemotes.length; j++) {
+		var emptyProtectedRemote = emptyProtectedRemotes[j];
+		if (this._isAScoringServer(emptyProtectedRemote))
+		  ret.push(emptyProtectedRemote);
+	}
+    return ret;
+  }
+
+  //returns value of current scoring window if using the given server (zero if no window)
+  _scoringWindow(server) {
+	var ret = 0;
+	ret = this._protectionScore(server) - this._protectionScore(corp.HQ) + (0.3*this._clicksLeft()) + (Credits(corp)/(Credits(runner)+1.0));
+	return ret;
   }
 
   _shouldUpgradeServerWithCard(server, card) {
@@ -225,6 +252,21 @@ class CorpAI {
     return 0; //just arbitrary
   }
 
+  _agendaPointsInServer(
+    server //returns int
+  ) {
+    var ret = 0;
+    for (var i = 0; i < server.root.length; i++) {
+      if (CheckCardType(server.root[i], ["agenda"])) ret+=server.root[i].agendaPoints;
+    }
+    if (typeof server.cards !== "undefined") {
+      for (var i = 0; i < server.cards.length; i++) {
+        if (CheckCardType(server.cards[i], ["agenda"])) ret+= server.cards[i].agendaPoints;
+      }
+    }
+    return ret;
+  }
+
   _agendasInServer(
     server //returns int
   ) {
@@ -238,6 +280,42 @@ class CorpAI {
       }
     }
     return ret;
+  }
+  
+  _isHVT(card) { //agendas, ambushes, hostiles. 
+	return (
+		CheckCardType(card, ["agenda"]) ||
+		CheckSubType(card, "Ambush") ||
+		CheckSubType(card, "Hostile")
+	);
+  }
+  
+  _serverValue(server) {
+	var ret=0;
+	//just simple for now
+	for (var i=0; i<server.root.length; i++) {
+		if (this._isHVT(server.root[i])) ret++;
+	}
+	return ret;
+  }
+  
+  _HVTsInstalled() { //returns int
+	var ret=0;
+	for (var i=0; i<corp.remoteServers.length; i++) {
+		for (var j=0; j<corp.remoteServers[i].root.length; j++) {
+			if (this._isHVT(corp.remoteServers[i].root[j])) ret++;
+		}
+	}
+	return ret;
+  }
+  
+  _HVTserver() { //returns first one found
+	  for (var i=0; i<corp.remoteServers.length; i++) {
+		  for (var j=0; j<corp.remoteServers[i].root.length; j++) {
+			if (this._isHVT(corp.remoteServers[i].root[j])) return corp.remoteServers[i];
+		}
+	  }
+	  return null;
   }
 
   _agendasInHand() { //returns int
@@ -256,12 +334,16 @@ class CorpAI {
     if (CheckSubType(card, "Ambush") && CheckCardType(card, ["asset"])) {
       if (card.knownToRunner || card.advancement > 3) return true;
     }
-    //other assets can also be worth less if corp hand is getting full of agendas
-    if (this._agendasInHand() > MaxHandSize(corp) - 2) {
-      //the -2 is arbitrary, tweak as needed
-      if (!CheckSubType(card, "Hostile") && CheckCardType(card, ["asset"]))
-        return true;
-    }
+    //other assets are worth less if they have been around while or there are lots of agendas in hand
+	if (typeof(card.AITurnsInstalled) !== 'undefined') {
+		if ( (corp.HQ.cards.length - this._agendasInHand() < card.AITurnsInstalled + 1) ) { //the + 1 is arbitrary (higher increases likelihood to install over)
+		  if (!CheckSubType(card, "Hostile") && CheckCardType(card, ["asset"]))
+			//but not if it has credits left
+			if (!CheckCounters(card, "credits", 1)) {
+				return true;
+			}
+		}
+	}
     return false;
   }
 
@@ -334,7 +416,7 @@ class CorpAI {
     if (server != null) {
       if (typeof server.cards !== "undefined") ret += 2;
     }
-    if (!card.rezzed) ret *= 2; //x2 for being unrezzed
+    if (!card.rezzed) ret *= 1.5; //for being unrezzed (tweaked down from 2 because corp was overvaluing unrezzed ice)
     //weaker if threatened
     if (this._aCompatibleBreakerIsInstalled(card)) ret *= 0.5;
     //and modify value based on hosted cards and virus counters
@@ -364,12 +446,15 @@ class CorpAI {
     if (typeof server.AISuccessfulRuns !== "undefined")
       ret -= Math.round(Math.sqrt(server.AISuccessfulRuns));
     //if it is archives we will deprioritise protection by default
-    if (server == corp.archives) ret += 3; //archives
+    if (server == corp.archives) ret += 3; //archives (the 3 is arbitrary)
+	//if it HQ, increase or decrease priorisation based on agenda points compared to cards in hand
+	if (server == corp.HQ) ret += corp.HQ.cards.length - this._agendaPointsInServer(corp.HQ) - 2; //the 2 is arbitrary
     return ret;
   }
 
   _serverToProtect(
-    ignoreArchives = false //returns the server that most needs increased protection (does not return null, will be HQ by default or R&D against shapers)
+    ignoreArchives = false, //returns the server that most needs increased protection (does not return null, will be HQ by default or R&D against shapers)
+	outputToLog = false
   ) {
     var protectionScores = {};
 
@@ -408,6 +493,10 @@ class CorpAI {
         protectionScore = protectionScores["null"];
       }
     }
+	if (serverToProtect==null && this._HVTsInstalled() > 0) { //protect the scoring server instead of making new ones
+		//don't update the protection score - don't compare archives to the HVT server
+		serverToProtect = this._HVTserver();
+	}
     if (!ignoreArchives) {
       protectionScores.archives = this._protectionScore(corp.archives);
       if (protectionScores.archives < protectionScore) {
@@ -415,7 +504,7 @@ class CorpAI {
         protectionScore = protectionScores.archives;
       }
     }
-    this._log("Server protection scores: " + JSON.stringify(protectionScores));
+    if (outputToLog) this._log("Server protection scores: " + JSON.stringify(protectionScores));
     return serverToProtect;
   }
 
@@ -509,6 +598,14 @@ class CorpAI {
     return false;
   }
 
+  _copiesOfCardIn(title, cards) {
+	var ret=0;
+    for (var i = 0; i < cards.length; i++) {
+      if (GetTitle(cards[i]) == title) ret++;
+    }
+    return ret;
+  }
+
   _copyOfCardExistsIn(title, cards) {
     for (var i = 0; i < cards.length; i++) {
       if (GetTitle(cards[i]) == title) return cards[i];
@@ -556,6 +653,7 @@ class CorpAI {
     return 0; //arbitrary
   }
 
+  //this will return index of best option, or -1 if none of them are acceptable
   _bestInstallOption(optionList) {
     //make a cards list from optionList (since this could be hand, archives, card-generated list, etc)
     var cards = [];
@@ -575,16 +673,8 @@ class CorpAI {
           return i;
       }
     }
-
-    //none found in options list? I guess we just need to return a default
-    LogError(
-      "bestInstallOption failed to find any desired install options with this optionList, cards and rankedInstallOptions:"
-    );
-    console.log(optionList);
-    console.log(cards);
-    console.log(rankedInstallOptions);
-
-    return 0;
+	//no desirable option
+    return -1;
   }
 
   _bestMainPhaseEconomyOption(optionList) {
@@ -609,8 +699,8 @@ class CorpAI {
     economyCards.push("Hedge Fund");
     if (this._agendasInHand() < corp.HQ.cards.length - 1)
       economyCards.push("Hansei Review"); //only if there is at least 1 non-agenda card (other than this) in HQ
-    if (emptyProtectedRemotes.length > 0 || this._clicksLeft() > 1)
-      economyCards.push("Regolith Mining License"); //regolith is only of value if there will be an opportunity to use it
+    //if (emptyProtectedRemotes.length > 0 || this._clicksLeft() > 1)
+      economyCards.push("Regolith Mining License"); //regolith is only of value if there will be an opportunity to use it? disabled that proviso for now since trash cost is fairly high
     economyCards.push("Nico Campaign");
     economyCards.push("Melange Mining Corp.");
     economyCards.push("PAD Campaign");
@@ -624,20 +714,43 @@ class CorpAI {
             canPlay &&
             FullCheckPlay(corp.HQ.cards[i])
           ) {
-            this._log(GetTitle(corp.HQ.cards[i]) + " might be good economy?");
+            this._log(GetTitle(corp.HQ.cards[i]) + " might be good economy play?");
             return this._returnPreference(optionList, "play", {
               cardToPlay: corp.HQ.cards[i],
             });
           } else if (corp.HQ.cards[i].cardType != "operation" && canInstall) {
             if (corp.HQ.cards[i].cardType != "upgrade") {
-              var preferredServer = null; //install into new if necessary
-              if (emptyProtectedRemotes.length > 0)
-                preferredServer = emptyProtectedRemotes[0];
-              this._log(GetTitle(corp.HQ.cards[i]) + " might be good economy?");
-              return this._returnPreference(optionList, "install", {
-                cardToInstall: corp.HQ.cards[i],
-                serverToInstallTo: preferredServer,
-              });
+			  var prefToReturn = null;
+			  //custom install checks?
+			  if (typeof corp.HQ.cards[i].AIWorthInstalling == "function") {
+				  var installPreference = corp.HQ.cards[i].AIWorthInstalling(
+					emptyProtectedRemotes
+				  );
+				  if (installPreference > -1) {
+					if (installPreference > emptyProtectedRemotes.length - 1)
+					  prefToReturn = { cardToInstall: corp.HQ.cards[i], serverToInstallTo: null };
+					//new server
+					else
+					  prefToReturn = {
+						cardToInstall: corp.HQ.cards[i],
+						serverToInstallTo: emptyProtectedRemotes[installPreference],
+					  };
+				  }
+			  }
+			  //or just default checks
+			  else {
+				  var preferredServer = null; //install into new if necessary
+				  if (emptyProtectedRemotes.length > 0)
+					preferredServer = emptyProtectedRemotes[0];
+				    prefToReturn = {
+					  cardToInstall: corp.HQ.cards[i],
+					  serverToInstallTo: preferredServer,
+				    };
+			  }
+			  if (prefToReturn != null) {
+				  this._log(GetTitle(corp.HQ.cards[i]) + " might be good economy install?");
+				  return this._returnPreference(optionList, "install", prefToReturn);
+			  }
             } //upgrades
             else {
               var preferredServer = this._preferredServerToUpgrade(
@@ -650,7 +763,7 @@ class CorpAI {
                 )
               ) {
                 this._log(
-                  GetTitle(corp.HQ.cards[i]) + " might be good economy?"
+                  GetTitle(corp.HQ.cards[i]) + " might be good economy upgrade?"
                 );
                 return this._returnPreference(optionList, "install", {
                   cardToInstall: corp.HQ.cards[i],
@@ -700,8 +813,32 @@ class CorpAI {
       var canPlay = optionList.indexOf("play") > -1;
       var drawCards = [];
 
+	  drawCards.push("Spin Doctor");
       drawCards.push("Sprint");
 
+	  //maybe something to rez
+      if (optionList.includes("rez")) {
+      for (var i = 0; i < installedCards.length; i++) {
+        if (CheckRez(installedCards[i], ["ice", "asset", "upgrade"])) {
+          //if a rezzable card...
+          if (drawCards.includes(GetTitle(installedCards[i]))) {
+            //is an draw card
+            var currentRezCost = RezCost(installedCards[i]);
+            if (
+              CheckCredits(currentRezCost, corp, "rezzing", installedCards[i])
+            ) {
+              //can afford to rez for draw
+                this._log("Rez might help draw");
+                return this._returnPreference(optionList, "rez", {
+                  cardToRez: installedCards[i],
+                });
+              }
+			}  
+		  }
+		}
+	  }
+
+	  //or something to play
       for (var j = 0; j < drawCards.length; j++) {
         for (var i = 0; i < corp.HQ.cards.length; i++) {
           if (drawCards[j] == GetTitle(corp.HQ.cards[i])) {
@@ -715,8 +852,15 @@ class CorpAI {
         }
       }
 
-      //otherwise just basic action is fine
-      return optionList.indexOf("draw");
+      //otherwise just basic action is fine, unless last click and potentiall bringing an agenda into weaker protection
+      var drawIsOK = true;
+	  if (this._clicksLeft() < 2) {
+		  if (this._protectionScore(corp.HQ) < this._protectionScore(corp.RnD)) {
+			  drawIsOK = false;
+			  this._log("But no I don't want to draw right now");
+		  }
+	  }
+	  if (drawIsOK) return optionList.indexOf("draw");
     }
 
     //last resort - click for cred
@@ -788,17 +932,42 @@ class CorpAI {
     return true;
   }
 
+  //used in _rankedInstallOptions
+  _iceInstallOptions(serverToInstallTo, cards, priorityOnly) {
+	var ret = [];
+    //only create new empty protected remotes when there will be corp clicks to use them (e.g. not during Ansel firing) and not while a HVT is installed
+	var permitNewEmpty = false;
+	if (this._HVTsInstalled() == 0 && this._clicksLeft() > 1) permitNewEmpty = true;
+	if (serverToInstallTo !== null || permitNewEmpty) {
+		var affordableIce = this._affordableIce(serverToInstallTo, cards);
+		for (var i = 0; i < affordableIce.length; i++) {
+		  ret.push({
+			cardToInstall: affordableIce[i],
+			serverToInstallTo: serverToInstallTo,
+		  });
+		}
+		if (!priorityOnly) {
+			var notAffordableIce = this._notAffordableIce(serverToInstallTo, cards);
+			for (var i = 0; i < notAffordableIce.length; i++) {
+			  ret.push({
+				cardToInstall: notAffordableIce[i],
+				serverToInstallTo: serverToInstallTo,
+			  });
+			}
+		}
+	}
+	return ret;
+  }	  
+
   _rankedInstallOptions(
-    cards //return list of preferred install options (0 highest preference) or empty array if don't want to install
+    cards, //return list of preferred install options (0 highest preference) or empty array if don't want to install
+	priorityOnly=false //set true to exclude low priorities like unaffordable ice or non-ice into new server
   ) {
     var ret = [];
-
-    if (typeof cards == "undefined") cards = corp.HQ.cards; //usually installing from hand but this makes other options possible
-
-    //Check if there are any assets in hand that are worth installing
-    var emptyProtectedRemotes = this._emptyProtectedRemotes();
+    //Check if there are any assets in cards that are worth installing
     //Include relevant checks in their function e.g. emptyProtectedRemotes.length > 0
     //And return -1 (don't install), 0 to emptyProtectedRemotes.length-1 (install in this server), or emptyProtectedRemotes.length (install in a new server)
+    var emptyProtectedRemotes = this._emptyProtectedRemotes();
     for (var i = 0; i < cards.length; i++) {
       if (!this._uniqueCopyAlreadyInstalled(cards[i])) {
         if (typeof cards[i].AIWorthInstalling == "function") {
@@ -818,88 +987,98 @@ class CorpAI {
         }
       }
     }
+
     //Find out if any servers need protection. If so, we will choose an ice card if possible.
-    var serverToInstallTo = this._serverToProtect(); //never null, will be HQ by default
+    var serverToInstallTo = this._serverToProtect();
     if (
       this._unrezzedIce(serverToInstallTo).length == 0 ||
       this._sufficientEconomy(false, 4)
     ) {
       //this is our worst-protected server. if the server already has unrezzed ice, let's not install ice unless super rich (the 4 is arbitrary)
       //prioritise placing ice that I can afford to rez (for now we make no effort to sort them)
-      var affordableIce = this._affordableIce(serverToInstallTo, cards);
-      for (var i = 0; i < affordableIce.length; i++) {
-        ret.push({
-          cardToInstall: affordableIce[i],
-          serverToInstallTo: serverToInstallTo,
-        });
-      }
-      var notAffordableIce = this._notAffordableIce(serverToInstallTo, cards);
-      for (var i = 0; i < notAffordableIce.length; i++) {
-        ret.push({
-          cardToInstall: notAffordableIce[i],
-          serverToInstallTo: serverToInstallTo,
-        });
-      }
+	  ret = ret.concat(this._iceInstallOptions(serverToInstallTo, cards, priorityOnly));
     }
-    //Installing ice is unnecessary or impossible, let's install something else into a server
-    if (emptyProtectedRemotes.length > 0) {
-      //choose an card and server to install to
-      for (var i = 0; i < cards.length; i++) {
-        if (
-          CheckCardType(cards[i], ["agenda"]) ||
-          CheckSubType(cards[i], "Ambush")
-        ) {
-          //loop through possible scoring servers (in order from strongest to weakest)
-          for (var j = 0; j < emptyProtectedRemotes.length; j++) {
-            serverToInstallTo = emptyProtectedRemotes[j];
-            if (this._isAScoringServer(serverToInstallTo))
-              ret.push({
-                cardToInstall: cards[i],
-                serverToInstallTo: serverToInstallTo,
-              });
-          }
-        } else if (CheckCardType(cards[i], ["asset"])) {
-          //loop through unlikely scoring servers (in order from strongest to weakest)
-          for (var j = 0; j < emptyProtectedRemotes.length; j++) {
-            serverToInstallTo = emptyProtectedRemotes[j];
-            if (!this._isAScoringServer(serverToInstallTo)) {
-              serverToInstallTo =
-                emptyProtectedRemotes[
-                  RandomRange(0, emptyProtectedRemotes.length - 1)
-                ]; //just whatever for now
-              ret.push({
-                cardToInstall: cards[i],
-                serverToInstallTo: serverToInstallTo,
-              });
-            }
-          }
-        }
-      }
-    }
+    //Installing ice is unnecessary or impossible,maybe install something else into a server
+	//choose an card and server to install to
+    var scoringServers = this._scoringServers(emptyProtectedRemotes);
+	var intoServerOptions = [];
+	for (var i = 0; i < cards.length; i++) {
+		if (this._isHVT(cards[i])) {
+		  //loop through scoring servers
+		  for (var j = 0; j < scoringServers.length; j++) {
+			serverToInstallTo = scoringServers[j];
+			intoServerOptions.push({
+				cardToInstall: cards[i],
+				serverToInstallTo: serverToInstallTo,
+			});
+		  }
+		} else if (CheckCardType(cards[i], ["asset"])) {
+		  //if installing from archives, creating a new server is fine (what's to lose? uh except: when needed, add an exception for 'trashed while being accessed' cards)
+		  var assetDestinations = emptyProtectedRemotes;
+		  if (cards[i].cardLocation == corp.archives.cards) assetDestinations = assetDestinations.concat([null]);
+		  //loop through unlikely scoring servers (in order from strongest to weakest)
+		  for (var j = 0; j < assetDestinations.length; j++) {
+			serverToInstallTo = assetDestinations[j];
+			if (!this._isAScoringServer(serverToInstallTo)) {
+			  serverToInstallTo =
+				assetDestinations[
+				  RandomRange(0, assetDestinations.length - 1)
+				]; //just whatever for now
+			  intoServerOptions.push({
+				cardToInstall: cards[i],
+				serverToInstallTo: serverToInstallTo,
+			  });
+			}
+		  }
+		}
+	}
+	//calculate scoring window for each scoring server (by index in scoringServers)
+	var scoringWindows = [];
+	for (var i=0; i<scoringServers.length; i++) {
+		scoringWindows.push(this._scoringWindow(scoringServers[i]));
+	}
+	this._log("Scoring windows: "+JSON.stringify(scoringWindows));
+	//sort options based on scoring window (closest to scoring window value is best i.e. first)
+	intoServerOptions.sort(function(a,b) {
+		var aAdvReq = AdvancementRequirement(a.cardToInstall);
+		var bAdvReq = AdvancementRequirement(b.cardToInstall);
+		var aWindow = 0;
+		var bWindow = 0;
+		for (var i=0; i<scoringServers.length; i++) {
+			if (scoringServers[i] == a.serverToInstallTo) aWindow = scoringWindows[i];
+			if (scoringServers[i] == b.serverToInstallTo) bWindow = scoringWindows[i];
+		}
+		var aDiff = Math.abs(aAdvReq - aWindow); 
+		var bDiff = Math.abs(aAdvReq - aWindow); 
+		//TODO do this properly for Ambush and Hostile cards too (probably need some kind of AIAdvancementTarget function)
+		return (aDiff - bDiff);
+	});
+	ret = ret.concat(intoServerOptions);
+
     //Upgrade?
     serverToInstallTo = this._bestProtectedRemote();
     if (serverToInstallTo == null)
       serverToInstallTo = this._serverToProtect(true); //true means don't install to archives
     ret = ret.concat(this._upgradeInstallPreferences(serverToInstallTo, cards));
 
-    //If no protected empty remote exists, let's make one if possible (otherwise just add ice to whatever server needs it most)
+    //If no protected empty remote exists, let's make one if prudent
+	//otherwise just add ice to whatever server needs it most
     serverToInstallTo = null;
     if (emptyProtectedRemotes.length > 0)
       serverToInstallTo = this._serverToProtect();
-    var affordableIce = this._affordableIce(serverToInstallTo, cards);
-    for (var i = 0; i < affordableIce.length; i++) {
-      ret.push({
-        cardToInstall: affordableIce[i],
-        serverToInstallTo: serverToInstallTo,
-      });
-    }
-    var notAffordableIce = this._notAffordableIce(serverToInstallTo, cards);
-    for (var i = 0; i < notAffordableIce.length; i++) {
-      ret.push({
-        cardToInstall: notAffordableIce[i],
-        serverToInstallTo: serverToInstallTo,
-      });
-    }
+	ret = ret.concat(this._iceInstallOptions(serverToInstallTo, cards, priorityOnly));
+	
+	/*
+	if (priorityOnly) console.error("-Priority only-");
+	else console.error("-Any priority-");
+	for (var i=0; i<cards.length; i++) {
+		var listed=false;
+		for (var j=0; j<ret.length; j++) {
+			if (ret[j].cardToInstall == cards[i]) listed = true;
+		}
+		console.error((listed?"*":"")+cards[i].title);
+	}
+	*/
     return ret;
   }
 
@@ -942,6 +1121,34 @@ class CorpAI {
         if (CheckCredits(currentRezCost, corp, "rezzing", card)) {
           //so we've checked and the ice can be rezzed. but should we?
           var rezIce = true;
+		  //make sure there isn't better ice this will prevent us from rezzing
+		  var thisServerValue = this._serverValue(attackedServer);
+		  var thisIceProtectionValue = this._iceProtectionValue(card);
+		  var serversToCompare = [];
+		  if (corp.archives !== attackedServer) serversToCompare.push(corp.archives);
+		  if (corp.RnD !== attackedServer) serversToCompare.push(corp.RnD);
+		  if (corp.HQ !== attackedServer) serversToCompare.push(corp.HQ);
+		  for (var i=0; i<corp.remoteServers.length; i++) {
+			if (corp.remoteServers[i] !== attackedServer) {
+				serversToCompare.push(corp.remoteServers[i]);
+			}
+		  }
+		  for (var i=0; i<serversToCompare.length; i++) {
+			  var serverToCompare = serversToCompare[i];
+			  var comparisonValue = this._serverValue(serverToCompare);
+			  for (var j=0; j<serverToCompare.ice.length; j++) {
+				if (!serverToCompare.ice[j].rezzed) {
+					if (!CheckCredits(currentRezCost+RezCost(serverToCompare.ice[j]), corp, "rezzing")) {
+						if ( (comparisonValue > thisServerValue) ||
+						     ((comparisonValue == thisServerValue) && (this._iceProtectionValue(serverToCompare.ice[j]) > thisIceProtectionValue)) ) {
+						  this._log("Rez cost not worth it...");
+						  rezIce = false;
+						}
+						else this._log("Rez this is better than "+serverToCompare.ice[j].title+" in "+ServerName(serverToCompare));
+					}
+				}
+			  }
+		  }
           //special exceptions:
           if (GetTitle(card) == "Cell Portal") {
             //only rez cell portal if it is behind at least one rezzed ice
@@ -1112,6 +1319,13 @@ class CorpAI {
     return optionList.indexOf("n");
   }
 
+  Phase_DiscardResponse(optionList) {
+	if (optionList.indexOf("trigger") > -1) {
+		return optionList.indexOf("trigger");
+	}
+	return 0;
+  }
+
   //sets this.preferred to prefs and returns indexOf cmd in optionList
   //don't forget to return the result!
   _returnPreference(optionList, cmd, prefs) {
@@ -1215,8 +1429,31 @@ class CorpAI {
     });
   }
 
+  _potentialAdvancement(thisTurn=true) {
+	  var ret = 0;
+	  //basic advance
+	  if (thisTurn) ret += Math.min(this._clicksLeft(), Credits(corp));
+	  else ret += Credits(corp);
+	  //plus one for each Seamless Launch
+	  ret += this._copiesOfCardIn("Seamless Launch",corp.HQ.cards);
+	  return ret;
+  }
+  
+  _advancementRequired(card) {
+	  return AdvancementRequirement(card) - Counters(card,"advancement");
+  }
+
+  _isFullyAdvanceableAgenda(card) {
+	if (!CheckCardType(card, ["agenda"])) return false;
+	var canFullyAdvance = this._potentialAdvancement(true) >= this._advancementRequired(card);
+	return canFullyAdvance;
+  }
+
   Phase_Main(optionList) {
-    var cardToPlay = null; //used for checks
+    //for debugging, list server protection including archives
+	this._serverToProtect(false,true);
+	
+	var cardToPlay = null; //used for checks
 
     //take advantage of a temporary window of opportunity (i.e., play right away)
     if (optionList.includes("play")) {
@@ -1235,6 +1472,31 @@ class CorpAI {
             this._log("I could play it");
             return this._returnPreference(optionList, "play", {
               cardToPlay: cardToPlay,
+            });
+          }
+        }
+      }
+    }
+	//or trigger right away
+    if (optionList.includes("trigger")) {
+      var useWhenCanCards = [
+        "Spin Doctor", //it has been rezzed
+      ];
+      for (var i = 0; i < useWhenCanCards.length; i++) {
+		var arraysToCheck = [];
+		for (var j=0; j<corp.remoteServers.length; j++) {
+			arraysToCheck = arraysToCheck.concat(corp.remoteServers[j].root);
+		}
+        var cardToTrigger = this._copyOfCardExistsIn(
+          useWhenCanCards[i],
+          arraysToCheck
+        );
+        if (cardToTrigger) {
+          this._log("there is a card with a window of opportunity");
+          if (cardToTrigger.rezzed) { //for now we will assume it can be triggered
+            this._log("I could trigger it");
+            return this._returnPreference(optionList, "trigger", {
+              cardToTrigger: cardToTrigger,
             });
           }
         }
@@ -1279,57 +1541,77 @@ class CorpAI {
           return optionList.indexOf("purge");
       }
     }
+	
+	//check for an almost-done agenda, if so prioritise it for advancing
+	var almostDoneAgenda = null;
+	for (var i = 0; i < corp.remoteServers.length; i++) {
+		for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
+		  if (CheckAdvance(corp.remoteServers[i].root[j]) && this._isFullyAdvanceableAgenda(corp.remoteServers[i].root[j])) almostDoneAgenda = corp.remoteServers[i].root[j];
+		}
+	}
+	var sufficientEconomy = this._sufficientEconomy();
 
     //is there something I could advance?
-    if (this._sufficientEconomy() && optionList.indexOf("advance") > -1) {
+    if ( (almostDoneAgenda || sufficientEconomy) && optionList.indexOf("advance") > -1) {
       //agendas and assets
       for (var i = 0; i < corp.remoteServers.length; i++) {
         for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
+		  var card = corp.remoteServers[i].root[j];
+		  //check for priority
+		  if (almostDoneAgenda && card !== almostDoneAgenda) continue;
           //something advanceable that's worth it
           if (
-            CheckAdvance(corp.remoteServers[i].root[j]) &&
-            !this._obsoleteBluff(corp.remoteServers[i].root[j])
+            CheckAdvance(card) &&
+            !this._obsoleteBluff(card)
           ) {
             //don't advance past 5 (thats the largest agenda in this deck) or some other limit if specified
             var advancementLimit = 5;
             if (
-              typeof corp.remoteServers[i].root[j].AIAdvancementLimit ==
+              typeof card.AIAdvancementLimit ==
               "function"
             )
               advancementLimit =
-                corp.remoteServers[i].root[j].AIAdvancementLimit();
-            if (
-              typeof corp.remoteServers[i].root[j].advancement ===
-                "undefined" ||
-              corp.remoteServers[i].root[j].advancement < advancementLimit ||
-              corp.remoteServers[i].root[j].AIOverAdvance
-            ) {
-              this._log("I could advance a card");
-              //if there is an economy advance card in hand, consider using it
-              cardToPlay = this._copyOfCardExistsIn(
-                "Seamless Launch",
-                corp.HQ.cards
-              );
-              if (cardToPlay) {
-                this._log("there is an economy advance");
-                if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
-                  this._log("I could play it");
-                  if (
-                    corp.remoteServers[i].root[j].advancement <
-                    corp.remoteServers[i].root[j].advancementRequirement - 1 ||
-					corp.remoteServers[i].root[j].AIOverAdvance
-                  ) {
-                    this._log("I intend to");
-                    return this._returnPreference(optionList, "play", {
-                      cardToPlay: cardToPlay,
-                    });
-                  }
-                }
-              }
-              return this._returnPreference(optionList, "advance", {
-                cardToAdvance: corp.remoteServers[i].root[j],
-              });
-            }
+                card.AIAdvancementLimit();
+			//don't start advancing if too poor to finish the job (the false means not necessarily this turn) or agenda in weak server
+			var startOrContinueAdvancement = false;
+			if (Counters(card,"advancement") > 0) startOrContinueAdvancement = true; //already started, feel free to continue (runner already knows it is advanceable)
+			else if (!CheckCardType(card, ["agenda"]) || this._protectionScore(corp.remoteServers[i]) < this._protectionScore(corp.HQ)) {
+				if (this._potentialAdvancement(false) >= advancementLimit) startOrContinueAdvancement = true;
+			}
+			if ( startOrContinueAdvancement ) {
+				if (
+				  typeof card.advancement ===
+					"undefined" ||
+				  card.advancement < advancementLimit ||
+				  card.AIOverAdvance
+				) {
+				  this._log("I could advance a card");
+				  //if there is an economy advance card in hand, consider using it
+				  cardToPlay = this._copyOfCardExistsIn(
+					"Seamless Launch",
+					corp.HQ.cards
+				  );
+				  if ( cardToPlay && this == almostDoneAgenda) { //for now let's just use Seamless for finishing agendas
+					this._log("there is an economy advance");
+					if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
+					  this._log("I could play it");
+					  if (
+						card.advancement <
+						AdvancementRequirement(card) - 1 ||
+						card.AIOverAdvance
+					  ) {
+						this._log("I intend to");
+						return this._returnPreference(optionList, "play", {
+						  cardToPlay: cardToPlay,
+						});
+					  }
+					}
+				  }
+				  return this._returnPreference(optionList, "advance", {
+					cardToAdvance: card,
+				  });
+				}
+			}
           }
         }
       }
@@ -1355,62 +1637,13 @@ class CorpAI {
         }
       }
     }
-    this._log("Nothing to advance (or can't afford it)");
+    this._log("Nothing to advance"+(sufficientEconomy?"":" (can't afford it)"));
 
-    //maybe install something?
-    if (this._sufficientEconomy() && optionList.indexOf("install") > -1) {
-      var serverToInstallTo = this._serverToProtect();
-      //do I have an unprotected server and do I have ice in hand?
-      var affordIceThisServer = this._affordableIce(serverToInstallTo);
-      if (affordIceThisServer.length > 0) {
-        if (this._unrezzedIce(serverToInstallTo).length < 1) {
-          this._log("Some ice would be nice");
-          return this._returnPreference(optionList, "install", {
-            serverToInstallTo: serverToInstallTo,
-            cardToInstall: this._bestIceToInstall(affordIceThisServer, serverToInstallTo),
-          });
-        }
-      }
-
-      //do I have any assets that would be worth installing?
-      var emptyProtectedRemotes = this._emptyProtectedRemotes();
-      for (var i = 0; i < corp.HQ.cards.length; i++) {
-        if (!this._uniqueCopyAlreadyInstalled(corp.HQ.cards[i])) {
-          if (typeof corp.HQ.cards[i].AIWorthInstalling == "function") {
-            var installPreference = corp.HQ.cards[i].AIWorthInstalling(
-              emptyProtectedRemotes
-            );
-            if (installPreference > -1) {
-              this._log("Thinking of installing something...");
-              if (installPreference > emptyProtectedRemotes.length - 1)
-                this._returnPreference(optionList, "install", {
-                  cardToInstall: corp.HQ.cards[i],
-                  serverToInstallTo: null,
-                });
-              //new server
-              else
-                this._returnPreference(optionList, "install", {
-                  cardToInstall: corp.HQ.cards[i],
-                  serverToInstallTo: emptyProtectedRemotes[installPreference],
-                });
-            }
-          }
-        }
-      }
-
-      //do I have an upgrade I could install?
-      var upgradeInstallPreferences = this._upgradeInstallPreferences();
-      if (upgradeInstallPreferences.length > 0) {
-        this._log("Hmm...maybe this...");
-        return this._returnPreference(
-          optionList,
-          "install",
-          upgradeInstallPreferences[0]
-        );
-      }
-    }
-
-    this._log("Servers are as secure as they can be right now");
+	if (optionList.indexOf("install") != -1) {
+		var priorityRankedInstallOptions = this._rankedInstallOptions(corp.HQ.cards,true); //the true includes priority options only (e.g. exclude ice you can't afford or non-ice unprotected)
+		if (priorityRankedInstallOptions.length > 0) return this._returnPreference(optionList, "install", priorityRankedInstallOptions[0]);
+	}
+    this._log("No obvious install options");
 
     //how bad is the economy? it may be necessary even to click for credits
     if (!this._sufficientEconomy()) {
@@ -1433,7 +1666,17 @@ class CorpAI {
     if (handSpace < 0 || (handSpace == 0 && this._clicksLeft() > 1)) {
       //even if there are cards in hand doesn't mean we can play any of them
       if (optionList.indexOf("install") != -1) {
-        var rankedInstallOptions = this._rankedInstallOptions();
+		var rankedInstallOptions = this._rankedInstallOptions(corp.HQ.cards);
+		//check if options would be expanded by slightly more credits
+		if (optionList.indexOf("gain") > -1) {
+			corp.creditPool += this._clicksLeft() - 1; //temporary (hypothetical)
+			var optionsExpanded = rankedInstallOptions < this._rankedInstallOptions(corp.HQ.cards);
+			corp.creditPool -= this._clicksLeft() - 1; //roll back the change
+			if (optionsExpanded) {
+				this._log("Just need a tiny bit more cash");
+				return optionList.indexOf("gain");
+			}
+		}
         if (rankedInstallOptions.length > 0) {
           this._log("Oh I know, I'll install something");
           //if the best option is to install non-ice into an unprotected server, don't do it unless we can install ice next click
@@ -1540,8 +1783,16 @@ class CorpAI {
     //check for mid-action with no preference set
     if (ret < 0 && choiceType == "select") {
       if (executingCommand == "trash") ret = this._bestTrashOption(optionList);
-      else if (executingCommand == "install")
+      else if (executingCommand == "install") {
         ret = this._bestInstallOption(optionList);
+		if (ret < 0) { //none found in options list? I guess we just need to return a default (but investigate, this isn't ideal)
+			ret = 0; //since executing command is already set, we have to choose something!
+			LogError(
+			  "bestInstallOption failed to find any desired install options with this optionList:"
+			);
+			console.log(optionList);
+		}
+	  }
       else if (executingCommand == "discard")
         ret = this._bestDiscardOption(optionList);
       else if (executingCommand == "advance")
@@ -1566,12 +1817,14 @@ class CorpAI {
       else if (currentPhase.identifier == "Corp Mulligan")
         ret = this.Phase_Mulligan(optionList);
       else if (
-        currentPhase.identifier == "Corp 2.2" &&
+        (currentPhase.identifier == "Corp 2.2" || currentPhase.identifier == "Corp 2.1") &&
         currentPhase.title == "Corporation's Action Phase"
       )
         ret = this.Phase_Main(optionList);
       else if (currentPhase.identifier == "Corp 2.2*")
         ret = this.Phase_PostAction(optionList);
+	  else if (currentPhase.identifier == "Corp 3.2")
+		ret = this.Phase_DiscardResponse(optionList);
     }
 
     //very specific checks
@@ -1620,11 +1873,7 @@ class CorpAI {
 
     if (ret < 0) {
       //no AI exists to handle this situation
-      this._log("I don't have code to handle this situation:");
-      console.log(currentPhase.title);
-      console.log(currentPhase.identifier);
-      console.log(executingCommand);
-      console.log(optionList);
+      this._log("I don't have code to handle this situation: "+JSON.stringify([currentPhase.title, currentPhase.identifier, executingCommand, optionList]));
       ret = 0;
     }
 

@@ -695,7 +695,7 @@ phases.corpActionMain = {
             ) {
               if (
                 Counters(possibleAdvance[i].card, "advancement") >=
-                possibleAdvance[i].card.advancementRequirement
+                AdvancementRequirement(possibleAdvance[i].card)
               )
                 allowAdvance = false;
             }
