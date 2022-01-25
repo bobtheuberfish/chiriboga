@@ -58,7 +58,6 @@ var capturedLog = [];
 })();
 
 // Function used to automatically create replication code (src is an array, str is its address)
-//TODO server properties e.g. AISuccessfulRuns
 function ReplicationCode(src,str) {
   var ret = "";
   for (var j=0; j<src.length; j++) {
@@ -135,7 +134,12 @@ function DownloadCapturedLog() {
   for (var i=0; i<corp.remoteServers.length; i++) {
 	extraOutput += ReplicationCode(corp.remoteServers[i].root,'corp.remoteServers['+i+'].root');
 	extraOutput += ReplicationCode(corp.remoteServers[i].ice,'corp.remoteServers['+i+'].ice');
+	if (typeof corp.remoteServers[i].AISuccessfulRuns !== 'undefined') extraOutput += "corp.remoteServers["+i+"].AISuccessfulRuns="+corp.remoteServers[i].AISuccessfulRuns+";\n";
   }
+  if (typeof corp.archives.AISuccessfulRuns !== 'undefined') extraOutput += "corp.archives.AISuccessfulRuns="+corp.archives.AISuccessfulRuns+";\n";
+  if (typeof corp.RnD.AISuccessfulRuns !== 'undefined') extraOutput += "corp.RnD.AISuccessfulRuns="+corp.RnD.AISuccessfulRuns+";\n";
+  if (typeof corp.HQ.AISuccessfulRuns !== 'undefined') extraOutput += "corp.HQ.AISuccessfulRuns="+corp.HQ.AISuccessfulRuns+";\n";
+  
   //send extra output and log
   var logOutput = capturedLog.concat(extraOutput);
   var file = new Blob(logOutput, { type: "" }); //blank string means text/plain

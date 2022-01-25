@@ -2135,19 +2135,19 @@ systemGateway[38] = {
       Resolve: function () {
         var choicesA = [];
         var handOptions = ChoicesHandInstall(corp);
-        if (handOptions.length > 0)
-          choicesA.push({
+		var handChoice = {
             id: 0,
             label: "Install from HQ",
             button: "Install from HQ",
-          });
+          };
+        if (handOptions.length > 0) choicesA.push(handChoice);
         var archivesOptions = ChoicesArrayInstall(corp.archives.cards);
-        if (archivesOptions.length > 0)
-          choicesA.push({
+		var archivesChoice = {
             id: 1,
             label: "Install from Archives",
             button: "Install from Archives",
-          });
+          };
+        if (archivesOptions.length > 0) choicesA.push(archivesChoice);
         choicesA.push({ id: 2, label: "Continue", button: "Continue" });
         function decisionCallbackA(params) {
           if (params.id < 2) {
@@ -2182,11 +2182,26 @@ systemGateway[38] = {
         );
         //**AI code
         if (corp.AI != null) {
-          corp.AI._log("I know this one");
-          //prefer archives if possible
-          var choice = choicesA[0];
-          if (archivesOptions.length > 0 && handOptions.length > 0)
-            choice = choicesA[1];
+		  //find out what option is preferred (if any)
+		  var choice = choicesA[choicesA.length-1]; //continue by default, if no desired options are found
+		  //check archives first
+		  var archivesBestOption = -1;
+		  if (archivesOptions.length > 0) {
+			archivesBestOption = corp.AI._bestInstallOption(archivesOptions);
+		  }
+		  //if no desirable option, try HQ
+		  var handBestOption = -1;
+		  if (archivesBestOption < 0 && handOptions.length > 0) {
+			  handBestOption = corp.AI._bestInstallOption(handOptions);
+		  }
+		  //if no desirable option, continue
+		  if (archivesBestOption < 0 && handBestOption < 0) {
+			
+		  }
+          //prefer archives if possible, then HQ (otherwise default is nothing, see above)
+          if (archivesBestOption > -1) choice = archivesChoice;
+		  else if (handBestOption > -1) choice = handChoice;
+          corp.AI._log("I think "+choice.label+" would be best right now");
           corp.AI.preferred = { title: "Ansel 1.0", option: choice }; //title must match currentPhase.title for AI to fire
         }
       },
@@ -3152,11 +3167,11 @@ systemGateway[53] = {
         RemoveFromGame(this);
         var decisionCallbackA = function (params) {
           if (typeof params.card !== "undefined") {
-            Log(GetTitle(params.card, true) + " shuffled into R&D from HQ");
+            Log(GetTitle(params.card, true) + " shuffled into R&D from Archives");
             MoveCard(params.card, corp.RnD.cards);
             var decisionCallbackB = function (params) {
               if (typeof params.card !== "undefined") {
-                Log(GetTitle(params.card, true) + " shuffled into R&D from HQ");
+                Log(GetTitle(params.card, true) + " shuffled into R&D from Archives");
                 MoveCard(params.card, corp.RnD.cards);
               }
               Shuffle(corp.RnD.cards);
@@ -3233,12 +3248,7 @@ systemGateway[53] = {
         //could also do it with face up cards that we want to reuse but this is fine for now
         //choose the first non-scoring server (create one if necessary)
         for (var j = 0; j < emptyProtectedRemotes.length; j++) {
-          if (!corp.AI._isAScoringServer(emptyProtectedRemotes[j])) {
-            console.log(
-              ServerName(emptyProtectedRemotes[j]) + " is not for scoring"
-            );
-            return j;
-          }
+          if (!corp.AI._isAScoringServer(emptyProtectedRemotes[j])) return j;
         }
         return emptyProtectedRemotes.length;
       }
@@ -3254,6 +3264,11 @@ systemGateway[53] = {
         return true; //since we might want to remove cards from archives
     }
     if (CheckActionClicks(corp, 1)) return true; //might want to rez for the extra card draw
+	else if (corp.AI != null) { //so might the AI
+		if (typeof(this.AITurnsInstalled) !== 'undefined') {
+			if ( CheckClicks(corp, 1) && (this.AITurnsInstalled > 1) ) return true;
+		}
+	}
     return false;
   },
 };
@@ -3595,7 +3610,7 @@ systemGateway[61] = {
   //When your turn begins, you may trash this asset to do 1 meat damage for each hosted advancement counter.
   AIWouldTriggerThis: function () {
     var damageToDo = Counters(this, "advancement");
-    if (PlayerHand(runner).length > damageToDo) return false; //don't activate if the runner has lots of cards in hand (TODO consider further damage that could be dealt this turn)
+    if (PlayerHand(runner).length >= damageToDo) return false; //don't activate if the runner has lots of cards in hand (TODO consider further damage that could be dealt this turn)
     return true; //activate by default
   },
   AIOverAdvance: true, //load 'em up
@@ -3728,10 +3743,14 @@ systemGateway[63] = {
   //You can advance this ice.
   AIAdvancementLimit: function() {
 	  //if unrezzed, only advance it if can afford to fully advance and rez
+	  /*
 	  if (!this.rezzed) {
 		  var costToFullyAdvanceAndRez = 3 - Counters(this, "advancement") + RezCost(this);
 		  if (!CheckCredits(costToFullyAdvanceAndRez, corp)) return 0;
 	  }
+	  */
+	  //actually I've decided to only advance once rezzed, to preserve secrecy for now
+	  if (!this.rezzed) return 0;
 	  return 3;
   },
   //It gets +5 strength while there are 3 or more hosted advancement counters
@@ -4114,6 +4133,18 @@ systemGateway[71] = {
     //only rez if there will be clicks to use it
     if (CheckClicks(corp, 1)) return true;
     return false;
+  },
+  //**AI code for installing (return -1 to not install, index in emptyProtectedRemotes to install in a specific server, or emptyProtectedRemotes.length to install in a new server)
+  AIWorthInstalling: function (emptyProtectedRemotes) {
+	//only install if there isn't already a Regolith installed (unless installing from Archives)
+    if (!corp.AI._copyAlreadyInstalled(this) || this.cardLocation == corp.archives.cards) {
+        //choose the first non-scoring server (create one if necessary)
+        for (var j = 0; j < emptyProtectedRemotes.length; j++) {
+          if (!corp.AI._isAScoringServer(emptyProtectedRemotes[j])) return j;
+        }
+        return emptyProtectedRemotes.length;
+    }
+    return -1; //don't install
   },
 };
 systemGateway[72] = {

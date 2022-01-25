@@ -204,7 +204,7 @@ class RunnerAI {
         (1.0 - this.suspectedHQCards[i].uncertainty).toFixed(1) +
         " certainty]";
     }
-    debugoutput += " (info HQ score: " + ret + ")";
+    debugoutput += " (info HQ score: " + ret.toFixed(1) + ")";
     this._log(debugoutput);
     return ret;
   }
