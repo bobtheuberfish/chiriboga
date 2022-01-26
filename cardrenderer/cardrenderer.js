@@ -998,23 +998,25 @@ var CardRenderer = {
               this.sprite.y = 0.5 * cardRenderer.app.renderer.height;
             }
           }
-          //prevent card going off the screen
-          if (this.sprite.x - 0.5 * this.sprite.width < 0)
-            this.sprite.x = 0.5 * this.sprite.width;
-          if (
-            this.sprite.x + 0.5 * this.sprite.width >
-            cardRenderer.app.renderer.width
-          )
-            this.sprite.x =
-              cardRenderer.app.renderer.width - 0.5 * this.sprite.width;
-          if (this.sprite.y - 0.5 * this.sprite.height < 0)
-            this.sprite.y = 0.5 * this.sprite.height;
-          if (
-            this.sprite.y + 0.5 * this.sprite.height >
-            cardRenderer.app.renderer.height
-          )
-            this.sprite.y =
-              cardRenderer.app.renderer.height - 0.5 * this.sprite.height;
+          //prevent card going off the screen (except when can't see front e.g. choosing card for access in Corp hand)
+		  if (showFace) {
+			  if (this.sprite.x - 0.5 * this.sprite.width < 0)
+				this.sprite.x = 0.5 * this.sprite.width;
+			  if (
+				this.sprite.x + 0.5 * this.sprite.width >
+				cardRenderer.app.renderer.width
+			  )
+				this.sprite.x =
+				  cardRenderer.app.renderer.width - 0.5 * this.sprite.width;
+			  if (this.sprite.y - 0.5 * this.sprite.height < 0)
+				this.sprite.y = 0.5 * this.sprite.height;
+			  if (
+				this.sprite.y + 0.5 * this.sprite.height >
+				cardRenderer.app.renderer.height
+			  )
+				this.sprite.y =
+				  cardRenderer.app.renderer.height - 0.5 * this.sprite.height;
+		  }
         }
 
         //and dummy needs to be positioned correctly
