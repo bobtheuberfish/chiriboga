@@ -60,7 +60,8 @@ function Init() {
   //Determine whether to view as the Runner or Corp (and therefore which player is to be AI)
   if (URIParameter("faceoff") !== "") {
     //AI faces off against AI
-    viewingPlayer = runner;
+	if (URIParameter("p") == "c") viewingPlayer = corp;
+    else viewingPlayer = runner;
     runner.AI = new RunnerAI(); //computer control
     corp.AI = new CorpAI(); //computer control
   } else if (URIParameter("p") == "c") {

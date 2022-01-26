@@ -2449,7 +2449,14 @@ systemGateway[40] = {
         choices.splice(i, 1);
     }
 	//**AI code
-	if (corp.AI != null) Shuffle(choices); //make the advance target unpredictable (could use a heuristic instead maybe?)
+	if (corp.AI != null) {
+		if (this.AIPreferredTarget) {
+			for (var i=0; i<choices.length; i++) {
+				if (choices[i].card == this.AIPreferredTarget) return [choices[i]];
+			}
+		}
+		Shuffle(choices); //make the advance target unpredictable (could use a heuristic instead maybe?)
+	}
     return choices;
   },
   Resolve: function (params) {
@@ -3991,13 +3998,16 @@ systemGateway[69] = {
       if (choices.length < 1) return [];
       //**AI code (in this case, implemented by returning only the preferred option)
       else if (corp.AI != null) {
-        //choose the most expensive one
+        //choose the most expensive one, taking into account server protection that exists already
+		servprotmult = 0.5; //arbitrary, this mostly exists to break ties
         var mostExpensiveChoice = choices[0];
-        var mostExpensiveCost = RezCost(choices[0]);
+        var highestValue = RezCost(choices[0].card) - servprotmult*corp.AI._protectionScore(GetServer(choices[0].card));
+		//console.log("value of "+choices[0].card.title+" in "+ServerName(GetServer(choices[0].card))+" is "+highestValue);
         for (var i = 0; i < choices.length; i++) {
-          var iRezCost = RezCost(choices[i].card);
-          if (iRezCost > mostExpensiveCost) {
-            mostExpensiveCost = iRezCost;
+          var iHighestValue = RezCost(choices[i].card) - servprotmult*corp.AI._protectionScore(GetServer(choices[i].card));
+		  //console.log("value of "+choices[i].card.title+" in "+ServerName(GetServer(choices[i].card))+" is "+iHighestValue);
+          if (iHighestValue > highestValue) {
+            highestValue = iHighestValue;
             mostExpensiveChoice = choices[i];
           }
         }
@@ -4030,7 +4040,7 @@ systemGateway[69] = {
       corp.AI._log("I know this one");
       var choice = binaryChoices[0]; //activate by default
       if (
-        RezCost(params.card) < 0.5 * (Credits(corp) + 1) &&
+        RezCost(params.card) < 0.3 * (Credits(corp) + 1) &&
         !params.card.knownToRunner
       )
         choice = binaryChoices[1]; //don't activate if it's not too expensive

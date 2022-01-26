@@ -173,7 +173,7 @@ class CorpAI {
   //returns value of current scoring window if using the given server (zero if no window)
   _scoringWindow(server) {
 	var ret = 0;
-	ret = this._protectionScore(server) - this._protectionScore(corp.HQ) + (0.3*this._clicksLeft()) + (Credits(corp)/(Credits(runner)+1.0));
+	ret = this._protectionScore(server) - this._protectionScore(corp.HQ) + (0.3*this._clicksLeft()) + (Credits(corp)/(Credits(runner)+1.0)) - 1.0;
 	return ret;
   }
 
@@ -299,12 +299,19 @@ class CorpAI {
 	return ret;
   }
   
+  _HVTsInServer(server) { //returns int
+    if (!server) return 0;
+	var ret=0;
+	for (var j=0; j<server.root.length; j++) {
+		if (this._isHVT(server.root[j])) ret++;
+	}
+	return ret;
+  }
+  
   _HVTsInstalled() { //returns int
 	var ret=0;
 	for (var i=0; i<corp.remoteServers.length; i++) {
-		for (var j=0; j<corp.remoteServers[i].root.length; j++) {
-			if (this._isHVT(corp.remoteServers[i].root[j])) ret++;
-		}
+		ret += this._HVTsInServer(corp.remoteServers[i]);
 	}
 	return ret;
   }
@@ -415,6 +422,8 @@ class CorpAI {
     var server = GetServer(card); //returns null if not installed
     if (server != null) {
       if (typeof server.cards !== "undefined") ret += 2;
+	  //stronger for each other ice in server
+	  ret += 0.1*Math.sqrt(server.ice.length-1);
     }
     if (!card.rezzed) ret *= 1.5; //for being unrezzed (tweaked down from 2 because corp was overvaluing unrezzed ice)
     //weaker if threatened
@@ -493,9 +502,11 @@ class CorpAI {
         protectionScore = protectionScores["null"];
       }
     }
-	if (serverToProtect==null && this._HVTsInstalled() > 0) { //protect the scoring server instead of making new ones
-		//don't update the protection score - don't compare archives to the HVT server
-		serverToProtect = this._HVTserver();
+	if ( ( serverToProtect==null || typeof(serverToProtect.cards == 'undefined') ) && this._HVTsInstalled() > 0 ) { //protect a HVT server instead of other remotes
+		if (!this._HVTsInServer(serverToProtect)) { //this server is fine if it has a HVT
+			//don't update the protection score - don't compare archives to the HVT server
+			serverToProtect = this._HVTserver();
+		}
 	}
     if (!ignoreArchives) {
       protectionScores.archives = this._protectionScore(corp.archives);
@@ -641,6 +652,7 @@ class CorpAI {
     return ret;
   }
 
+  //this is used either for trash-on-install corp, or trash Runner cards
   _bestTrashOption(optionList) {
     var rankedThreats = this._rankedThreats();
     for (var j = 0; j < rankedThreats.length; j++) {
@@ -650,6 +662,10 @@ class CorpAI {
         }
       }
     }
+	//must be trash on install (comes here if there is no choice and something must be trashed)
+	var toTrash = this.Phase_TrashBeforeInstall(optionList);
+	if (toTrash > -1) return toTrash;
+	//oh dear
     return 0; //arbitrary
   }
 
@@ -1049,10 +1065,11 @@ class CorpAI {
 			if (scoringServers[i] == b.serverToInstallTo) bWindow = scoringWindows[i];
 		}
 		var aDiff = Math.abs(aAdvReq - aWindow); 
-		var bDiff = Math.abs(aAdvReq - aWindow); 
+		var bDiff = Math.abs(bAdvReq - bWindow); 
 		//TODO do this properly for Ambush and Hostile cards too (probably need some kind of AIAdvancementTarget function)
 		return (aDiff - bDiff);
 	});
+	//this._log(JSON.stringify(intoServerOptions));
 	ret = ret.concat(intoServerOptions);
 
     //Upgrade?
@@ -1141,7 +1158,7 @@ class CorpAI {
 					if (!CheckCredits(currentRezCost+RezCost(serverToCompare.ice[j]), corp, "rezzing")) {
 						if ( (comparisonValue > thisServerValue) ||
 						     ((comparisonValue == thisServerValue) && (this._iceProtectionValue(serverToCompare.ice[j]) > thisIceProtectionValue)) ) {
-						  this._log("Rez cost not worth it...");
+						  this._log("Rez cost not worth it, need to save it for "+serverToCompare.ice[j].title+" in "+ServerName(serverToCompare));
 						  rezIce = false;
 						}
 						else this._log("Rez this is better than "+serverToCompare.ice[j].title+" in "+ServerName(serverToCompare));
@@ -1343,6 +1360,7 @@ class CorpAI {
     return 0; //arbitrary
   }
 
+  //this function is either reached because the trash is optional or called by _bestTrashOption
   Phase_TrashBeforeInstall(optionList) {
     this._log("phase is trash before install");
     //check for obsolete bluff to overwrite
@@ -1429,13 +1447,19 @@ class CorpAI {
     });
   }
 
-  _potentialAdvancement(thisTurn=true) {
+  _potentialAdvancement(card,thisTurn=true) {
 	  var ret = 0;
 	  //basic advance
 	  if (thisTurn) ret += Math.min(this._clicksLeft(), Credits(corp));
 	  else ret += Credits(corp);
-	  //plus one for each Seamless Launch
-	  ret += this._copiesOfCardIn("Seamless Launch",corp.HQ.cards);
+	  //check if any Seamless Launch in hand
+	  var slih = this._copyOfCardExistsIn("Seamless Launch",corp.HQ.cards);
+	  if (slih) {
+		  if (!thisTurn || !slih.cardsInstalledThisTurn.includes(card)) {
+			//plus one for each Seamless Launch if it can be used
+			ret += this._copiesOfCardIn("Seamless Launch",corp.HQ.cards);
+		  }
+	  }
 	  return ret;
   }
   
@@ -1443,9 +1467,9 @@ class CorpAI {
 	  return AdvancementRequirement(card) - Counters(card,"advancement");
   }
 
-  _isFullyAdvanceableAgenda(card) {
+  _isFullyAdvanceableAgenda(card) { //can be finished this turn
 	if (!CheckCardType(card, ["agenda"])) return false;
-	var canFullyAdvance = this._potentialAdvancement(true) >= this._advancementRequired(card);
+	var canFullyAdvance = this._potentialAdvancement(card,true) >= this._advancementRequired(card);
 	return canFullyAdvance;
   }
 
@@ -1455,104 +1479,121 @@ class CorpAI {
 	
 	var cardToPlay = null; //used for checks
 
-    //take advantage of a temporary window of opportunity (i.e., play right away)
-    if (optionList.includes("play")) {
-      var useWhenCanCards = [
-        "Neurospike", //agendas scored
-        "Public Trail", //successful run
-      ];
-      for (var i = 0; i < useWhenCanCards.length; i++) {
-        cardToPlay = this._copyOfCardExistsIn(
-          useWhenCanCards[i],
-          corp.HQ.cards
-        );
-        if (cardToPlay) {
-          this._log("there is a card with a window of opportunity");
-          if (FullCheckPlay(cardToPlay)) {
-            this._log("I could play it");
-            return this._returnPreference(optionList, "play", {
-              cardToPlay: cardToPlay,
-            });
-          }
-        }
-      }
-    }
-	//or trigger right away
-    if (optionList.includes("trigger")) {
-      var useWhenCanCards = [
-        "Spin Doctor", //it has been rezzed
-      ];
-      for (var i = 0; i < useWhenCanCards.length; i++) {
-		var arraysToCheck = [];
-		for (var j=0; j<corp.remoteServers.length; j++) {
-			arraysToCheck = arraysToCheck.concat(corp.remoteServers[j].root);
-		}
-        var cardToTrigger = this._copyOfCardExistsIn(
-          useWhenCanCards[i],
-          arraysToCheck
-        );
-        if (cardToTrigger) {
-          this._log("there is a card with a window of opportunity");
-          if (cardToTrigger.rezzed) { //for now we will assume it can be triggered
-            this._log("I could trigger it");
-            return this._returnPreference(optionList, "trigger", {
-              cardToTrigger: cardToTrigger,
-            });
-          }
-        }
-      }
-    }
-
-    //should I take advantage of the runner being tagged?
-    if (CheckTags(1)) {
-      //first check if there are cards we can use to benefit from tags (in order of preference)
-      var useWhenTaggedCards = ["Retribution", "Predictive Planogram"];
-      for (var i = 0; i < useWhenTaggedCards.length; i++) {
-        cardToPlay = this._copyOfCardExistsIn(
-          useWhenTaggedCards[i],
-          corp.HQ.cards
-        );
-        if (cardToPlay) {
-          this._log("there is a card that benefits from tags");
-          if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
-            this._log("I could play it");
-            return this._returnPreference(optionList, "play", {
-              cardToPlay: cardToPlay,
-            });
-          }
-        }
-      }
-      //or we can just use the basic action
-      if (optionList.indexOf("trash") > -1) return optionList.indexOf("trash");
-    }
-
-    //would it be worth purging?
-    if (optionList.indexOf("purge") > -1) {
-      //this logic is very basic for now...
-      //each card with virus counters over 2 has a chance of provoking a purge
-      var virus_max = 10; //the higher this number, the less chance of a purge
-      var virus_min = 2;
-      var installedCards = InstalledCards(runner);
-      for (var i = 0; i < installedCards.length; i++) {
-        if (
-          Counters(installedCards[i], "virus") >
-          RandomRange(virus_min, virus_max)
-        )
-          return optionList.indexOf("purge");
-      }
-    }
-	
-	//check for an almost-done agenda, if so prioritise it for advancing
-	var almostDoneAgenda = null;
-	for (var i = 0; i < corp.remoteServers.length; i++) {
-		for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
-		  if (CheckAdvance(corp.remoteServers[i].root[j]) && this._isFullyAdvanceableAgenda(corp.remoteServers[i].root[j])) almostDoneAgenda = corp.remoteServers[i].root[j];
-		}
-	}
 	var sufficientEconomy = this._sufficientEconomy();
 
+	//check for an almost-done agenda, if so prioritise it for advancing
+	var almostDoneAgenda = null;
+	if (optionList.indexOf("advance") > -1) {
+		for (var i = 0; i < corp.remoteServers.length; i++) {
+			for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
+			  if (CheckAdvance(corp.remoteServers[i].root[j]) && this._isFullyAdvanceableAgenda(corp.remoteServers[i].root[j])) {
+				  if (almostDoneAgenda) {
+					  //assume the one with the higher printed advancement requirement or agendaPoints is better
+					  if ((corp.remoteServers[i].root[j].advancementRequirement > almostDoneAgenda.advancementRequirement) ||
+					    (corp.remoteServers[i].root[j].agendaPoints > almostDoneAgenda.agendaPoints)) {
+					    almostDoneAgenda = corp.remoteServers[i].root[j];
+					    this._log("This would be even better");
+					  }
+				  }
+				  else {
+					  almostDoneAgenda = corp.remoteServers[i].root[j];
+					  this._log("I could get this done this turn");
+				  }
+			  }
+			}
+		}
+	}
+	if (!almostDoneAgenda) {
+		//take advantage of a temporary window of opportunity (i.e., play right away)
+		if (optionList.includes("play")) {
+		  var useWhenCanCards = [
+			"Neurospike", //agendas scored
+			"Public Trail", //successful run
+		  ];
+		  for (var i = 0; i < useWhenCanCards.length; i++) {
+			cardToPlay = this._copyOfCardExistsIn(
+			  useWhenCanCards[i],
+			  corp.HQ.cards
+			);
+			if (cardToPlay) {
+			  this._log("there is a card with a window of opportunity");
+			  if (FullCheckPlay(cardToPlay)) {
+				this._log("I could play it");
+				return this._returnPreference(optionList, "play", {
+				  cardToPlay: cardToPlay,
+				});
+			  }
+			}
+		  }
+		}
+		//or trigger right away
+		if (optionList.includes("trigger")) {
+		  var useWhenCanCards = [
+			"Spin Doctor", //it has been rezzed
+		  ];
+		  for (var i = 0; i < useWhenCanCards.length; i++) {
+			var arraysToCheck = [];
+			for (var j=0; j<corp.remoteServers.length; j++) {
+				arraysToCheck = arraysToCheck.concat(corp.remoteServers[j].root);
+			}
+			var cardToTrigger = this._copyOfCardExistsIn(
+			  useWhenCanCards[i],
+			  arraysToCheck
+			);
+			if (cardToTrigger) {
+			  this._log("there is a card with a window of opportunity");
+			  if (cardToTrigger.rezzed) { //for now we will assume it can be triggered
+				this._log("I could trigger it");
+				return this._returnPreference(optionList, "trigger", {
+				  cardToTrigger: cardToTrigger,
+				});
+			  }
+			}
+		  }
+		}
+
+		//should I take advantage of the runner being tagged?
+		if (CheckTags(1)) {
+		  //first check if there are cards we can use to benefit from tags (in order of preference)
+		  var useWhenTaggedCards = ["Retribution", "Predictive Planogram"];
+		  for (var i = 0; i < useWhenTaggedCards.length; i++) {
+			cardToPlay = this._copyOfCardExistsIn(
+			  useWhenTaggedCards[i],
+			  corp.HQ.cards
+			);
+			if (cardToPlay) {
+			  this._log("there is a card that benefits from tags");
+			  if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
+				this._log("I could play it");
+				return this._returnPreference(optionList, "play", {
+				  cardToPlay: cardToPlay,
+				});
+			  }
+			}
+		  }
+		  //or we can just use the basic action
+		  if (optionList.indexOf("trash") > -1) return optionList.indexOf("trash");
+		}
+
+		//would it be worth purging?
+		if (optionList.indexOf("purge") > -1) {
+		  //this logic is very basic for now...
+		  //each card with virus counters over 2 has a chance of provoking a purge
+		  var virus_max = 10; //the higher this number, the less chance of a purge
+		  var virus_min = 2;
+		  var installedCards = InstalledCards(runner);
+		  for (var i = 0; i < installedCards.length; i++) {
+			if (
+			  Counters(installedCards[i], "virus") >
+			  RandomRange(virus_min, virus_max)
+			)
+			  return optionList.indexOf("purge");
+		  }
+		}
+	}
+
     //is there something I could advance?
-    if ( (almostDoneAgenda || sufficientEconomy) && optionList.indexOf("advance") > -1) {
+    if ( (almostDoneAgenda || sufficientEconomy) && optionList.indexOf("advance") > -1) {		
       //agendas and assets
       for (var i = 0; i < corp.remoteServers.length; i++) {
         for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
@@ -1574,9 +1615,9 @@ class CorpAI {
                 card.AIAdvancementLimit();
 			//don't start advancing if too poor to finish the job (the false means not necessarily this turn) or agenda in weak server
 			var startOrContinueAdvancement = false;
-			if (Counters(card,"advancement") > 0) startOrContinueAdvancement = true; //already started, feel free to continue (runner already knows it is advanceable)
-			else if (!CheckCardType(card, ["agenda"]) || this._protectionScore(corp.remoteServers[i]) < this._protectionScore(corp.HQ)) {
-				if (this._potentialAdvancement(false) >= advancementLimit) startOrContinueAdvancement = true;
+			if (card.advancement > 0) startOrContinueAdvancement = true; //already started, feel free to continue (the counter shows the runner it is advanceable)
+			else if (!CheckCardType(card, ["agenda"]) || card == almostDoneAgenda || this._protectionScore(corp.remoteServers[i]) > this._protectionScore(corp.HQ)) {
+				if (this._potentialAdvancement(card,false) >= advancementLimit) startOrContinueAdvancement = true;
 			}
 			if ( startOrContinueAdvancement ) {
 				if (
@@ -1591,16 +1632,17 @@ class CorpAI {
 					"Seamless Launch",
 					corp.HQ.cards
 				  );
-				  if ( cardToPlay && this == almostDoneAgenda) { //for now let's just use Seamless for finishing agendas
+				  if ( cardToPlay && card == almostDoneAgenda) { //for now let's just use Seamless for finishing agendas
 					this._log("there is an economy advance");
 					if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
 					  this._log("I could play it");
 					  if (
-						card.advancement <
+						Counters(card,"advancement") <
 						AdvancementRequirement(card) - 1 ||
 						card.AIOverAdvance
 					  ) {
 						this._log("I intend to");
+						cardToPlay.AIPreferredTarget = almostDoneAgenda;
 						return this._returnPreference(optionList, "play", {
 						  cardToPlay: cardToPlay,
 						});
@@ -1623,16 +1665,18 @@ class CorpAI {
             var advancementLimit = 5; //arbitrary
             if (typeof installedCards[i].AIAdvancementLimit == "function")
               advancementLimit = installedCards[i].AIAdvancementLimit();
-            if (
-              typeof installedCards[i].advancement === "undefined" ||
-              installedCards[i].advancement < advancementLimit ||
-              installedCards[i].advancement.AIOverAdvance
-            ) {
-              this._log("I intend to advance ice");
-              return this._returnPreference(optionList, "advance", {
-                cardToAdvance: installedCards[i],
-              });
-            }
+		    if (advancementLimit > 0) {
+				if (
+				  typeof installedCards[i].advancement === "undefined" ||
+				  installedCards[i].advancement < advancementLimit ||
+				  installedCards[i].advancement.AIOverAdvance
+				) {
+				  this._log("I intend to advance ice");
+				  return this._returnPreference(optionList, "advance", {
+					cardToAdvance: installedCards[i],
+				  });
+				}
+			}
           }
         }
       }
@@ -1657,7 +1701,7 @@ class CorpAI {
       if (bestEconomyOption != optionList.indexOf("gain"))
         return bestEconomyOption; //i.e. don't click for creds!
     }
-    this._log("No best economy option or am rich enough");
+    this._log("No obvious economy option");
 
     //how much empty space in hand?
     var handSpace = MaxHandSize(corp) - PlayerHand(corp).length;
@@ -1690,14 +1734,16 @@ class CorpAI {
             return optionList.indexOf("install");
         }
       }
-
+	  /*
       if (optionList.indexOf("play") != -1) {
         //at the moment this is just a play it without thinking...but might not be best
         return optionList.indexOf("play");
       }
+	  */
     }
 
     //not sure what to do, so just get rich
+	this._log("Not sure what to do");
     return this._bestMainPhaseEconomyOption(optionList);
   }
 
@@ -1712,7 +1758,6 @@ class CorpAI {
       LogError("No valid commands available");
       return;
     }
-
     //check for preferreds
     var ret = -1;
     if (this.preferred !== null) {
