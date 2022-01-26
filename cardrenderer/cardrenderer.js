@@ -1536,6 +1536,9 @@ var CardRenderer = {
         } else {
           pixi_subroutineDelay = 20; //tweak to work well
         }
+		
+		//update counter rotations each frame (but not text, the true here skips that)
+		this.UpdateCounters(true); //doing this every frame might cost us a millisecond or so, that's worth it
       }, this);
 
       //a special particle trail that travels between breakers and encountered ice
@@ -1729,14 +1732,14 @@ var CardRenderer = {
       return ret;
     }
 
-    UpdateCounters() {
+    UpdateCounters(skipUpdate=false) {
       for (var i = 0; i < this.counters.length; i++) {
         var unrotation = this.app.stage.rotation;
         if (this.counters[i].sprite.parent != this.app.stage)
           unrotation += this.counters[i].sprite.parent.rotation;
         this.counters[i].sprite.rotation = -unrotation;
         this.counters[i].richText.rotation = -unrotation;
-        this.counters[i].Update();
+        if (!skipUpdate) this.counters[i].Update();
         this.counters[i].sprite.parent.addChild(this.counters[i].sprite);
         this.counters[i].richText.parent.addChild(this.counters[i].richText);
       }
