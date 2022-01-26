@@ -12,8 +12,10 @@
 		<script src="jquery/jquery-3.2.1.min.js"></script>
 		<script src="cardrenderer/pixi.min.js"></script>
 		<script src="cardrenderer/pixi-particles.min.js"></script>
-		<script src="cardrenderer/particlesystems.js"></script>
-		<script src="cardrenderer/cardrenderer.js"></script>
+		<?php
+		echo '<script src="cardrenderer/particlesystems.js?' . filemtime('cardrenderer/particlesystems.js') . '"></script>';
+		echo '<script src="cardrenderer/cardrenderer.js?' . filemtime('cardrenderer/cardrenderer.js') . '"></script>';
+		?>
 		<style>
 			@font-face {
 			  font-family: PlayBoldUnambig;
