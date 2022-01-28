@@ -1050,8 +1050,12 @@ function Render() {
 
   for (var i = 0; i < zoomedCards.length; i++) {
     //just unzoom and rezoom to reset
+	var savedStoredPos = zoomedCards[i].renderer.storedPosition.y; //save and...
+	var savedStoredRot = zoomedCards[i].renderer.storedRotation;
     zoomedCards[i].renderer.ToggleZoom();
     zoomedCards[i].renderer.ToggleZoom();
+	zoomedCards[i].renderer.storedPosition.y = savedStoredPos; //restore to prevent glitch
+	zoomedCards[i].renderer.storedRotation = savedStoredRot;
   }
 
   //highlight approached/encountered ice
@@ -1079,6 +1083,9 @@ function Render() {
       attackedServerGlow.y
     );
   } else cardRenderer.UpdateGlow(null, 0);
+  
+  //update actual rendered view (this would eventually be done automatically but this can cause issues with hover detection out of sync
+  cardRenderer.app.render(cardRenderer.app.stage);
 }
 
 var counterList = ["advancement", "credits", "virus", "power", "agenda"]; //used for resetting all counters on a card, setting them up for render, etc.
