@@ -900,9 +900,15 @@ console.log(this.preferred);
       if (this.cachedBestPath) {
         //requires a path to exist (whether complete or not)
 		var bestpath = this.cachedBestPath;
-        if (bestpath.length > 1) {
-          //assume the second element of the optimal path is the 'when moving on'
-          var p = bestpath[1];
+		//the first point for the next ice (i.e. approachIce - 1) contains sr choice for this ice (the 'when moving on' decisions)
+		var p = null;
+		for (var i=0; i<bestpath.length; i++) {
+			if (bestpath[i].iceIdx == approachIce - 1) {
+				p = bestpath[i];
+				break;
+			}
+		}
+		if (p) {
           if (p.alt) {
             //if no choice data stored, dunno!
             //console.log(subroutine);
@@ -912,9 +918,9 @@ console.log(this.preferred);
               if (p.alt[i].srIdx == subroutine - 1) return p.alt[i].choiceIdx; //subroutine has incremented because it fired
             }
             console.error(
-              "No .alt for sr " + (subroutine - 1) + "? " + JSON.stringify(p)
+              "No .alt for sr " + (subroutine - 1) + "? " + JSON.stringify(bestpath)
             );
-          } else console.error("No cached path .alt? " + JSON.stringify(p));
+          } else console.error("No cached path .alt? " + JSON.stringify(bestpath));
         }
       }
       this._log("No acceptable path found, seeking etr");
