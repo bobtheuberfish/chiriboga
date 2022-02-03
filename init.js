@@ -48,6 +48,8 @@ var viewingPile = null; //to look at all cards in a stack
 //values modifiable by effects. Don't access these directly, instead use the relevant function
 var globalProperties = {};
 globalProperties.agendaPointsToWin = 7; //don't modify this or access it directly. Instead use AgendaPointsToWin() for read and card effects to modify.
+//for testing/balancing AIs
+var agendaStolenLocations = [];
 
 //INITIALISATION
 // Performs the initialisation of game state. Contains the main loop for command mode (user interaction).

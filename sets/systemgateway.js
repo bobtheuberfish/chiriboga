@@ -71,9 +71,9 @@ systemGateway[2] = {
       var choice = choices[1];
       if (
         Credits(runner) - PlayerHand(runner).length + runner.clickTracker >=
-        4
+        9 - MaxHandSize(runner)
       )
-        choice = choices[0]; //TODO take into account max hand size
+        choice = choices[0];
       corp.AI.preferred = { title: "Wildcat Strike", option: choice };
     }
   },
@@ -2564,6 +2564,7 @@ systemGateway[42] = {
   rezCost: 2,
   trashCost: 3,
   unique: true,
+  AIDefensiveValue:4, //arbitrary, observe and tweak
   //Whenever the Runner approaches this server, end the run unless they either spend [click][click] or pay 5[c].
   //"The Runner approaches the server at step 4 of a run, and it is the final deciding factor for determining the success of a run." (see also run timing in FAQ)
   approachServer: {
@@ -2770,6 +2771,9 @@ systemGateway[45] = {
   RezUsability: function () {
     return false;
   }, //never rez (for usability rather than legality)
+  AIAdvancementLimit: function() {
+	  return 4; //this may be overridden to bluff under certain circumstances
+  },
 };
 systemGateway[46] = {
   title: "Diviner",
@@ -3460,6 +3464,12 @@ systemGateway[57] = {
       this
     );
   },
+  AIWouldPlay: function() {
+	//don't bother unless can use it, also don't bother if the Runner has tags already (it's probably better to use the tags than add more)
+	var ptp = corp.AI._potentialTagPunishment(runner.tags+1,corp.clickTracker-1,corp.creditPool-this.playCost) && corp.AI._clicksLeft() > 1 && runner.tags < 2;
+	if (ptp) return true;
+	return false;
+  },
 };
 systemGateway[58] = {
   title: "AMAZE Amusements",
@@ -3471,6 +3481,7 @@ systemGateway[58] = {
   rezCost: 1,
   trashCost: 3,
   unique: true,
+  AIDefensiveValue:2, //arbitrary, observe and tweak
   AIIsScoringUpgrade: true,
   runnerStoleAgendasThisRun: false,
   serverThisWasInstalledIn: null,
@@ -3621,6 +3632,10 @@ systemGateway[61] = {
     return true; //activate by default
   },
   AIOverAdvance: true, //load 'em up
+  AIAdvancementLimit: function() {
+	  return MaxHandSize(runner)+1;
+  },
+  AIRushToFinish: true, //use economy advance to get to limit
   corpTurnBegin: {
     Enumerate: function () {
       if (CheckCounters(this, "advancement", 1)) return [{}];
@@ -4004,6 +4019,8 @@ systemGateway[69] = {
         var highestValue = RezCost(choices[0].card) - servprotmult*corp.AI._protectionScore(GetServer(choices[0].card));
 		//console.log("value of "+choices[0].card.title+" in "+ServerName(GetServer(choices[0].card))+" is "+highestValue);
         for (var i = 0; i < choices.length; i++) {
+	      //ignore ice that has a card hosted (e.g. Tranquilizer but just a general check for now)
+		  if ( (typeof choices[i].card.hostedCards !== "undefined") && (choices[i].card.hostedCards.length > 0) ) continue;
           var iHighestValue = RezCost(choices[i].card) - servprotmult*corp.AI._protectionScore(GetServer(choices[i].card));
 		  //console.log("value of "+choices[i].card.title+" in "+ServerName(GetServer(choices[i].card))+" is "+iHighestValue);
           if (iHighestValue > highestValue) {

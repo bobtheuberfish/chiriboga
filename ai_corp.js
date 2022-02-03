@@ -336,14 +336,32 @@ class CorpAI {
     }
   }
 
+  //highest amount to advance bluff to
+  _bluffAdvanceLimit(card) {
+	var advlim = 4; //advancing an ambush more that this is not a good bluff (most agendas are only 5 or less to score)
+	if (typeof(card.AIAdvancementLimit) == 'function') advlim = card.AIAdvancementLimit();
+	var hostileCards = corp.RnD.cards.concat(corp.HQ.cards).concat(corp.archives.cards);
+	for (var k=0; k<hostileCards.length; k++) {
+		if (CheckSubType(hostileCards[k],"Hostile")) {
+			if (typeof(hostileCards[k].AIAdvancementLimit) == 'function') {
+				var hostadvlim = hostileCards[k].AIAdvancementLimit();
+				if (hostadvlim > advlim) advlim = hostadvlim;
+			}
+		}
+	}
+	return advlim;
+  }
+
   _obsoleteBluff(card) {
     //if it's an ambush then no need to keep it if it is known or no longer a meaningful bluff
     if (CheckSubType(card, "Ambush") && CheckCardType(card, ["asset"])) {
-      if (card.knownToRunner || card.advancement > 3) return true;
+	  var advlim = this._bluffAdvanceLimit(card);
+      if (card.knownToRunner || card.advancement >= advlim) return true;
     }
     //other assets are worth less if they have been around while or there are lots of agendas in hand
 	if (typeof(card.AITurnsInstalled) !== 'undefined') {
-		if ( (corp.HQ.cards.length - this._agendasInHand() < card.AITurnsInstalled + 1) ) { //the + 1 is arbitrary (higher increases likelihood to install over)
+		var agendasInHand = this._agendasInHand();
+		if ( (agendasInHand > 0)&&(corp.HQ.cards.length - this._agendasInHand() < card.AITurnsInstalled) ) {
 		  if (!CheckSubType(card, "Hostile") && CheckCardType(card, ["asset"]))
 			//but not if it has credits left
 			if (!CheckCounters(card, "credits", 1)) {
@@ -409,35 +427,47 @@ class CorpAI {
     return ret;
   }
 
-  _iceProtectionValue(
+  _cardProtectionValue(
     card //from 0 (completely pointless) to 2+ (depending on rez cost etc)
   ) {
-    if (!CheckCardType(card, ["ice"])) return 0;
     var ret = 0;
-    ret++; //1 point for any ice
-    if (card.rezCost > 4 || Strength(card) > 3) {
-      ret++; //plus bonus point for high rez cost (based on printed value) or strong
-    }
-    //ice on centrals is essentially better due to the random 'mystery' nature of central servers
-    var server = GetServer(card); //returns null if not installed
-    if (server != null) {
-      if (typeof server.cards !== "undefined") ret += 2;
-	  //stronger for each other ice in server
-	  ret += 0.1*Math.sqrt(server.ice.length-1);
-    }
-    if (!card.rezzed) ret *= 1.5; //for being unrezzed (tweaked down from 2 because corp was overvaluing unrezzed ice)
-    //weaker if threatened
-    if (this._aCompatibleBreakerIsInstalled(card)) ret *= 0.5;
-    //and modify value based on hosted cards and virus counters
-    if (typeof card.hostedCards !== "undefined") {
-      for (var i = 0; i < card.hostedCards.length; i++) {
-        if (card.hostedCards[i].player == corp) ret++;
-        else {
-          ret--;
-          if (Counters(card.hostedCards[i], "virus") > 2) ret--;
-        }
-      }
-    }
+    if (CheckCardType(card, ["ice"])) {
+		//if unrezzed and can't afford to rez, consider to be no protection (just a simple check ignoring cost of other ice in server)
+		if ( card.rezzed || Credits(corp) >= RezCost(card)) {
+			ret++; //1 point for any ice
+			if (card.rezCost > 4 || Strength(card) > 3) {
+			  ret++; //plus bonus point for high rez cost (based on printed value) or strong
+			}
+			//ice on centrals is essentially better due to the random 'mystery' nature of central servers
+			var server = GetServer(card); //returns null if not installed
+			if (server != null) {
+			  if (typeof server.cards !== "undefined") ret += 2;
+			  //stronger for each other ice in server
+			  ret += 0.1*Math.sqrt(server.ice.length-1);
+			}
+			if (!card.rezzed) ret *= 1.5; //for being unrezzed (tweaked down from 2 because corp was overvaluing unrezzed ice)
+			//weaker if threatened
+			if (this._aCompatibleBreakerIsInstalled(card)) ret *= 0.5;
+			//and modify value based on hosted cards and virus counters
+			if (typeof card.hostedCards !== "undefined") {
+			  for (var i = 0; i < card.hostedCards.length; i++) {
+				if (card.hostedCards[i].player == corp) ret++;
+				else {
+				  ret--;
+				  if (Counters(card.hostedCards[i], "virus") > 2) ret--;
+				}
+			  }
+			}
+		}
+	}
+	else if (CheckCardType(card, ["upgrade"])) {
+		if (typeof(card.AIDefensiveValue) !== 'undefined') {
+			//if unrezzed and can't afford to rez, consider to be no protection (just a simple check ignoring cost of other ice in server)
+			if ( card.rezzed || Credits(corp) >= RezCost(card)) {
+				ret += card.AIDefensiveValue;
+			}
+		}
+	}
     return ret;
   }
 
@@ -449,7 +479,10 @@ class CorpAI {
     //for 'protecting' check we build a score considering how much ice and how effective the ice is
     var ret = 0;
     for (var i = 0; i < server.ice.length; i++) {
-      ret += this._iceProtectionValue(server.ice[i]);
+      ret += this._cardProtectionValue(server.ice[i]);
+    }
+    for (var i = 0; i < server.root.length; i++) {
+      ret += this._cardProtectionValue(server.root[i]);
     }
     //if it is being run successfully a lot, need extra protection
     if (typeof server.AISuccessfulRuns !== "undefined")
@@ -457,7 +490,7 @@ class CorpAI {
     //if it is archives we will deprioritise protection by default
     if (server == corp.archives) ret += 3; //archives (the 3 is arbitrary)
 	//if it HQ, increase or decrease priorisation based on agenda points compared to cards in hand
-	if (server == corp.HQ) ret += corp.HQ.cards.length - this._agendaPointsInServer(corp.HQ) - 2; //the 2 is arbitrary
+	if (server == corp.HQ) ret += corp.HQ.cards.length - this._agendaPointsInServer(corp.HQ) - 2.5; //the subtracted value is arbitrary (with 2 the AI was underprotective of HQ)
     return ret;
   }
 
@@ -609,6 +642,7 @@ class CorpAI {
     return false;
   }
 
+  //returns int
   _copiesOfCardIn(title, cards) {
 	var ret=0;
     for (var i = 0; i < cards.length; i++) {
@@ -1058,6 +1092,8 @@ class CorpAI {
 	intoServerOptions.sort(function(a,b) {
 		var aAdvReq = AdvancementRequirement(a.cardToInstall);
 		var bAdvReq = AdvancementRequirement(b.cardToInstall);
+		if (typeof(a.cardToInstall.AIAdvancementLimit) == 'function') aAdvReq = a.cardToInstall.AIAdvancementLimit;
+		if (typeof(b.cardToInstall.AIAdvancementLimit) == 'function') bAdvReq = b.cardToInstall.AIAdvancementLimit;
 		var aWindow = 0;
 		var bWindow = 0;
 		for (var i=0; i<scoringServers.length; i++) {
@@ -1066,7 +1102,6 @@ class CorpAI {
 		}
 		var aDiff = Math.abs(aAdvReq - aWindow); 
 		var bDiff = Math.abs(bAdvReq - bWindow); 
-		//TODO do this properly for Ambush and Hostile cards too (probably need some kind of AIAdvancementTarget function)
 		return (aDiff - bDiff);
 	});
 	//this._log(JSON.stringify(intoServerOptions));
@@ -1123,6 +1158,38 @@ class CorpAI {
     this._log("This hand will do");
     return optionList.indexOf("n"); //not mulligan
   }
+  
+  _isAmbush(server) {
+	  for (var i=0; i<server.root.length; i++) {
+		  if (CheckSubType(server.root[i],"Ambush")) return true;
+	  }
+	  return false;
+  }
+  
+  //if the runner is running on an ambush server, don't stop them unless it will be obvious
+  _iceToLeaveUnrezzed(server) {
+	var ret = null;
+	if ( server==attackedServer && Credits(corp) < 6 && this._isAmbush(server) ) {
+		for (var i=0; i<server.ice.length; i++) {
+			var card = server.ice[i];
+			if (!card.rezzed) {
+				for (var j=0; j<card.subroutines.length; j++) {
+					//choose the highest cost ice with an etr subroutine to leave unrezzed
+					if (card.subroutines[j].text.includes("nd the run")) {
+						if (!ret) ret = card;
+						else if (RezCost(card) > RezCost(ret)) ret = card;
+					}
+				}
+			}
+		}
+	}	
+	return ret;
+  }
+
+  _runnerMayWinIfServerBreached(server) {
+	  if (AgendaPoints(runner) + this._agendaPointsInServer(server) >= AgendaPointsToWin()) return true;
+	  return false;
+  }
 
   Phase_Approaching(optionList) {
     //if there is something that can be rezzed...only bother if the server isn't empty
@@ -1140,7 +1207,7 @@ class CorpAI {
           var rezIce = true;
 		  //make sure there isn't better ice this will prevent us from rezzing
 		  var thisServerValue = this._serverValue(attackedServer);
-		  var thisIceProtectionValue = this._iceProtectionValue(card);
+		  var thisIceProtectionValue = this._cardProtectionValue(card);
 		  var serversToCompare = [];
 		  if (corp.archives !== attackedServer) serversToCompare.push(corp.archives);
 		  if (corp.RnD !== attackedServer) serversToCompare.push(corp.RnD);
@@ -1157,7 +1224,7 @@ class CorpAI {
 				if (!serverToCompare.ice[j].rezzed) {
 					if (!CheckCredits(currentRezCost+RezCost(serverToCompare.ice[j]), corp, "rezzing")) {
 						if ( (comparisonValue > thisServerValue) ||
-						     ((comparisonValue == thisServerValue) && (this._iceProtectionValue(serverToCompare.ice[j]) > thisIceProtectionValue)) ) {
+						     ((comparisonValue == thisServerValue) && (this._cardProtectionValue(serverToCompare.ice[j]) > thisIceProtectionValue)) ) {
 						  this._log("Rez cost not worth it, need to save it for "+serverToCompare.ice[j].title+" in "+ServerName(serverToCompare));
 						  rezIce = false;
 						}
@@ -1166,6 +1233,36 @@ class CorpAI {
 				}
 			  }
 		  }
+		  //also consider if there is a defensive upgrade worth rezzing in this server instead
+		  for (var i=0; i<attackedServer.root.length; i++) {
+			if (typeof(attackedServer.root[i].AIDefensiveValue) !== 'undefined') {
+  			  if (!attackedServer.root[i].rezzed) {
+				if (!CheckCredits(currentRezCost+RezCost(attackedServer.root[i]), corp, "rezzing")) {
+			      if (this._cardProtectionValue(attackedServer.root[i]) > thisIceProtectionValue) {
+				    this._log("Rez cost not worth it, need to save it for "+attackedServer.root[i].title+" in this server");
+				    rezIce = false;
+			      }
+			      else this._log("Rez this is better than "+attackedServer.root[i].title+" in this server");
+				}
+			  }
+			}
+		  }
+		  
+		  
+		  
+		  //if a card is hosted (e.g. Tranquilizer) only rez if super rich (the *5 is arbitrary, observe and tweak)
+		  //unless breaching could mean game loss
+		  if (!this._runnerMayWinIfServerBreached(attackedServer)) {
+			  if ( (typeof(card.hostedCards) !== 'undefined') && (card.hostedCards.length > 0) && (Credits(corp) < currentRezCost*5) ) {
+				  rezIce = false;
+			  }
+		  }
+		  
+		  //there may be other reasons to leave this ice unrezzed (e.g. allow into an ambush)
+		  if (this._iceToLeaveUnrezzed(attackedServer) == card) {
+			  rezIce = false;
+		  }
+		  
           //special exceptions:
           if (GetTitle(card) == "Cell Portal") {
             //only rez cell portal if it is behind at least one rezzed ice
@@ -1363,20 +1460,22 @@ class CorpAI {
   //this function is either reached because the trash is optional or called by _bestTrashOption
   Phase_TrashBeforeInstall(optionList) {
     this._log("phase is trash before install");
-    //check for obsolete bluff to overwrite
-    if (corp.resolvingCards.length > 0) {
-      if (CheckCardType(corp.resolvingCards[0], ["agenda", "asset"])) {
-        var installedCards = InstalledCards(corp);
-        for (var i = 0; i < installedCards.length; i++) {
-          var card = installedCards[i];
-          if (this._obsoleteBluff(card)) {
-            return this._returnPreference(optionList, "trash", {
-              cardToTrash: card,
-            });
-          }
-        }
-      }
-    }
+    //no need to check assets since they'll be automatically trashed
+	
+	//check for unrezzed ice with hosted card (e.g. Tranquilizer) unless super rich
+	for (var i = 0; i < optionList.length; i++) {
+	  if (typeof optionList[i].card !== "undefined") {
+		var card = optionList[i].card;
+		if (card !== null) {
+		  if (!CheckCardType(card, ["ice"])) {
+			if ( (typeof(card.hostedCards) !== 'undefined') && (card.hostedCards.length > 0) && (!card.rezzed) && (Credits(corp) < RezCost(card)*5) ) {
+				this._log("trashing an ice card");
+				return i;
+			}
+	      }
+		}
+	  }
+	}
 
     //there may be no choice - check:
     if (optionList.indexOf("n") > -1) {
@@ -1473,6 +1572,61 @@ class CorpAI {
 	return canFullyAdvance;
   }
 
+  //returns true if the card should be played
+  //TODO use functions like this more widely rather than having copies of similar code
+  _commonCardToPlayChecks(cardToPlay,msg="") {
+	if (cardToPlay) {
+	  this._log("there is a card to play "+msg);
+	  var playThis = true; //if no specific rules have been defined then just play it whenever you can
+	  if (typeof(cardToPlay.AIWouldPlay) == 'function') playThis = cardToPlay.AIWouldPlay();
+	  if (playThis&&FullCheckPlay(cardToPlay)) {
+		this._log("I will play it");
+		return true;
+	  }
+	}
+	return false;
+  }
+
+  //return a card we can use to benefit from tags (useWhenTaggedCards is in order of preference)
+  //or null if none
+  _useWhenTaggedCard() {
+	  var useWhenTaggedCards = ["Retribution", "Predictive Planogram"];
+	  for (var i = 0; i < useWhenTaggedCards.length; i++) {
+		var cardToPlay = this._copyOfCardExistsIn(
+		  useWhenTaggedCards[i],
+		  corp.HQ.cards
+		);
+		if (this._commonCardToPlayChecks(cardToPlay,"that benefits from tags")) {
+			return cardToPlay;
+		}
+	  }
+	  return null;
+  }
+  
+  //if tags were to be given to the Runner, could they be punished for it (hypothetically)
+  //returns true or false
+  //given the hypothetical tags, corp clicks, and corp credits
+  _potentialTagPunishment(tags,clicks,credits) {
+	  if (clicks > 0 && credits > 1 && runner.rig.resources.length > 0) return true; //could trash a resource using the main phase action
+	  //set up for hypothetical testing
+	  var storedTags = runner.tags;
+	  var storedClicks = corp.clickTracker;
+	  var storedCredits = corp.creditPool;
+	  var storedPhaseIdentifier = currentPhase.identifier;
+	  //set hypotheticals
+	  runner.tags = tags;
+	  corp.clickTracker = clicks;
+	  corp.creditPool = credits;
+	  currentPhase.identifier = "Corp 2.2"; //for CheckActionClicks
+	  if (this._useWhenTaggedCard()) return true;
+	  //restore actual values
+	  runner.tags = storedTags;
+	  corp.creditPool = storedCredits;
+	  corp.clickTracker = storedClicks;
+	  currentPhase.identifier == storedPhaseIdentifier;
+	  return false;
+  }
+
   Phase_Main(optionList) {
     //for debugging, list server protection including archives
 	this._serverToProtect(false,true);
@@ -1515,14 +1669,10 @@ class CorpAI {
 			  useWhenCanCards[i],
 			  corp.HQ.cards
 			);
-			if (cardToPlay) {
-			  this._log("there is a card with a window of opportunity");
-			  if (FullCheckPlay(cardToPlay)) {
-				this._log("I could play it");
+			if (this._commonCardToPlayChecks(cardToPlay,"with a window of opportunity")) {
 				return this._returnPreference(optionList, "play", {
 				  cardToPlay: cardToPlay,
 				});
-			  }
 			}
 		  }
 		}
@@ -1554,22 +1704,14 @@ class CorpAI {
 
 		//should I take advantage of the runner being tagged?
 		if (CheckTags(1)) {
-		  //first check if there are cards we can use to benefit from tags (in order of preference)
-		  var useWhenTaggedCards = ["Retribution", "Predictive Planogram"];
-		  for (var i = 0; i < useWhenTaggedCards.length; i++) {
-			cardToPlay = this._copyOfCardExistsIn(
-			  useWhenTaggedCards[i],
-			  corp.HQ.cards
-			);
-			if (cardToPlay) {
-			  this._log("there is a card that benefits from tags");
-			  if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
-				this._log("I could play it");
+		  //first check if there are cards we can use to benefit from tags
+		  if (optionList.includes("play")) {
+			  cardToPlay = this._useWhenTaggedCard();
+			  if (cardToPlay) {
 				return this._returnPreference(optionList, "play", {
 				  cardToPlay: cardToPlay,
 				});
 			  }
-			}
 		  }
 		  //or we can just use the basic action
 		  if (optionList.indexOf("trash") > -1) return optionList.indexOf("trash");
@@ -1613,6 +1755,11 @@ class CorpAI {
             )
               advancementLimit =
                 card.AIAdvancementLimit();
+			//if the card is an ambush, check for higher-advance to bluff as
+			if (CheckSubType(card,"Ambush")) {
+				var blufflim = this._bluffAdvanceLimit(card);
+				if (blufflim > advancementLimit) advancementLimit = blufflim;
+			}
 			//don't start advancing if too poor to finish the job (the false means not necessarily this turn) or agenda in weak server
 			var startOrContinueAdvancement = false;
 			if (card.advancement > 0) startOrContinueAdvancement = true; //already started, feel free to continue (the counter shows the runner it is advanceable)
@@ -1632,13 +1779,13 @@ class CorpAI {
 					"Seamless Launch",
 					corp.HQ.cards
 				  );
-				  if ( cardToPlay && card == almostDoneAgenda) { //for now let's just use Seamless for finishing agendas
+				  if ( cardToPlay && (card == almostDoneAgenda) || card.AIRushToFinish ) { //for now let's just use Seamless for finishing agendas or specific cards
 					this._log("there is an economy advance");
 					if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
 					  this._log("I could play it");
 					  if (
 						Counters(card,"advancement") <
-						AdvancementRequirement(card) - 1 ||
+						advancementLimit - 1 ||
 						card.AIOverAdvance
 					  ) {
 						this._log("I intend to");

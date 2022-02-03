@@ -49,11 +49,13 @@ var capturedLog = [];
     oldLog.apply(console, arguments);
   };
 })();
+var debugging = false;
 (function () {
   var oldLog = console.error;
   console.error = function (message) {
     capturedLog.push("ERROR: "+Readablify(message));
     oldLog.apply(console, arguments);
+	if (debugging) debugger; //pause execution if debugging
   };
 })();
 
@@ -717,6 +719,8 @@ function PlayerWin(player, msgstr) {
   Log("Runner agenda points: " + AgendaPoints(runner));
   Log("R&D size: " + corp.RnD.cards.length);
   Log("Grip size: " + runner.grip.length);
+  console.log("Agendas were stolen from: "+JSON.stringify(agendaStolenLocations)); //for testing/balancing AIs
+  if (debugging) debugger;
 }
 
 /**
