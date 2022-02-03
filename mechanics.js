@@ -1145,6 +1145,13 @@ function Steal() {
   OpportunityForAvoidPrevent(corp, "steal", function () {
     ResolveAccess(originalLocation);
     if (intended.steal == null) return;
+	
+	var stolenFromString = "remote";
+	if (originalLocation == corp.HQ.cards) stolenFromString = "HQ";
+	else if (originalLocation == corp.RnD.cards) stolenFromString = "R&D";
+	else if (originalLocation == corp.archives.cards) stolenFromString = "Archives";
+	agendaStolenLocations.push(stolenFromString); //for testing/balancing AIs
+	
     MoveCard(intended.steal, runner.scoreArea);
     intended.steal.faceUp = true;
     if (runner.AI != null) runner.AI.LoseInfoAboutHQCards(intended.steal);

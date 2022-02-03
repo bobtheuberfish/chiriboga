@@ -699,6 +699,8 @@ phases.corpActionMain = {
               )
                 allowAdvance = false;
             }
+			/*
+			//now handled by corp AI advance code
             if (
               typeof possibleAdvance[i].card.AIAdvancementLimit == "function"
             ) {
@@ -708,6 +710,7 @@ phases.corpActionMain = {
               )
                 allowAdvance = false;
             }
+			*/
             if (allowAdvance) ret.push(possibleAdvance[i]);
           }
         }
