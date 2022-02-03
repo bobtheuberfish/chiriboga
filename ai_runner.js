@@ -1186,17 +1186,17 @@ console.log(this.preferred);
         //console.log(this.cachedPotentials[this.cachedPotentials.length-1].server.serverName+": "+this.cachedPotentials[this.cachedPotentials.length-1].potential);
         //and calculate best path
         var bestpath = null;
-        var useOverclock = null; //the overclock card to use. If null, don't or can't use.
+        this.serverList[i].useOverclock = null; //the overclock card to use. If null, don't or can't use.
         if (optionList.includes("play")) {
           if (this.serverList[i].potential > 1.5) {
             //save Overclock for high value targets
-            useOverclock = this._copyOfCardExistsIn("Overclock", runner.grip);
-            if (useOverclock) {
-              if (!FullCheckPlay(useOverclock)) useOverclock = null;
+            this.serverList[i].useOverclock = this._copyOfCardExistsIn("Overclock", runner.grip);
+            if (this.serverList[i].useOverclock) {
+              if (!FullCheckPlay(this.serverList[i].useOverclock)) this.serverList[i].useOverclock = null;
             }
           }
         }
-        if (useOverclock)
+        if (this.serverList[i].useOverclock)
           bestpath = this._calculateBestCompleteRun(server, 4, -1, -1);
         //Overclock effectively gives 4 extra credits, a click is needed to play it, and a card slot (reduce max damage by 1)
         else bestpath = this._calculateBestCompleteRun(server, 0, -1, 0); //assume 1 click will be used to initiate the run
@@ -1226,7 +1226,7 @@ console.log(this.preferred);
           var damageOffset = 3; //but for now this at least allows a bit of planning
           //recalculate paths
           var bestpath = null;
-          if (useOverclock)
+          if (this.serverList[i].useOverclock)
             bestpath = this._calculateBestCompleteRun(
               server,
               4 + creditOffset,
@@ -1475,7 +1475,7 @@ console.log(this.preferred);
         //maybe run by playing a run event?
         if (optionList.includes("play")) {
           //if Overclock has been suggested, decompensate to see if it's necessary (just check the path cost credits, don't recalculate)
-          if (useOverclock) {
+          if (this.serverList[0].useOverclock) {
             if (
               AvailableCredits(runner) <
               this.serverList[0].bestpath[
@@ -1484,7 +1484,7 @@ console.log(this.preferred);
             ) {
               //i.e the run uses more than the credit available without Overclock
               return this._returnPreference(optionList, "play", {
-                cardToPlay: useOverclock,
+                cardToPlay: this.serverList[0].useOverclock,
                 nextPrefs: { chooseServer: this.serverList[0].server },
               });
             }
