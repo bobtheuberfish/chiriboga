@@ -4166,8 +4166,9 @@ systemGateway[71] = {
 	//only install if there isn't already a Regolith installed (unless installing from Archives)
     if (!corp.AI._copyAlreadyInstalled(this) || this.cardLocation == corp.archives.cards) {
         //choose the first non-scoring server (create one if necessary)
+		//but allow install into completely empty non-scoring servers if no agendas in hand
         for (var j = 0; j < emptyProtectedRemotes.length; j++) {
-          if (!corp.AI._isAScoringServer(emptyProtectedRemotes[j])) return j;
+          if ( !corp.AI._isAScoringServer(emptyProtectedRemotes[j]) || (corp.AI._agendasInHand() < 1 && emptyProtectedRemotes[j].root.length < 1) ) return j;
         }
         return emptyProtectedRemotes.length;
     }

@@ -47,8 +47,8 @@ class RunCalculator {
       //unknown ice
       //in this set only Pharos can be advanced
       if (Counters(ice, "advancement") > 0) iceKnown = true;
-      //not Pharos
-      else {
+      //not Pharos, if corp has credits assume a general ice
+      else if (maxCorpCred > 0) {
         result.subTypes = ["Sentry"];
         result.strength = Math.min(maxCorpCred, 6);
         result.sr = [];
@@ -813,7 +813,7 @@ class RunCalculator {
       //check for already calculated and stored value
       p.valid = false; //by default, then set to true if check succeed
 	  var clicksLeft = clickLimit - p.runner_clicks_spent;
-	  var creditsLeft = creditLimit - p.runner_credits_spent
+	  var creditsLeft = creditLimit - p.runner_credits_spent;
       if (clicksLeft >= 0) {
         if (creditsLeft >= 0) {
           var totalEffect = this.TotalEffect(p);

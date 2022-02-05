@@ -141,6 +141,13 @@ function DownloadCapturedLog() {
   if (typeof corp.archives.AISuccessfulRuns !== 'undefined') extraOutput += "corp.archives.AISuccessfulRuns="+corp.archives.AISuccessfulRuns+";\n";
   if (typeof corp.RnD.AISuccessfulRuns !== 'undefined') extraOutput += "corp.RnD.AISuccessfulRuns="+corp.RnD.AISuccessfulRuns+";\n";
   if (typeof corp.HQ.AISuccessfulRuns !== 'undefined') extraOutput += "corp.HQ.AISuccessfulRuns="+corp.HQ.AISuccessfulRuns+";\n";
+  if (runner.AI && typeof runner.AI.suspectedHQCards !== 'undefined') {
+	  extraOutput += "runner.AI.suspectedHQCards = [";
+	  for (var i=0; i<runner.AI.suspectedHQCards.length; i++) {
+		  extraOutput += "{title:'"+runner.AI.suspectedHQCards[i].title+"',cardType:'"+runner.AI.suspectedHQCards[i].cardType+"',copies:"+runner.AI.suspectedHQCards[i].copies+",uncertainty:"+runner.AI.suspectedHQCards[i].uncertainty+"},";
+	  }
+	  extraOutput += "];\n";
+  }
   
   //send extra output and log
   var logOutput = capturedLog.concat(extraOutput);
