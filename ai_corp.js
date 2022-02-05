@@ -1962,11 +1962,11 @@ class CorpAI {
               }
             }
           }
-          LogError(
-            "preferred option not matched with this optionList and preferred:"
-          );
           console.log(optionList);
           console.log(this.preferred);
+          LogError(
+            "preferred option not matched with the above optionList and preferred:"
+          );
           this.preferred = null; //reset (don't reuse the preference)
         }
       }

@@ -174,6 +174,10 @@ class RunnerAI {
       "Pennyshaver",
     ]; //cards which can be triggered to gain credits
     this.drawInstall = ["Verbal Plasticity"]; //cards which can be installed to draw cards
+	//cards which can be installed to break subroutines but aren't icebreakers
+    this.specialBreakers = ["Botulus", "Tranquilizer"];
+	//cards which can be installed to increase maximum hand size
+	this.maxHandIncreasers = ["T400 Memory Diamond"];
   }
 
   //functions to use/gain/lose info about cards in HQ
@@ -572,8 +576,8 @@ class RunnerAI {
         for (var j = 0; j < atLeastOne.length; j++) {
           if (CheckSubType(card, atLeastOne[j])) keep = true;
         }
-        //or AI breaker
-        if (CheckSubType(card, "AI")) {
+        //or AI or other special breaker (e.g. Botulus, Tranquilizer)
+        if (CheckSubType(card, "AI") || this.specialBreakers.includes(card.title)) {
           //keep unless all breaker types are already present in grip/programs
           if (
             this._essentialBreakerTypesNotInHandOrArray(installedRunnerCards)
@@ -719,6 +723,26 @@ class RunnerAI {
     //console.log("Result: " + JSON.stringify(this.cardsWorthKeeping));
   }
 
+  _commonCardToInstallChecks(cardToInstall) {
+	  if (cardToInstall) {
+		this._log("maybe by installing "+cardToInstall.title+"?");
+		var canBeInstalled = true;
+		var choices = ChoicesCardInstall(cardToInstall);
+		if (!CheckInstall(cardToInstall)) canBeInstalled = false;
+		//this doesn't check costs
+		else if (choices.length < 1) canBeInstalled = false;
+		//this checks credits, mu, available hosts, etc.
+		else if (
+		  typeof cardToInstall.AIPreferredInstallChoice == "function"
+		) {
+		  if (cardToInstall.AIPreferredInstallChoice(choices) < 0)
+			canBeInstalled = false; //card AI code deemed it unworthy
+		}
+		if (canBeInstalled && !this._wastefulToInstall(cardToInstall)) return true;
+	  }
+	  return false;
+  }
+
   //returns index of choice
   Choice(optionList, choiceType) {
     if (optionList.length < 1) {
@@ -806,11 +830,11 @@ console.log(this.preferred);
               }
             }
           }
-          LogError(
-            "preferred option not matched with this optionList and preferred:"
-          );
           console.log(optionList);
           console.log(this.preferred);
+          LogError(
+            "preferred option not matched with the above optionList and preferred:"
+          );
           this.preferred = null; //reset (don't reuse the preference)
         }
       }
@@ -836,6 +860,17 @@ console.log(this.preferred);
     }
 
     if (executingCommand == "discard") {
+	  //check for duplicate uniques (i.e. a copy is installed or another in hand) first
+      for (var i = 0; i < optionList.length; i++) {
+		if (optionList[i].card.unique) {
+			if ( this._copyOfCardExistsIn(optionList[i].card.title, runner.grip, [optionList[i].card]) 
+				|| this._uniqueCopyAlreadyInstalled(optionList[i].card) ) {
+					this._log("I don't need more of these");
+					return i;
+			}
+		}
+  	  }
+	  //then cards that are not worth keeping
       for (var i = 0; i < optionList.length; i++) {
         if (!this.cardsWorthKeeping.includes(optionList[i].card)) {
           this._log("I guess I didn't really need this");
@@ -1253,21 +1288,28 @@ console.log(this.preferred);
               if (PlayerCanLook(runner, iceCard)) {
                 if (!this._matchingBreakerIsInstalled(iceCard)) {
                   for (var k = 0; k < this.cardsWorthKeeping.length; k++) {
+					var isSpecialBreaker = this.specialBreakers.includes(this.cardsWorthKeeping[k].title);
                     if (
-                      CheckSubType(this.cardsWorthKeeping[k], "Icebreaker") &&
+                      ( CheckSubType(this.cardsWorthKeeping[k], "Icebreaker") || isSpecialBreaker ) &&
                       optionList.includes("install")
                     ) {
                       if (
-                        BreakerMatchesIce(this.cardsWorthKeeping[k], iceCard)
+                        BreakerMatchesIce(this.cardsWorthKeeping[k], iceCard) || isSpecialBreaker
                       ) {
+						var choices = ChoicesCardInstall(this.cardsWorthKeeping[k]);
                         if (
-                          ChoicesCardInstall(this.cardsWorthKeeping[k]).length >
+                          choices.length >
                           0
-                        )
-                          return this._returnPreference(optionList, "install", {
-                            cardToInstall: this.cardsWorthKeeping[k],
-                            hostToInstallTo: null,
-                          });
+                        ) {
+						  var preferredInstallChoice = 0;
+						  if (typeof this.cardsWorthKeeping[k].AIPreferredInstallChoice == 'function') preferredInstallChoice = this.cardsWorthKeeping[k].AIPreferredInstallChoice(choices);
+						  if (preferredInstallChoice > -1) {
+							  return this._returnPreference(optionList, "install", {
+								cardToInstall: this.cardsWorthKeeping[k],
+								hostToInstallTo: choices[preferredInstallChoice].host,
+							  });
+						  }
+						}
                       }
                     } else if (
                       this.cardsWorthKeeping[k].title == "Mutual Favor" &&
@@ -1658,6 +1700,26 @@ console.log(this.preferred);
       //just an ordinary draw action, then
       if (optionList.includes("draw")) return optionList.indexOf("draw");
     }
+	else if (currentOverDraw > maxOverDraw) {
+		this._log("Maybe the excess grip situation could be improved");
+		//maybe install something that could increase maximum hand size?
+		if (optionList.includes("install")) {
+			for (var i = 0; i < this.maxHandIncreasers.length; i++) {
+			  //if this.maxHandIncreasers[i] is found in hand, and can be installed, install it
+			  cardToInstall = this._copyOfCardExistsIn(
+				this.maxHandIncreasers[i],
+				runner.grip
+			  );
+			  if (this._commonCardToInstallChecks(cardToInstall)) {
+				  this._log("there's one I could install");
+				  return this._returnPreference(optionList, "install", {
+					cardToInstall: cardToInstall,
+					hostToInstallTo: null,
+				  }); //assumes unhosted cards for now
+			  }
+			}
+		}
+	}
 
     //nothing else worth doing? consider making money
     var prioritiseEconomy = true;
@@ -1734,33 +1796,19 @@ console.log(this.preferred);
             this.economyInstall[i],
             runner.grip
           );
-          if (cardToInstall) {
-            this._log("maybe by installing a card?");
-            var canBeInstalled = true;
-            var choices = ChoicesCardInstall(cardToInstall);
-            if (!CheckInstall(cardToInstall)) canBeInstalled = false;
-            //this doesn't check costs
-            else if (choices.length < 1) canBeInstalled = false;
-            //this checks credits, mu, available hosts, etc.
-            else if (
-              typeof cardToInstall.AIPreferredInstallChoice == "function"
-            ) {
-              if (cardToInstall.AIPreferredInstallChoice(choices) < 0)
-                canBeInstalled = false; //card AI code deemed it unworthy
-            }
-            if (canBeInstalled && !this._wastefulToInstall(cardToInstall)) {
+		  if (this._commonCardToInstallChecks(cardToInstall)) {
               this._log("there's one I could install");
               return this._returnPreference(optionList, "install", {
                 cardToInstall: cardToInstall,
                 hostToInstallTo: null,
               }); //assumes unhosted cards for now
-            }
-          }
+		  }
         }
       }
     }
 
     //other cards that may or may not be economy but were considered to be worthwhile
+	this._log("Ok not economy, something else?");
     for (var i = 0; i < this.cardsWorthKeeping.length; i++) {
       var card = this.cardsWorthKeeping[i];
       if (card.cardType == "event" && optionList.includes("play")) {

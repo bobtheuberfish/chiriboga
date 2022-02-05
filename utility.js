@@ -720,7 +720,7 @@ function PlayerWin(player, msgstr) {
   Log("R&D size: " + corp.RnD.cards.length);
   Log("Grip size: " + runner.grip.length);
   console.log("Agendas were stolen from: "+JSON.stringify(agendaStolenLocations)); //for testing/balancing AIs
-  if (debugging) debugger;
+  //if (debugging) debugger;
 }
 
 /**
