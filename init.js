@@ -899,49 +899,57 @@ function Render() {
   }
 
   //Field rendered, now overlay any GUI
-  var corpFooterHeight = 65;
   var guiWOffset = 0;
   var guiWSpacingModifier = 0;
   if (viewingPlayer == corp) {
     guiWOffset = 45;
     guiWSpacingModifier = 7;
   }
+  
+  var hideCredits = runner.identityCard.hideCredits;
+  var hideClicks = runner.identityCard.hideClicks;
+  var hideTags = runner.identityCard.hideTags;
+  var hideMU = runner.identityCard.hideMU;
+  var hideBrainDamage = runner.identityCard.hideBrainDamage;
+  var hideHandSize = runner.identityCard.hideHandSize;
+  var hideBadPublicity = runner.identityCard.hideBadPublicity;
+  
+  var corpFooterHeight = 65;
   var originalGuiWOffset = guiWOffset;
-  //if (viewingPlayer != corp) corpFooterHeight = 0;
-  countersUI.credits.corp.SetPosition(
-    guiWOffset + w - 40,
-    40 + corpFooterHeight
-  );
-  guiWOffset -= guiWSpacingModifier;
-  countersUI.click.corp.SetPosition(
-    guiWOffset + w - 114,
-    40 + corpFooterHeight
-  );
-  guiWOffset -= guiWSpacingModifier;
-  countersUI.hand_size.corp.SetPosition(
-    guiWOffset + w - 204,
-    40 + corpFooterHeight
-  );
+  var counterPositionings = [];
+  //e is element, rw is width when viewing as runner, cw is that but as corp, h is height, s is whether to show it
+  counterPositionings.push({ e: countersUI.credits.corp, rw: 40, cw: 40, h: 40, s: !hideCredits });
+  counterPositionings.push({ e: countersUI.click.corp, rw: 74, cw: 74, h: 40, s: !hideClicks });
+  counterPositionings.push({ e: countersUI.hand_size.corp, rw: 90, cw: 90, h: 40, s: !hideHandSize });
+  //counterPositionings.push({ e: countersUI.bad_publicity.corp, rw: 93, cw: 85, h: 38, s: !hideBadPublicity });
+  var counterUIWOffset = 0;
+  for (var i=0; i<counterPositionings.length; i++) {
+	  if (!counterPositionings[i].s) {
+		counterPositionings[i].e.SetPosition(-100, -100); //moved off-screen for basic tutorial game  //hide offscreen
+	  }
+	  else {
+		  if (viewingPlayer == runner) counterUIWOffset += counterPositionings[i].rw;
+		  else counterUIWOffset += counterPositionings[i].cw;
+		  counterPositionings[i].e.SetPosition(guiWOffset + w - counterUIWOffset, counterPositionings[i].h + corpFooterHeight);
+		  guiWOffset -= guiWSpacingModifier;
+	  }
+  }
   corp._renderOnlyHandSize = MaxHandSize(corp);
   countersUI.hand_size.corp.prefix = corp.HQ.cards.length + "/";
   countersUI.hand_size.corp.richText.text =
     countersUI.hand_size.corp.prefix + corp._renderOnlyHandSize;
-  //guiWOffset -= guiWSpacingModifier;
-  //countersUI.bad_publicity.corp.SetPosition(guiWOffset+w-204,40+corpFooterHeight);
-  guiWOffset -= guiWSpacingModifier;
-  countersUI.bad_publicity.corp.SetPosition(guiWOffset + w - 204, -100); //moved off-screen for basic tutorial game
-
+  
   var runnerFooterHeight = 65;
   guiWOffset = originalGuiWOffset;
   counterPositionings = [];
   //e is element, rw is width when viewing as runner, cw is that but as corp, h is height, s is whether to show it
-  counterPositionings.push({ e: countersUI.credits.runner, rw: 40, cw: 40, h: 40, s: !runner.identityCard.hideCredits });
-  counterPositionings.push({ e: countersUI.click.runner, rw: 70, cw: 70, h: 40, s: !runner.identityCard.hideClicks });
-  counterPositionings.push({ e: countersUI.tag.runner, rw: 85, cw: 85, h: 39, s: (!runner.identityCard.hideTags && globalProperties.agendaPointsToWin == 7) }); //hide for tutorial deck
-  counterPositionings.push({ e: countersUI.mu.runner, rw: 80, cw: 100, h: 38, s: !runner.identityCard.hideMU });
-  //counterPositionings.push({ e: countersUI.brain_damage.runner, rw: 207, cw: 207, h: 38, s: !runner.identityCard.hideBrainDamage });
-  counterPositionings.push({ e: countersUI.hand_size.runner, rw: 93, cw: 85, h: 38, s: !runner.identityCard.hideHandSize });
-  var counterUIWOffset = 0;
+  counterPositionings.push({ e: countersUI.credits.runner, rw: 40, cw: 40, h: 40, s: !hideCredits });
+  counterPositionings.push({ e: countersUI.click.runner, rw: 70, cw: 70, h: 40, s: !hideClicks });
+  counterPositionings.push({ e: countersUI.tag.runner, rw: 85, cw: 85, h: 39, s: (!hideTags && globalProperties.agendaPointsToWin == 7) }); //hide for tutorial deck
+  counterPositionings.push({ e: countersUI.mu.runner, rw: 80, cw: 100, h: 38, s: !hideMU });
+  //counterPositionings.push({ e: countersUI.brain_damage.runner, rw: 207, cw: 207, h: 38, s: !hideBrainDamage });
+  counterPositionings.push({ e: countersUI.hand_size.runner, rw: 93, cw: 85, h: 38, s: !hideHandSize });
+  counterUIWOffset = 0;
   for (var i=0; i<counterPositionings.length; i++) {
 	  if (!counterPositionings[i].s) {
 		counterPositionings[i].e.SetPosition(-100, -100); //moved off-screen for basic tutorial game  //hide offscreen
@@ -953,54 +961,14 @@ function Render() {
 		  guiWOffset -= guiWSpacingModifier;
 	  }
   }
-  /* **OLD UI PLACEMENT **
-  countersUI.credits.runner.SetPosition(
-    guiWOffset + 40,
-    h - 40 - runnerFooterHeight
-  );
-  guiWOffset -= guiWSpacingModifier;
-  countersUI.click.runner.SetPosition(
-    guiWOffset + 110,
-    h - 40 - runnerFooterHeight
-  );
   runner._renderOnlyMU = MemoryUnits() - InstalledMemoryCost();
-  //basic tutorial game has different ui placement
-  if (runner.identityCard.hideTags) {
-    guiWOffset -= guiWSpacingModifier;
-    countersUI.tag.runner.SetPosition(guiWOffset + 209, h + 100); //moved off-screen for basic tutorial game
-    guiWOffset -= guiWSpacingModifier;
-    countersUI.mu.runner.SetPosition(
-      guiWOffset + 207,
-      h - 38 - runnerFooterHeight
-    ); //moved across for basic tutorial game
-    guiWOffset -= guiWSpacingModifier;
-    countersUI.brain_damage.runner.SetPosition(guiWOffset + 384, h + 100); //moved off-screen for basic tutorial game
-  } //standard ui
-  else {
-    guiWOffset -= guiWSpacingModifier;
-    countersUI.tag.runner.SetPosition(
-      guiWOffset + 200,
-      h - 39 - runnerFooterHeight
-    );
-    guiWOffset -= guiWSpacingModifier;
-    countersUI.mu.runner.SetPosition(
-      guiWOffset + 301,
-      h - 38 - runnerFooterHeight
-    );
-    //guiWOffset -= guiWSpacingModifier;
-    //countersUI.brain_damage.runner.SetPosition(guiWOffset+384,h-38-runnerFooterHeight);
-    countersUI.brain_damage.runner.SetPosition(guiWOffset + 384, h + 100); //moved off-screen (System Gateway doesn't have brain damage)
-  }
-  guiWOffset -= guiWSpacingModifier;
-  countersUI.hand_size.runner.SetPosition(
-    guiWOffset + 384,
-    h - 38 - runnerFooterHeight
-  );
-  */
+  countersUI.mu.runner.postfix = "/" + MemoryUnits();
+  countersUI.mu.runner.richText.text = runner._renderOnlyMU + countersUI.mu.runner.postfix;
   runner._renderOnlyHandSize = MaxHandSize(runner);
   countersUI.hand_size.runner.prefix = runner.grip.length + "/";
   countersUI.hand_size.runner.richText.text =
     countersUI.hand_size.runner.prefix + runner._renderOnlyHandSize;
+	
   cardRenderer.ShowParticleContainers();
 
   //keep installing card where it was dropped by storing it here and restoring it after apply of cascades
@@ -1193,6 +1161,7 @@ function Setup() {
     0.5,
     false
   );
+  /*
   countersUI.bad_publicity.corp = cardRenderer.CreateCounter(
     countersUI.bad_publicity.texture,
     corp,
@@ -1200,6 +1169,7 @@ function Setup() {
     0.5,
     false
   );
+  */
   /*
   countersUI.brain_damage.runner = cardRenderer.CreateCounter(
     countersUI.brain_damage.texture,
@@ -1374,7 +1344,7 @@ function Main() {
 function ExecuteChosen(chosenCommand) {
   if (chosenCommand != null) {
     if (TutorialReplacer != null) {
-      if (TutorialReplacer(chosenCommand)) return; //replaced by tutorial response
+      if (TutorialReplacer.call(viewingPlayer.identityCard,chosenCommand)) return; //replaced by tutorial response
     }
 
     var footerText = NicelyFormatCommand(chosenCommand);
