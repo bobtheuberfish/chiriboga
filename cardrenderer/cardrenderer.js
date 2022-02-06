@@ -125,6 +125,7 @@ var CardRenderer = {
       this.key = key;
       this.hideWhenZero = hideWhenZero;
       this.prefix = "";
+	  this.postfix = "";
       this.sprite = new PIXI.Sprite(this.texture);
       this.sprite.renderer = this;
       this.app.stage.addChild(this.sprite); //add sprite to the stage container (so it renders)
@@ -210,7 +211,7 @@ var CardRenderer = {
                 this.particleContainer,
                 particleSystems.removecredit
               );
-            this.richText.text = this.prefix + newValue;
+            this.richText.text = this.prefix + newValue + this.postfix;
             this.animateCountdown = 6; //time before next animate (dunno what units this is in? maybe ms but seems a bit slow if so?)
           }
         } else this.animateCountdown -= delta;
@@ -290,7 +291,7 @@ var CardRenderer = {
         .endFill();
       this.defaultMask.visible = false;
       this.sprite.addChild(this.defaultMask);
-
+	  
       //dummy for mouse checks when zoomed (added to/removed from stage as needed)
       this.dummy = new PIXI.Sprite(this.frontTexture);
       this.dummy.card = this;
