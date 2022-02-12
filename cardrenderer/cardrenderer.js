@@ -849,6 +849,7 @@ var CardRenderer = {
             else destRot = Math.PI;
           }
         }
+		if (this.forceIceRotation) destRot = Math.PI * 0.5;
         if (this.zoomed === true) {
           dispDiff.x = this.destinationPosition.x - this.storedPosition.x;
           dispDiff.y = this.destinationPosition.y - this.storedPosition.y;
@@ -1264,6 +1265,7 @@ var CardRenderer = {
         strokeThickness: 10,
       });
       this.tutorialStyle = new PIXI.TextStyle({
+		fontFamily: "PlayBoldUnambig",
         fill: "white",
         fontWeight: "bold",
         miterLimit: 1,
@@ -1272,7 +1274,7 @@ var CardRenderer = {
         wordWrapWidth: 420,
       });
       this.tutorialText = new PIXI.Text("", this.tutorialStyle);
-      this.tutorialText.anchor.set(0, 1);
+      this.tutorialText.anchor.set(0, 0.5);
       this.app.stage.addChild(this.tutorialText); //add to the stage container (so it renders)
 
       //store all particle containers created through this

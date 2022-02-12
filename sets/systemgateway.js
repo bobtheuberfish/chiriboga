@@ -4289,6 +4289,13 @@ systemGateway[76] = {
   link: 0,
   cardType: "identity",
   subTypes: ["Natural"],
+  Tutorial: function(str) {
+    if ((str=="Corp Mulligan")||(str=="Runner Mulligan")) {
+		if (globalProperties.agendaPointsToWin == 6) TutorialMessage("For this game we will be playing with the System Gateway starter decks.\n\nThe first player to earn 6 agenda points wins (for a normal game it would be 7 points).");
+		else TutorialMessage("The Corp now has these abilities:\n• @, 2$: Trash a resource (use only when Runner is tagged)\n• @@@: Purge virus counters\n\nThe Runner now has this ability:\n• @, 2$: Remove a tag");
+	}
+	else TutorialMessage("");
+  }
 };
 systemGateway[77] = {
   title: "The Syndicate",

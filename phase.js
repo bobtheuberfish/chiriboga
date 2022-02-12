@@ -442,6 +442,7 @@ phaseTemplates.globalTriggers = {
   chosenString: "triggered",
 };
 
+var forcePreventCombinePhase = false;
 function CombineResponseWithPhase(
   responsePhase,
   combineWith,
@@ -463,7 +464,7 @@ function CombineResponseWithPhase(
     //check whether we can use a combined phase (see below)
     var combineResponse = false;
     //console.log(ChoicesTriggerableAbilities(runner));
-    if (corp.AI == null)
+    if (corp.AI == null && !forcePreventCombinePhase)
       combineResponse = ChoicesTriggerableAbilities(runner).length == 0; //i.e. whether runner has potential actions - corp needs to decide whether to respond
 
     if (exceptionCondition()) {
@@ -478,7 +479,7 @@ function CombineResponseWithPhase(
     //special things to simplify UI when playing as Corp
     //specifically, we add the properties of currentPhase.combineWith into currentPhase
     //a more simple approach would be to use a pre-created phase for this - but then anything that modified either phase wouldn't affect it
-    if (corp.AI == null) {
+    if (corp.AI == null && !forcePreventCombinePhase) {
       if (combineResponse) {
         //if the current phase has not yet been backed up, store any properties that will be overwritten
         //do this by iterating through currentPhase.combineWith and storing currentPhases's property, if defined

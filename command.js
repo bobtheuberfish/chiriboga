@@ -100,6 +100,11 @@ var useHostForAvailability = false;
 function GetAvailability(renderer) {
   if (currentPhase == null) return 0; //game not loaded yet
 
+  //special cases for tutorial blacklist
+  if (TutorialBlacklist) {
+	  if (TutorialBlacklist.includes(renderer.card)) return 0;
+  }
+	
   //check for accessing first
   if (accessList.length > 0) {
     if (renderer.card === accessingCard) return -3;
@@ -250,7 +255,7 @@ function ResolveClick(input) {
   }
 
   if (TutorialReplacer != null) {
-    if (TutorialReplacer(input)) return true; //returning true prevents any remaining code in renderer.OnClick() from firing
+    if (TutorialReplacer.call(viewingPlayer.identityCard,input)) return true; //returning true prevents any remaining code in renderer.OnClick() from firing
   }
 
   if (relevantOptions.length == 0) {
@@ -653,7 +658,7 @@ function MakeChoice() {
   }
 
   //show cancel button if relevant
-  if (typeof currentPhase.Cancel !== "undefined") {
+  if (typeof currentPhase.Cancel !== "undefined" && !currentPhase.preventCancel) {
     if (typeof currentPhase.Cancel[executingCommand] === "function") {
       footerHtml +=
         '<button class="button" onclick="currentPhase.Cancel[executingCommand]();">Cancel</button>'; //provide a cancel button

@@ -271,6 +271,9 @@ function CorpTestField(
   glowTextures,
   strengthTextures
 ) {
+  //hide an old identityCard if for some strange reason one exists (e.g. tutorial/testing)
+  if (corp.identityCard) corp.identityCard.renderer.destinationPosition = -1000;
+  //now make new one
   corp.identityCard = InstanceCard(
       systemGateway,
       identity,
@@ -448,13 +451,15 @@ function RunnerTestField(
   glowTextures,
   strengthTextures
 ) {
-	runner.identityCard = InstanceCard(
-      systemGateway,
-      identity,
-      cardBackTexturesRunner,
-      glowTextures,
-      strengthTextures
-    );
+	if (runner.identityCard.title != "Tutorial") {
+		runner.identityCard = InstanceCard(
+		  systemGateway,
+		  identity,
+		  cardBackTexturesRunner,
+		  glowTextures,
+		  strengthTextures
+		);
+	}
 	for (var i = 0; i < heapCards.length; i++) {
     InstanceCardsPush(
       systemGateway,
@@ -529,14 +534,18 @@ function RunnerTestField(
 }
 
 //DECKS
+var cardBackTexturesCorp = {};
+var cardBackTexturesRunner = {};
+var glowTextures = {};
+var strengthTextures = {};
 function LoadDecks() {
   //Special variables to store card back textures and strength and install cost textures
   var knownTexture = cardRenderer.LoadTexture("images/known.png");
-  var cardBackTexturesCorp = {
+  cardBackTexturesCorp = {
     back: cardRenderer.LoadTexture("images/Corp_back.png"),
     known: knownTexture,
   };
-  var cardBackTexturesRunner = {
+  cardBackTexturesRunner = {
     back: cardRenderer.LoadTexture("images/Runner_back.png"),
     known: knownTexture,
   };
@@ -547,7 +556,7 @@ function LoadDecks() {
   var subroutineBrokenTexture = cardRenderer.LoadTexture("images/broken.png");
   var runnerCostTexture = cardRenderer.LoadTexture("images/runner_cost.png");
   var corpRezCostTexture = cardRenderer.LoadTexture("images/corp_rez_cost.png");
-  var strengthTextures = {
+  strengthTextures = {
     ice: strengthTextureIce,
     ib: strengthTextureIcebreaker,
     broken: subroutineBrokenTexture,
@@ -556,11 +565,31 @@ function LoadDecks() {
   };
 
   //And glow texture
-  var glowTextures = {
+  glowTextures = {
     zoomed: cardRenderer.LoadTexture("images/glow_white.png"),
     unzoomed: cardRenderer.LoadTexture("images/glow_white_cropped.png"),
     ice: cardRenderer.LoadTexture("images/glow_white_ice.png"),
   };
+
+  //run the intro tutorial, if specified
+  var specifiedMentor = URIParameter("mentor");
+  if (specifiedMentor != "") { //later, more options?
+    runner.identityCard = InstanceCard(
+      tutorial,
+      specifiedMentor,
+      cardBackTexturesRunner,
+      glowTextures,
+      strengthTextures
+    ); //note that card.location is not set for identity cards
+    corp.identityCard = InstanceCard(
+      systemGateway,
+      77,
+      cardBackTexturesCorp,
+      glowTextures,
+      strengthTextures
+    ); //note that card.location is not set for identity cards
+	return;
+  }
 
   var deckJson = {};
 
@@ -719,18 +748,6 @@ function LoadDecks() {
   }
   PrintDeck(runner.identityCard, runner.stack);
 
-  //run the intro tutorial, if specified
-  var specifiedMentor = URIParameter("mentor");
-  if (specifiedMentor != "") { //later, more options?
-    runner.identityCard = InstanceCard(
-      tutorial,
-      0, //later, more options?
-      cardBackTexturesRunner,
-      glowTextures,
-      strengthTextures
-    ); //note that card.location is not set for identity cards
-  }
-  
   //InstanceCardsPush(cheat,1,runner.grip,1,cardBackTexturesRunner,glowTextures,strengthTextures);
   //var newCard = InstanceCardsPush(systemGateway,33,runner.rig.resources,1,cardBackTexturesRunner,glowTextures,strengthTextures)[0];
   //newCard.faceUp = true;
@@ -855,35 +872,34 @@ function LoadDecks() {
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-
-
+  //debugging = true; //set true to pause execution on error
+  //mainLoopDelay = 10; //for speedy AI vs AI testing
 
   /*
 	RunnerTestField(1, //identity
 		[], //heapCards
 		[14,14,14,14], //stackCards
 		[14,14,14,14,14], //gripCards
-		[34,33,33,14,22,22, 15,26,8,24,8,6], //installed
+		[3], //installed
 		[], //stolen
 		cardBackTexturesRunner,glowTextures,strengthTextures);
 	
 	CorpTestField(35, //identity
 		[], //archivesCards
-		[40,40,40,40], //rndCards
+		[73,72,47,73,73,39], //rndCards
 		[], //hqCards
 		[], //archivesInstalled
-		[73,72,47,73,73,39], //rndInstalled
+		[54], //rndInstalled
 		[], //hqInstalled
-		[[72,54,39,58,42,69]], //remotes (array of arrays)
+		[[69,58]], //remotes (array of arrays)
 		[], //scored
 		cardBackTexturesCorp,glowTextures,strengthTextures);
-  */
-  
+    */
   //GainCredits(runner,12);
   //GainCredits(corp,14);
   //ChangePhase(phases.corpStartDraw);
-  //ChangePhase(phases.runnerEndOfTurn);
   //ChangePhase(phases.runnerStartResponse);
+  //ChangePhase(phases.runnerEndOfTurn);
   //AddTags(2);
   //runner.clickTracker = 1;
   //ChangePhase(phases.corpDiscardStart);

@@ -19,7 +19,9 @@
 		<style>
 			@font-face {
 			  font-family: PlayBoldUnambig;
-			  src: url('cardrenderer/Play-Bold-Unambig.ttf');
+			  <?php
+			  echo "src: url('cardrenderer/Play-Bold-Unambig.ttf?".filemtime('cardrenderer/Play-Bold-Unambig.ttf')."');";
+			  ?>
 			  font-weight: bold;
 			}
 		</style>

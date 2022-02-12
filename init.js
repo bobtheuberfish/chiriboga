@@ -581,8 +581,15 @@ function Render() {
     cardRenderer.app.stage.y += h - oldH;
   }
   w -= arbitraryHistorySpacer; //leave space for history sidebar
-  cardRenderer.tutorialText.x = 15;
-  cardRenderer.tutorialText.y = h - 170;
+  if (viewingPlayer == corp) {
+	cardRenderer.tutorialText.x = w + 45;
+	cardRenderer.tutorialText.y = 0.5*h;//170;
+	cardRenderer.tutorialText.rotation = Math.PI;
+  }
+  else {
+	cardRenderer.tutorialText.x = 15;
+	cardRenderer.tutorialText.y = 0.5*h + 70;
+  }
   //scale interface to match game zoom
   $("#footer").css("transform-origin", "bottom left");
   $("#footer").css("transform", "scale(" + interfaceScale + ")");
@@ -946,7 +953,7 @@ function Render() {
   counterPositionings.push({ e: countersUI.credits.runner, rw: 40, cw: 40, h: 40, s: !hideCredits });
   counterPositionings.push({ e: countersUI.click.runner, rw: 70, cw: 70, h: 40, s: !hideClicks });
   counterPositionings.push({ e: countersUI.tag.runner, rw: 85, cw: 85, h: 39, s: (!hideTags && globalProperties.agendaPointsToWin == 7) }); //hide for tutorial deck
-  counterPositionings.push({ e: countersUI.mu.runner, rw: 80, cw: 100, h: 38, s: !hideMU });
+  counterPositionings.push({ e: countersUI.mu.runner, rw: 82, cw: 100, h: 38, s: !hideMU });
   //counterPositionings.push({ e: countersUI.brain_damage.runner, rw: 207, cw: 207, h: 38, s: !hideBrainDamage });
   counterPositionings.push({ e: countersUI.hand_size.runner, rw: 93, cw: 85, h: 38, s: !hideHandSize });
   counterUIWOffset = 0;
