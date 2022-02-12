@@ -1257,7 +1257,7 @@ var CardRenderer = {
 
       //set up font styles (https://pixijs.io/pixi-text-style/)
       this.counterStyle = new PIXI.TextStyle({
-        fontFamily: "PlayBoldUnambig",
+        fontFamily: "PlayBoldNisei",
         fontSize: 48,
         fontWeight: "bold",
         fill: "#ffffff",
@@ -1265,7 +1265,7 @@ var CardRenderer = {
         strokeThickness: 10,
       });
       this.tutorialStyle = new PIXI.TextStyle({
-		fontFamily: "PlayBoldUnambig",
+		fontFamily: "PlayBoldNisei",
         fill: "white",
         fontWeight: "bold",
         miterLimit: 1,

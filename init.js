@@ -1196,7 +1196,7 @@ function Setup() {
   else if (typeof runner.identityCard.Tutorial !== "undefined")
     runner.identityCard.Tutorial.call(runner.identityCard, "");
   //blank string means game initialisation
-  else if (!skipShuffleAndDraw) {
+  if (!skipShuffleAndDraw) {
     //normal play mode (non-tutorial)
     Shuffle(corp.RnD.cards);
     Shuffle(runner.stack);

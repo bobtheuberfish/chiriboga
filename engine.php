@@ -18,9 +18,9 @@
 		?>
 		<style>
 			@font-face {
-			  font-family: PlayBoldUnambig;
+			  font-family: PlayBoldNisei;
 			  <?php
-			  echo "src: url('cardrenderer/Play-Bold-Unambig.ttf?".filemtime('cardrenderer/Play-Bold-Unambig.ttf')."');";
+			  echo "src: url('cardrenderer/Play-Bold-Nisei.ttf?".filemtime('cardrenderer/Play-Bold-Nisei.ttf')."');";
 			  ?>
 			  font-weight: bold;
 			}
@@ -30,7 +30,7 @@
 			WebFont.load({
 				custom: {
 					families: [
-						'PlayBoldUnambig'
+						'PlayBoldNisei'
 					]
 				}
 			});

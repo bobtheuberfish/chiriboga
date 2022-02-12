@@ -9,7 +9,7 @@ function SharedTutorialFunction(str) {
       }
     }
 }
-//PLAN
+
 tutorial[5] = {
   title: "Tutorial",
   imageFile: "30076.png",
@@ -238,6 +238,14 @@ tutorial[5] = {
     },
     {
       str: "Run 6.4",
+      action: function () {
+		TutorialCommandMessage = {}
+        TutorialMessage("The eye icon on the back of a card indicates it has been seen by the Runner.\n\nThe eye is not part of the game rules, it's just in this version for convenience.",true);
+		TutorialBlacklist = null;
+      },
+    },
+    {
+      str: "Runner 1.3",
       action: function () {
 		TutorialCommandMessage = {}
         TutorialMessage("");
