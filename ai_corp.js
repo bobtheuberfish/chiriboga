@@ -1574,13 +1574,13 @@ class CorpAI {
 
   //returns true if the card should be played
   //TODO use functions like this more widely rather than having copies of similar code
-  _commonCardToPlayChecks(cardToPlay,msg="") {
+  _commonCardToPlayChecks(cardToPlay,msg="",logwillplay=false) {
 	if (cardToPlay) {
 	  this._log("there is a card to play "+msg);
 	  var playThis = true; //if no specific rules have been defined then just play it whenever you can
 	  if (typeof(cardToPlay.AIWouldPlay) == 'function') playThis = cardToPlay.AIWouldPlay();
 	  if (playThis&&FullCheckPlay(cardToPlay)) {
-		this._log("I will play it");
+		if (logwillplay) this._log("I will play it");
 		return true;
 	  }
 	}
@@ -1618,12 +1618,13 @@ class CorpAI {
 	  corp.clickTracker = clicks;
 	  corp.creditPool = credits;
 	  currentPhase.identifier = "Corp 2.2"; //for CheckActionClicks
-	  if (this._useWhenTaggedCard()) return true;
+	  var useWhenTaggedCard = this._useWhenTaggedCard();
 	  //restore actual values
 	  runner.tags = storedTags;
 	  corp.creditPool = storedCredits;
 	  corp.clickTracker = storedClicks;
 	  currentPhase.identifier == storedPhaseIdentifier;
+	  if (useWhenTaggedCard) return true;
 	  return false;
   }
 
@@ -1669,7 +1670,7 @@ class CorpAI {
 			  useWhenCanCards[i],
 			  corp.HQ.cards
 			);
-			if (this._commonCardToPlayChecks(cardToPlay,"with a window of opportunity")) {
+			if (this._commonCardToPlayChecks(cardToPlay,"if opportunity arises",true)) {
 				return this._returnPreference(optionList, "play", {
 				  cardToPlay: cardToPlay,
 				});
