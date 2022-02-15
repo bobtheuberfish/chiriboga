@@ -950,10 +950,11 @@ var CardRenderer = {
           if (!this.faceUp) {
             this.flipProgress = -1.0;
             this.SetTextureToBack();
-            if (this.card.cardType == "ice") {
-              if (CheckInstalled(this.card)) {
-                this.sprite.rotation = 0.5 * Math.PI;
-              }
+          }
+		  //special rules for installed ice (to keep it sideways unless zoomed)
+          if (this.card.cardType == "ice") {
+            if (CheckInstalled(this.card)) {
+              this.sprite.rotation = 0.5 * Math.PI;
             }
           }
         }
