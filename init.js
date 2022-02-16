@@ -690,17 +690,7 @@ function Render() {
     w - heapCascade.width - stackHeapSpacingX - stackCascade.width;
   runner.stack.xEnd = w - heapCascade.width - stackHeapSpacingX;
   runner.stack.yCards = stackHeapBottom;
-  runnerResolvingCascade.Apply(
-    cardRenderer.app,
-    w - heapCascade.width - stackHeapSpacingX * 2 - stackCascade.width,
-    stackHeapBottom + runnerYBottom,
-    0.5,
-    0.75,
-    hostingX
-  );
-  var runnerHandX = w - (w - runnerHeaderFooter * fieldZoom) * 0.5;
-  gripCascade.Apply(cardRenderer.app, runnerHandX, h, 0.5, 0.5, hostingX); //runnerYBottom intentionally not included. space left for footer/header
-  FanHand(runner);
+  //resolving cards and grip are applied along with corp's, farther down
 
   //CORP
   //aesthetic improvements to fit more on the screen
@@ -835,14 +825,30 @@ function Render() {
     corp.remoteServers[i].xEnd = serverStartX + remoteCascades[i].width;
     serverStartX += remoteCascades[i].width + serverSeparationX;
   }
+  
+  //put server labels and tutorial text on top (but under hand, resolving cards, viewing grid and gui)
+  cardRenderer.app.stage.addChild(cardRenderer.serverText);
+  cardRenderer.app.stage.addChild(cardRenderer.tutorialText);
+  
+  //runner resolving cards and hand
+  runnerResolvingCascade.Apply(
+    cardRenderer.app,
+    w - heapCascade.width - stackHeapSpacingX * 2 - stackCascade.width,
+    stackHeapBottom + runnerYBottom,
+    0.5,
+    0.75,
+    hostingX
+  );
+  var runnerHandX = w - (w - runnerHeaderFooter * fieldZoom) * 0.5;
+  gripCascade.Apply(cardRenderer.app, runnerHandX, h, 0.5, 0.5, hostingX); //runnerYBottom intentionally not included. space left for footer/header
+  FanHand(runner);
+  
+  //corp resolving cards and hand on top
   corpResolvingCascade.Apply(cardRenderer.app, w * 0.5, 0, 0.5, 0.25, hostingX);
   var corpHandX =
     (w - corpHeaderFooter * fieldZoom + arbitraryMenubarSpacer) * 0.5;
   corpHandCascade.Apply(cardRenderer.app, corpHandX, 0, 0.5, 0.5, hostingX);
   FanHand(corp);
-
-  //put server labels on top
-  cardRenderer.app.stage.addChild(cardRenderer.serverText);
 
   //render viewing grid, either for access or just view
   if (viewingGrid == null && viewingPile !== null) viewingGrid = viewingPile;
@@ -1060,7 +1066,7 @@ function Render() {
       attackedServerGlow.y
     );
   } else cardRenderer.UpdateGlow(null, 0);
-  
+
   //update actual rendered view (this would eventually be done automatically but this can cause issues with hover detection out of sync
   cardRenderer.app.render(cardRenderer.app.stage);
 }

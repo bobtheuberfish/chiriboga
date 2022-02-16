@@ -15,26 +15,8 @@
 		<?php
 		echo '<script src="cardrenderer/particlesystems.js?' . filemtime('cardrenderer/particlesystems.js') . '"></script>';
 		echo '<script src="cardrenderer/cardrenderer.js?' . filemtime('cardrenderer/cardrenderer.js') . '"></script>';
+		include 'cardrenderer/webfont.php';
 		?>
-		<style>
-			@font-face {
-			  font-family: PlayBoldNisei;
-			  <?php
-			  echo "src: url('cardrenderer/Play-Bold-Nisei.ttf?".filemtime('cardrenderer/Play-Bold-Nisei.ttf')."');";
-			  ?>
-			  font-weight: bold;
-			}
-		</style>
-		<script src="cardrenderer/webfont.js"></script>
-		<script>
-			WebFont.load({
-				custom: {
-					families: [
-						'PlayBoldNisei'
-					]
-				}
-			});
-		</script>
 		<script src="deck/lz-string.min.js"></script>
 		<script src="deck/seedrandom.min.js"></script>
 		<?php
@@ -82,7 +64,7 @@
 			<div id="menucontent" class="modal-content-inactive">
 				<span onclick="$('#menu').css('display','none');" class="close-cross">X</span>
 				<h1>Chiriboga</h1>
-				<button id="exittomenu" onclick="window.location.href='index.html';" class="button">Exit to main menu</button>
+				<button id="exittomenu" onclick="window.location.href='index.php';" class="button">Exit to main menu</button>
 				<button id="editdeck" onclick="window.location.href='decklauncher.html';" class="button">Edit this deck</button>
 				<button onclick="window.location.href='decklauncher.html';" class="button">Edit new random deck</button>
 				<div class="options">
