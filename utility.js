@@ -86,7 +86,7 @@ function ReplicationCode(src,str) {
 	  if (card.hostedCards) {
 		ret += addr+".hostedCards = [];\n";
 		for (var i=0; i<card.hostedCards.length; i++) {
-			ret += "InstanceCardsPush(systemGateway,"+card.hostedCards[i].setNumber+","+addr+".hostedCards,1,cardBackTextures"+PlayerName(card.hostedCards[i].player)+",glowTextures,strengthTextures)[0].host = "+addr+";\n";
+			ret += "InstanceCardsPush("+card.hostedCards[i].setNumber+","+addr+".hostedCards,1,cardBackTextures"+PlayerName(card.hostedCards[i].player)+",glowTextures,strengthTextures)[0].host = "+addr+";\n";
 		}
 		ret += ReplicationCode(card.hostedCards,addr+".hostedCards");
 	  }
@@ -2288,18 +2288,17 @@ const combinations = (set) => {
   );
 };
 
-var deckBuildingMaxTime = 2000; //ms
+var deckBuildingMaxTime = 200; //ms
 
 /**
  * Count the influence in a list of card indices (set numbers)<br/>Nothing is logged.
  *
  * @method CountInfluence
  * @param {Card} identityCard identity card to decide whether influence counts
- * @param {Card[]} cardSet the set containing the original definition to create instances from
  * @param {int[]} indices set indices of the original definition
  * @returns {int} total influence
  */
-function CountInfluence(identityCard, cardSet, indices) {
+function CountInfluence(identityCard, indices) {
   var ret = 0;
   for (var i = 0; i < indices.length; i++) {
     var cardNumber = indices[i];
@@ -2310,20 +2309,18 @@ function CountInfluence(identityCard, cardSet, indices) {
 }
 
 /**
- * Instance and add cards to a given array from a given set and list of set numbers.<br/>Do not use this with agendas.<br/>Nothing is logged.
+ * Instance and add cards to a given array from a list of set numbers.<br/>Do not use this with agendas.<br/>Nothing is logged.
  *
  * @method DeckBuildRandomly
  * @param {Card} identityCard identity card to base deckbuilding around
- * @param {Card[]} cardSet the set containing the original definition to create instances from
  * @param {int[]} indices set indices of the original definition to create instances from
- * @param {Card[]} target array to push the Card instances into (indices will be pushed instead if cardBack etc are not specified)
+ * @param {Card[]} destination array to push the Card instances into (indices will be pushed instead if cardBack etc are not specified)
  * @param {int} maxLength maximum length for destination to become
  * @param {int} maxInfluence maximum influence for list to have
  * @returns {int[]} set id of each card instanced
  */
 function DeckBuildRandomly(
   identityCard,
-  cardSet,
   indices,
   destination,
   maxLength,
@@ -2372,7 +2369,6 @@ function DeckBuildRandomly(
         countSoFar[randomIndex]++;
         if (typeof cardBack !== "undefined")
           InstanceCardsPush(
-            cardSet,
             cardNumber,
             destination,
             1,
@@ -2387,7 +2383,7 @@ function DeckBuildRandomly(
     }
   }
   //report timeout error, if relevant
-  if (Date.now() - startTime > deckBuildingMaxTime) {
+  if (Date.now() - startTime >= deckBuildingMaxTime) {
     console.error(
       "DeckBuildRandomly phase took too long (identity " +
         identityCard.title +
@@ -2398,19 +2394,17 @@ function DeckBuildRandomly(
   return ret;
 }
 /**
- * Instance and add agendacards to a given array from a given set and list of set numbers.<br/>Use this only with agendas.<br/>Nothing is logged.
+ * Instance and add agendacards to a given array from a list of set numbers.<br/>Use this only with agendas.<br/>Nothing is logged.
  *
  * @method DeckBuildRandomAgendas
  * @param {Card} identityCard identity card to base deckbuilding around
- * @param {Card[]} cardSet the set containing the original definition to create instances from
  * @param {int[]} indices set indices of the original definition to create instances from
- * @param {Card[]} target array to push the Card instances into
+ * @param {Card[]} destination array to push the Card instances into
  * @param {int} deckSize used to determine number of agenda points required
  * @returns {int[]} set id of each card instanced
  */
 function DeckBuildRandomAgendas(
   identityCard,
-  cardSet,
   indices,
   destination,
   deckSize,
@@ -2423,7 +2417,7 @@ function DeckBuildRandomAgendas(
   var agendaMax = agendaMin + 1;
   var ret = [];
   //initialise counts
-  var countSoFar = []; //of each card (by name)
+  var countSoFar = []; //of each card (by index in input array)
   for (var i = 0; i < indices.length; i++) {
     countSoFar[i] = 0;
     for (var j = 0; j < destination.length; j++) {
@@ -2437,6 +2431,7 @@ function DeckBuildRandomAgendas(
       }
     }
   }
+  var threePointerIncluded = false; //system gateway decks require at least one Send a Message
   var totalAgendaPoints = 0;
   while (
     totalAgendaPoints < agendaMin &&
@@ -2444,6 +2439,11 @@ function DeckBuildRandomAgendas(
   ) {
     var randomIndex = RandomRange(0, indices.length - 1);
     var cardNumber = indices[randomIndex];
+	if (!threePointerIncluded) {
+		cardNumber = 30069;
+		randomIndex = indices.indexOf(30069);
+		threePointerIncluded = true;
+	}
     var limitPerDeck = 3;
     if (typeof cardSet[cardNumber].limitPerDeck !== "undefined")
       limitPerDeck = cardSet[cardNumber].limitPerDeck;
@@ -2458,7 +2458,6 @@ function DeckBuildRandomAgendas(
           countSoFar[randomIndex]++;
           if (typeof cardBack !== "undefined")
             InstanceCardsPush(
-              cardSet,
               cardNumber,
               destination,
               1,
@@ -2474,7 +2473,7 @@ function DeckBuildRandomAgendas(
     }
   }
   //report timeout error, if relevant
-  if (Date.now() - startTime > deckBuildingMaxTime) {
+  if (Date.now() - startTime >= deckBuildingMaxTime) {
     console.error(
       "DeckBuildRandomAgendas phase took too long (identity " +
         identityCard.title +
@@ -2483,4 +2482,172 @@ function DeckBuildRandomAgendas(
     console.log(destination);
   }
   return ret;
+}
+/**
+ * Instance and add cards to a given array to generate a random deck for the given identityCard.<br/>Nothing is logged.
+ *
+ * @method DeckBuild
+ * @param {Card} identityCard identity card to base deckbuilding around
+ * @param {Card[]} destination array to push the Card instances into
+ * @returns {int[]} set id of each card instanced
+ */
+function DeckBuild(
+  identityCard,
+  destination,
+  cardBack,
+  glowTextures,
+  strengthTextures
+) {
+  var cardsAdded = [];
+  if (typeof destination == 'undefined') destination = [];
+  
+  if (identityCard.player == runner) {
+	  //RUNNER deckbuilding
+	  
+	  var runnerFaction = identityCard.faction;
+	  var influenceUsed = 0;
+	  //consoles
+	  var consoleCards = [30003, 30023, 30014];
+	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
+		identityCard,
+		consoleCards,
+		destination,
+		1,
+		0,
+		cardBack,
+		glowTextures,
+		strengthTextures
+	  ));
+	  //fracters
+	  var fracterCards = [30006, 30016];
+	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
+		identityCard,
+		fracterCards,
+		destination,
+		destination.length + RandomRange(1, 2),
+		3,
+		cardBack,
+		glowTextures,
+		strengthTextures
+	  ));
+	  //decoders
+	  var decoderCards = [30005, 30026];
+	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
+		identityCard,
+		decoderCards,
+		destination,
+		destination.length + RandomRange(1, 2),
+		3,
+		cardBack,
+		glowTextures,
+		strengthTextures
+	  ));
+	  //killer
+	  var killerCards = [30015, 30025];
+	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
+		identityCard,
+		killerCards,
+		destination,
+		destination.length + RandomRange(1, 2),
+		3,
+		cardBack,
+		glowTextures,
+		strengthTextures
+	  ));
+	  //economy
+	  var economyCards = [30007, 30018, 30020, 30027, 30029, 30030, 30033]; //only includes cards that would fairly certainly provide credits
+	  var influenceUsed = CountInfluence(
+		identityCard,
+		cardsAdded
+	  );
+	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
+		identityCard,
+		economyCards,
+		destination,
+		destination.length + RandomRange(9, 11),
+		9 - influenceUsed,
+		cardBack,
+		glowTextures,
+		strengthTextures
+	  ));
+	  //any other cards
+      var otherCards = [
+        30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30011, 30012, 30013, 30014, 30015, 30016, 30017, 30018, 30020, 30021, 30022, 30023,
+        30024, 30025, 30026, 30027, 30028, 30029, 30030, 30031, 30032, 30033, 30034,
+      ];
+	  influenceUsed = CountInfluence(
+		identityCard,
+		cardsAdded
+	  );
+	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
+		identityCard,
+		otherCards,
+		destination,
+		identityCard.deckSize,
+		15 - influenceUsed,
+		cardBack,
+		glowTextures,
+		strengthTextures
+	  ));
+  } else {
+	  //CORP deckbuilding
+	  
+	  //agendas
+	  var agendaCards = [30060, 30044, 30036, 30067, 30068, 30069, 30070, 30052];
+	  cardsAdded = cardsAdded.concat(DeckBuildRandomAgendas(
+		identityCard,
+		agendaCards,
+		destination,
+		44, //TODO use deckSize (but build for lease agenda density e.g. 44 for 40)
+		cardBack,
+		glowTextures,
+		strengthTextures
+	  ));
+	  //economy
+	  var economyCards = [30037, 30048, 30056, 30064, 30071, 30075]; //(credit economy only)
+	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
+		identityCard,
+		economyCards,
+		destination,
+		destination.length + RandomRange(9, 11),
+		3,
+		cardBack,
+		glowTextures,
+		strengthTextures
+	  ));
+	  var influenceUsed = CountInfluence(
+		identityCard,
+		cardsAdded
+	  );
+	  //ice
+	  var iceCards = [30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074];
+	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
+		identityCard,
+		iceCards,
+		destination,
+		destination.length + RandomRange(15, 18),
+		9 - influenceUsed,
+		cardBack,
+		glowTextures,
+		strengthTextures
+	  ));
+	  influenceUsed = CountInfluence(
+		identityCard,
+		cardsAdded
+	  );
+	  //other cards
+	  var otherCards = [30040, 30041, 30042, 30045, 30049, 30050, 30053, 30057, 30058, 30061, 30065, 30066];
+	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
+		identityCard,
+		otherCards,
+		destination,
+		44,
+		15 - influenceUsed,
+		cardBack,
+		glowTextures,
+		strengthTextures
+	  ));
+  }
+ 
+  return cardsAdded;
 }

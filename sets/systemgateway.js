@@ -1,11 +1,11 @@
 //CARD DEFINITIONS FOR SYSTEM GATEWAY
-var systemGateway = [];
-systemGateway[1] = {
-  title: 'René "Loup" Arcemont',
+cardSet[30001] = {
+  title: 'René "Loup" Arcemont: Party Animal',
   imageFile: "30001.png",
   player: runner,
   faction: "Anarch",
   cardType: "identity",
+  deckSize: 40,
   usedThisTurn: false,
   runnerTurnBegin: {
     Resolve: function () {
@@ -29,7 +29,7 @@ systemGateway[1] = {
     },
   },
 };
-systemGateway[2] = {
+cardSet[30002] = {
   title: "Wildcat Strike",
   imageFile: "30002.png",
   player: runner,
@@ -78,7 +78,7 @@ systemGateway[2] = {
     }
   },
 };
-systemGateway[3] = {
+cardSet[30003] = {
   title: "Carnivore",
   imageFile: "30003.png",
   player: runner,
@@ -158,7 +158,7 @@ systemGateway[3] = {
     },
   ],
 };
-systemGateway[4] = {
+cardSet[30004] = {
   title: "Botulus",
   imageFile: "30004.png",
   player: runner,
@@ -227,7 +227,7 @@ systemGateway[4] = {
     return bestIndex;
   },
 };
-systemGateway[5] = {
+cardSet[30005] = {
   title: "Buzzsaw",
   imageFile: "30005.png",
   player: runner,
@@ -329,7 +329,7 @@ systemGateway[5] = {
     automatic: true,
   },
 };
-systemGateway[6] = {
+cardSet[30006] = {
   title: "Cleaver",
   imageFile: "30006.png",
   player: runner,
@@ -429,7 +429,7 @@ systemGateway[6] = {
     automatic: true,
   },
 };
-systemGateway[7] = {
+cardSet[30007] = {
   title: "Fermenter",
   imageFile: "30007.png",
   player: runner,
@@ -474,7 +474,7 @@ systemGateway[7] = {
     return true;
   },
 };
-systemGateway[8] = {
+cardSet[30008] = {
   title: "Leech",
   imageFile: "30008.png",
   player: runner,
@@ -541,7 +541,7 @@ systemGateway[8] = {
     return 0; //do install
   },
 };
-systemGateway[9] = {
+cardSet[30009] = {
   title: "Cookbook",
   imageFile: "30009.png",
   player: runner,
@@ -560,12 +560,13 @@ systemGateway[9] = {
     },
   },
 };
-systemGateway[10] = {
+cardSet[30010] = {
   title: "Zahya Sadeghi: Versatile Smuggler",
   imageFile: "30010.png",
   player: runner,
   faction: "Criminal",
   cardType: "identity",
+  deckSize: 40,
   subTypes: ["Cyborg"],
   usedThisTurn: false,
   cardsAccessedThisRun: 0,
@@ -619,7 +620,7 @@ systemGateway[10] = {
     },
   },
 };
-systemGateway[11] = {
+cardSet[30011] = {
   title: "Mutual Favor",
   imageFile: "30011.png",
   player: runner,
@@ -729,7 +730,7 @@ systemGateway[11] = {
     );
   },
 };
-systemGateway[12] = {
+cardSet[30012] = {
   title: "Tread Lightly",
   imageFile: "30012.png",
   player: runner,
@@ -752,7 +753,7 @@ systemGateway[12] = {
     },
   },
 };
-systemGateway[13] = {
+cardSet[30013] = {
   title: "Docklands Pass",
   imageFile: "30013.png",
   player: runner,
@@ -782,7 +783,7 @@ systemGateway[13] = {
     availableWhenInactive: true,
   },
 };
-systemGateway[14] = {
+cardSet[30014] = {
   title: "Pennyshaver",
   imageFile: "30014.png",
   player: runner,
@@ -824,7 +825,7 @@ systemGateway[14] = {
     return true;
   },
 };
-systemGateway[15] = {
+cardSet[30015] = {
   title: "Carmen",
   imageFile: "30015.png",
   player: runner,
@@ -932,7 +933,7 @@ systemGateway[15] = {
     automatic: true,
   },
 };
-systemGateway[16] = {
+cardSet[30016] = {
   title: "Marjanah",
   imageFile: "30016.png",
   player: runner,
@@ -1028,7 +1029,7 @@ systemGateway[16] = {
     automatic: true,
   },
 };
-systemGateway[17] = {
+cardSet[30017] = {
   title: "Tranquilizer",
   imageFile: "30017.png",
   player: runner,
@@ -1088,7 +1089,7 @@ systemGateway[17] = {
     return bestIndex;
   },
 };
-systemGateway[18] = {
+cardSet[30018] = {
   title: "Red Team",
   imageFile: "30018.png",
   player: runner,
@@ -1156,13 +1157,14 @@ systemGateway[18] = {
     },
   ],
 };
-systemGateway[19] = {
+cardSet[30019] = {
   title: "Tāo Salonga: Telepresence Magician",
   imageFile: "30019.png",
   player: runner,
   faction: "Shaper",
   link: 0,
   cardType: "identity",
+  deckSize: 40,
   subTypes: ["Natural"],
   SharedEnumerate: function () {
     var choices = ChoicesInstalledCards(corp, function (card) {
@@ -1280,7 +1282,7 @@ systemGateway[19] = {
     text: "Tāo Salonga: Swap 2 installed pieces of ice",
   },
 };
-systemGateway[20] = {
+cardSet[30020] = {
   title: "Creative Commission",
   imageFile: "30020.png",
   player: runner,
@@ -1294,7 +1296,7 @@ systemGateway[20] = {
     LoseClicks(runner, 1);
   },
 };
-systemGateway[21] = {
+cardSet[30021] = {
   title: "VRcation",
   imageFile: "30021.png",
   player: runner,
@@ -1308,7 +1310,7 @@ systemGateway[21] = {
     LoseClicks(runner, 1);
   },
 };
-systemGateway[22] = {
+cardSet[30022] = {
   title: "DZMZ Optimizer",
   imageFile: "30022.png",
   player: runner,
@@ -1351,7 +1353,7 @@ systemGateway[22] = {
     availableWhenInactive: true,
   },
 };
-systemGateway[23] = {
+cardSet[30023] = {
   title: "Pantograph",
   imageFile: "30023.png",
   player: runner,
@@ -1439,7 +1441,7 @@ systemGateway[23] = {
     text: "Pantograph: Gain 1[c], you may install 1 card",
   },
 };
-systemGateway[24] = {
+cardSet[30024] = {
   title: "Conduit",
   imageFile: "30024.png",
   player: runner,
@@ -1516,7 +1518,7 @@ systemGateway[24] = {
     },
   ],
 };
-systemGateway[25] = {
+cardSet[30025] = {
   title: "Echelon",
   imageFile: "30025.png",
   player: runner,
@@ -1599,7 +1601,7 @@ systemGateway[25] = {
     automatic: true,
   },
 };
-systemGateway[26] = {
+cardSet[30026] = {
   title: "Unity",
   imageFile: "30026.png",
   player: runner,
@@ -1681,7 +1683,7 @@ systemGateway[26] = {
     automatic: true,
   },
 };
-systemGateway[27] = {
+cardSet[30027] = {
   title: "Telework Contract",
   imageFile: "30027.png",
   player: runner,
@@ -1730,7 +1732,7 @@ systemGateway[27] = {
     },
   ],
 };
-systemGateway[28] = {
+cardSet[30028] = {
   title: "Jailbreak",
   imageFile: "30028.png",
   player: runner,
@@ -1760,7 +1762,7 @@ systemGateway[28] = {
     },
   },
 };
-systemGateway[29] = {
+cardSet[30029] = {
   title: "Overclock",
   imageFile: "30029.png",
   player: runner,
@@ -1782,7 +1784,7 @@ systemGateway[29] = {
     return true;
   },
 };
-systemGateway[30] = {
+cardSet[30030] = {
   title: "Sure Gamble",
   imageFile: "30030.png",
   player: runner,
@@ -1794,7 +1796,7 @@ systemGateway[30] = {
     GainCredits(runner, 9);
   },
 };
-systemGateway[31] = {
+cardSet[30031] = {
   title: "T400 Memory Diamond",
   imageFile: "30031.png",
   player: runner,
@@ -1812,7 +1814,7 @@ systemGateway[31] = {
     },
   },
 };
-systemGateway[32] = {
+cardSet[30032] = {
   title: "Mayfly",
   imageFile: "30032.png",
   player: runner,
@@ -1895,7 +1897,7 @@ systemGateway[32] = {
     },
   },
 };
-systemGateway[33] = {
+cardSet[30033] = {
   title: "Smartware Distributor",
   imageFile: "30033.png",
   player: runner,
@@ -1947,7 +1949,7 @@ systemGateway[33] = {
     return true;
   },
 };
-systemGateway[34] = {
+cardSet[30034] = {
   title: "Verbal Plasticity",
   imageFile: "30034.png",
   player: runner,
@@ -1978,12 +1980,13 @@ systemGateway[34] = {
     availableWhenInactive: true,
   },
 };
-systemGateway[35] = {
+cardSet[30035] = {
   title: "Haas-Bioroid: Precision Design",
   imageFile: "30035.png",
   player: corp,
   faction: "Haas-Bioroid",
   cardType: "identity",
+  deckSize: 40,
   subTypes: ["Megacorp"],
   //You get +1 maximum hand size.
   modifyMaxHandSize: {
@@ -2009,7 +2012,7 @@ systemGateway[35] = {
     text: "You may add 1 card from Archives to HQ",
   },
 };
-systemGateway[36] = {
+cardSet[30036] = {
   title: "Luminal Transubstantiation",
   imageFile: "30036.png",
   player: corp,
@@ -2052,7 +2055,7 @@ systemGateway[36] = {
     automatic: true,
   },
 };
-systemGateway[37] = {
+cardSet[30037] = {
   title: "Nico Campaign",
   imageFile: "30037.png",
   player: corp,
@@ -2094,7 +2097,7 @@ systemGateway[37] = {
     return false;
   },
 };
-systemGateway[38] = {
+cardSet[30038] = {
   title: "Ansel 1.0",
   imageFile: "30038.png",
   player: corp,
@@ -2276,7 +2279,7 @@ systemGateway[38] = {
     automatic: true,
   },
 };
-systemGateway[39] = {
+cardSet[30039] = {
   title: "Brân 1.0",
   imageFile: "30039.png",
   player: corp,
@@ -2405,7 +2408,7 @@ systemGateway[39] = {
   ],
   activeForOpponent: true,
 };
-systemGateway[40] = {
+cardSet[30040] = {
   title: "Seamless Launch",
   imageFile: "30040.png",
   player: corp,
@@ -2463,7 +2466,7 @@ systemGateway[40] = {
     PlaceAdvancement(params.card, 2);
   },
 };
-systemGateway[41] = {
+cardSet[30041] = {
   title: "Sprint",
   imageFile: "30041.png",
   player: corp,
@@ -2554,7 +2557,7 @@ systemGateway[41] = {
 	}
 	*/
 };
-systemGateway[42] = {
+cardSet[30042] = {
   title: "Manegarm Skunkworks",
   imageFile: "30042.png",
   player: corp,
@@ -2628,12 +2631,13 @@ systemGateway[42] = {
     return false;
   },
 };
-systemGateway[43] = {
+cardSet[30043] = {
   title: "Jinteki: Restoring Humanity",
   imageFile: "30043.png",
   player: corp,
   faction: "Jinteki",
   cardType: "identity",
+  deckSize: 40,
   subTypes: ["Megacorp"],
   //When your discard phase ends, if there is a facedown card in Archives, gain 1[c].
   corpDiscardEnds: {
@@ -2649,7 +2653,7 @@ systemGateway[43] = {
     text: "When your discard phase ends",
   },
 };
-systemGateway[44] = {
+cardSet[30044] = {
   title: "Longevity Serum",
   imageFile: "30044.png",
   player: corp,
@@ -2746,7 +2750,7 @@ systemGateway[44] = {
     text: "When you score this agenda",
   },
 };
-systemGateway[45] = {
+cardSet[30045] = {
   title: "Urtica Cipher",
   imageFile: "30045.png",
   player: corp,
@@ -2775,7 +2779,7 @@ systemGateway[45] = {
 	  return 4; //this may be overridden to bluff under certain circumstances
   },
 };
-systemGateway[46] = {
+cardSet[30046] = {
   title: "Diviner",
   imageFile: "30046.png",
   player: corp,
@@ -2811,7 +2815,7 @@ systemGateway[46] = {
     },
   ],
 };
-systemGateway[47] = {
+cardSet[30047] = {
   title: "Karunā",
   imageFile: "30047.png",
   player: corp,
@@ -2852,7 +2856,7 @@ systemGateway[47] = {
     },
   ],
 };
-systemGateway[48] = {
+cardSet[30048] = {
   title: "Hansei Review",
   imageFile: "30048.png",
   player: corp,
@@ -2872,7 +2876,7 @@ systemGateway[48] = {
   },
   command: "discard",
 };
-systemGateway[49] = {
+cardSet[30049] = {
   title: "Neurospike",
   imageFile: "30049.png",
   player: corp,
@@ -2913,7 +2917,7 @@ systemGateway[49] = {
     availableWhenInactive: true,
   },
 };
-systemGateway[50] = {
+cardSet[30050] = {
   title: "Anoetic Void",
   imageFile: "30050.png",
   player: corp,
@@ -3026,12 +3030,13 @@ systemGateway[50] = {
     return false;
   },
 };
-systemGateway[51] = {
+cardSet[30051] = {
   title: "NBN: Reality Plus",
   imageFile: "30051.png",
   player: corp,
   faction: "NBN",
   cardType: "identity",
+  deckSize: 40,
   subTypes: ["Megacorp"],
   usedThisTurn: false,
   runnerTurnBegin: {
@@ -3062,7 +3067,7 @@ systemGateway[51] = {
     },
   },
 };
-systemGateway[52] = {
+cardSet[30052] = {
   title: "Tomorrow's Headline",
   imageFile: "30052.png",
   player: corp,
@@ -3091,7 +3096,7 @@ systemGateway[52] = {
     },
   },
 };
-systemGateway[53] = {
+cardSet[30053] = {
   title: "Spin Doctor",
   imageFile: "30053.png",
   player: corp,
@@ -3283,7 +3288,7 @@ systemGateway[53] = {
     return false;
   },
 };
-systemGateway[54] = {
+cardSet[30054] = {
   title: "Funhouse",
   imageFile: "30054.png",
   player: corp,
@@ -3353,7 +3358,7 @@ systemGateway[54] = {
     },
   ],
 };
-systemGateway[55] = {
+cardSet[30055] = {
   title: "Ping",
   imageFile: "30055.png",
   player: corp,
@@ -3385,7 +3390,7 @@ systemGateway[55] = {
     },
   ],
 };
-systemGateway[56] = {
+cardSet[30056] = {
   title: "Predictive Planogram",
   imageFile: "30056.png",
   player: corp,
@@ -3413,7 +3418,7 @@ systemGateway[56] = {
     if (params.id != 0) Draw(corp, 3);
   },
 };
-systemGateway[57] = {
+cardSet[30057] = {
   title: "Public Trail",
   imageFile: "30057.png",
   player: corp,
@@ -3471,7 +3476,7 @@ systemGateway[57] = {
 	return false;
   },
 };
-systemGateway[58] = {
+cardSet[30058] = {
   title: "AMAZE Amusements",
   imageFile: "30058.png",
   player: corp,
@@ -3551,12 +3556,13 @@ systemGateway[58] = {
     return false;
   },
 };
-systemGateway[59] = {
+cardSet[30059] = {
   title: "Weyland Consortium: Built to Last",
   imageFile: "30059.png",
   player: corp,
   faction: "Weyland Consortium",
   cardType: "identity",
+  deckSize: 40,
   subTypes: ["Megacorp"],
   //Whenever you advance a card, gain 2(c) if it had no advancement counters
   cardAdvanced: {
@@ -3565,7 +3571,7 @@ systemGateway[59] = {
     },
   },
 };
-systemGateway[60] = {
+cardSet[30060] = {
   title: "Above the Law",
   imageFile: "30060.png",
   player: corp,
@@ -3614,7 +3620,7 @@ systemGateway[60] = {
     text: "Trash 1 installed resource",
   },
 };
-systemGateway[61] = {
+cardSet[30061] = {
   title: "Clearinghouse",
   imageFile: "30061.png",
   player: corp,
@@ -3675,7 +3681,7 @@ systemGateway[61] = {
     return false;
   },
 };
-systemGateway[62] = {
+cardSet[30062] = {
   title: "Ballista",
   imageFile: "30062.png",
   player: corp,
@@ -3751,7 +3757,7 @@ systemGateway[62] = {
     },
   ],
 };
-systemGateway[63] = {
+cardSet[30063] = {
   title: "Pharos",
   imageFile: "30063.png",
   player: corp,
@@ -3810,7 +3816,7 @@ systemGateway[63] = {
     },
   ],
 };
-systemGateway[64] = {
+cardSet[30064] = {
   title: "Government Subsidy",
   imageFile: "30064.png",
   player: corp,
@@ -3824,7 +3830,7 @@ systemGateway[64] = {
     GainCredits(corp, 15);
   },
 };
-systemGateway[65] = {
+cardSet[30065] = {
   title: "Retribution",
   imageFile: "30065.png",
   player: corp,
@@ -3880,7 +3886,7 @@ systemGateway[65] = {
     }
   },
 };
-systemGateway[66] = {
+cardSet[30066] = {
   title: "Malapert Data Vault",
   imageFile: "30066.png",
   player: corp,
@@ -3955,7 +3961,7 @@ systemGateway[66] = {
     return false;
   },
 };
-systemGateway[67] = {
+cardSet[30067] = {
   title: "Offworld Office",
   imageFile: "30067.png",
   player: corp,
@@ -3972,7 +3978,7 @@ systemGateway[67] = {
     automatic: true,
   },
 };
-systemGateway[68] = {
+cardSet[30068] = {
   title: "Orbital Superiority",
   imageFile: "30068.png",
   player: corp,
@@ -3995,7 +4001,7 @@ systemGateway[68] = {
     text: "Do 4 meat damage or give the Runner 1 tag",
   },
 };
-systemGateway[69] = {
+cardSet[30069] = {
   title: "Send a Message",
   imageFile: "30069.png",
   player: corp,
@@ -4085,7 +4091,7 @@ systemGateway[69] = {
     text: "You may rez 1 installed piece of ice, ignoring all costs",
   },
 };
-systemGateway[70] = {
+cardSet[30070] = {
   title: "Superconducting Hub",
   imageFile: "30070.png",
   player: corp,
@@ -4123,7 +4129,7 @@ systemGateway[70] = {
     },
   },
 };
-systemGateway[71] = {
+cardSet[30071] = {
   title: "Regolith Mining License",
   imageFile: "30071.png",
   player: corp,
@@ -4175,7 +4181,7 @@ systemGateway[71] = {
     return -1; //don't install
   },
 };
-systemGateway[72] = {
+cardSet[30072] = {
   title: "Palisade",
   imageFile: "30072.png",
   player: corp,
@@ -4209,7 +4215,7 @@ systemGateway[72] = {
     },
   ],
 };
-systemGateway[73] = {
+cardSet[30073] = {
   title: "Tithe",
   imageFile: "30073.png",
   player: corp,
@@ -4239,7 +4245,7 @@ systemGateway[73] = {
     },
   ],
 };
-systemGateway[74] = {
+cardSet[30074] = {
   title: "Whitespace",
   imageFile: "30074.png",
   player: corp,
@@ -4269,7 +4275,7 @@ systemGateway[74] = {
     },
   ],
 };
-systemGateway[75] = {
+cardSet[30075] = {
   title: "Hedge Fund",
   imageFile: "30075.png",
   player: corp,
@@ -4282,7 +4288,7 @@ systemGateway[75] = {
     GainCredits(corp, 9);
   },
 };
-systemGateway[76] = {
+cardSet[30076] = {
   title: "The Catalyst",
   imageFile: "30076.png",
   player: runner,
@@ -4297,7 +4303,7 @@ systemGateway[76] = {
 	else TutorialMessage("");
   }
 };
-systemGateway[77] = {
+cardSet[30077] = {
   title: "The Syndicate",
   imageFile: "30077.png",
   player: corp,

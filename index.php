@@ -6,11 +6,17 @@
 		<link rel="manifest" href="manifest.json">
 		<?php
 		include 'cardrenderer/webfont.php';
+		$dev = true; //set false for release
+		if ($dev) {
+			echo '<script>var runner={}; var corp={}; var cardSet=[];</script>';
+			echo '<script src="sets/systemupdate2021.js?' . filemtime('sets/systemupdate2021.js') . '"></script>';
+		}
 		?>
 		<style>
 			body {
 				font-family: "Lucida Console", Monaco, monospace;
 				color: white;
+				background:#354149;
 				background-image: url('images/bg.jpg');
 				background-size:cover;
 				padding-top:100px;
@@ -150,7 +156,10 @@
 			}
 		</style>
 	</head>
-	<body>
+	<?php
+	if ($dev) echo '<body onload="document.getElementById(\'dev-info\').innerHTML = \'Development version (cards up to \' + cardSet[cardSet.length-1].title + \')&emsp;&emsp;|&emsp;&emsp;\';">';
+	else echo '<body>';
+	?>
 		<div class="header"><a href="engine.php?faceoff=true"><img class="header-contents" src="images/chiriboga_icon.png"><span class="header-contents">Chiriboga<span></a></div>
 		<div class="row">
 			<h3>Learn to play</h3>
@@ -165,13 +174,15 @@
 		<div class="row">
 			<a class="runner" href="engine.php?ap=6&p=r&r=N4IglgJgpgdgLmOBPEAuEB2AbCANCAZyQLigFsBxAQ1IHcqVUBtLXVgRgCZcueBmHgBYeAVlE8AHLk4AGaXM7tpSzq1XSMG6VM46dATmmG+ck7jN9ul8wL63BAXQC+QA&c=N4IglgJgpgdgLmOBPEAuEB2DIA0IDOS+cUAtgOICGJA7pSqgNoDMGOr7AnFzgCwAMfQbwBMfAKwS+ANhl82vNtN45lqpRtXdp3DIL04MARkMmMY84YvNDNjCvuHJGZ+IC6AXyA"><img class="runner" src="images/menu_runner_1.png"><span>Runner Tutorial Deck</span></a>
 			<a class="runner" href="engine.php?p=r&r=N4IglgJgpgdgLmOBPEAuEB2AbCANCAZyQLigFsBxAQ1IHcqVUBtLXVgRgCZcueBmHgBYeAVlE8AHLk4AGaXM7tpSzq1XSMG6VM46dATmmG+ck7jN9ul8wL63h3blKnslr6Y8cPBAXQC+QA&c=N4IglgJgpgdgLmOBPEAuEB2DIA0IDOS+cUAtgOICGJA7pSqgNoDMGOr7AnFzgCwAMfQbwBMfAKwS+ANhl82vNtN45lqpRtXdp3DIL04MARkMmMY84YvNDNjCvuHJGZ5PEr3OcbO9e24-wAOVUlpYLCAXQBfIA"><img class="runner" src="images/menu_runner_2.png"><span>Runner Advanced Deck</span></a>
-			<a class="runner" href="decklauncher.html?p=r&r=random"><img class="runner" src="images/menu_runner_3.png"><span>Runner Deckbuilding</span></a>
+			<a class="runner" href="decklauncher.php?p=r&r=random"><img class="runner" src="images/menu_runner_3.png"><span>Runner Deckbuilding</span></a>
 		</div>
 		<div class="row">
 			<a class="corp" href="engine.php?ap=6&p=c&c=N4IglgJgpgdgLmOBPEAuEB2DIA0IDOS+cUAtgOICGJA7pSqgNoDMGOr7AnFzgCwAMfQbwBMfAKwS+ANhl82vNtN45lqpRtXdp3DIL04MARkMmMY84YvNDNjCvuHJGZ+IC6AXyA&r=N4IglgJgpgdgLmOBPEAuEB2AbCANCAZyQLigFsBxAQ1IHcqVUBtLXVgRgCZcueBmHgBYeAVlE8AHLk4AGaXM7tpSzq1XSMG6VM46dATmmG+ck7jN9ul8wL63BAXQC+QA"><img class="corp" src="images/menu_corp_1.png"><span>Corp Tutorial Deck</span></a>
 			<a class="corp" href="engine.php?p=c&c=N4IglgJgpgdgLmOBPEAuEB2DIA0IDOS+cUAtgOICGJA7pSqgNoDMGOr7AnFzgCwAMfQbwBMfAKwS+ANhl82vNtN45lqpRtXdp3DIL04MARkMmMY84YvNDNjCvuHJGZ5PEr3OcbO9e24-wAOVUlpYLCAXQBfIA&r=N4IglgJgpgdgLmOBPEAuEB2AbCANCAZyQLigFsBxAQ1IHcqVUBtLXVgRgCZcueBmHgBYeAVlE8AHLk4AGaXM7tpSzq1XSMG6VM46dATmmG+ck7jN9ul8wL63h3blKnslr6Y8cPBAXQC+QA"><img class="corp" src="images/menu_corp_2.png"><span>Corp Advanced Deck</span></a>
-			<a class="corp" href="decklauncher.html?p=c&c=random"><img class="corp" src="images/menu_corp_3.png"><span>Corp Deckbuilding</span></a>
+			<a class="corp" href="decklauncher.php?p=c&c=random"><img class="corp" src="images/menu_corp_3.png"><span>Corp Deckbuilding</span></a>
 		</div>
-		<div class="footer"><span>Source code <a href="https://github.com/bobtheuberfish/chiriboga">available on GitHub</a></span></div>
+		<div class="footer">
+			<span id="dev-info"></span><span>Source code <a href="https://github.com/bobtheuberfish/chiriboga">available on GitHub</a></span>
+		</div>
 	</body>
 </html>

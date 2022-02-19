@@ -303,9 +303,44 @@ class RunCalculator {
     var clicksLeft = this._clicksLeft() - point.runner_clicks_spent;
     var creditsLeft = this._creditsLeft() - point.runner_credits_spent;
 
-    //known icebreaker list
+    //known icebreaker list (could consider putting these on each card rather than here)
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     var title = card.title;
-    if (title == "Botulus") {
+	if (title == "Quetzal: Free Spirit") {
+	  if (!card.usedThisTurn) {
+		//can only use once
+        var str_mod_by_this = 0; //zero mod, just using it because it persists
+        for (var i = 0; i < point.card_str_mods.length; i++) {
+          if (point.card_str_mods[i].use == card) str_mod_by_this++;
+        }
+        if (str_mod_by_this < 1) {
+			var results_to_concat = this.ImplementIcebreaker(
+			  point,
+			  card,
+			  Infinity, //Quetzal doesn't actually have a strength...
+			  iceAI,
+			  iceStrength,
+			  ["Barrier"],
+			  0, //doesn't need to up str so will just do zero for these
+			  0,
+			  0, //0 credits to break
+			  1, //break 1
+			  creditsLeft
+			);
+			//use a zero str mod to create a persistent effect
+			for (var i=0; i<results_to_concat.length; i++) {
+				results_to_concat[i].card_str_mods.push({
+				  iceIdx: point.iceIdx,
+				  card: null, //not relevant for this pseudo-str-up
+				  use: card,
+				  amt: 0,
+				  persist: true,
+				});
+			}
+			result = result.concat(results_to_concat);
+		}
+	  }
+	} else if (title == "Botulus") {
       if (card.host == iceAI.ice) {
         var sr_broken_by_this = 0;
         for (var i = 0; i < point.sr_broken.length; i++) {
@@ -1107,8 +1142,8 @@ class RunCalculator {
           report_as = "ignore";
         }
         if (current.length > max_path_length) max_path_length = current.length; //for reporting/testing
-        //uncomment this next line and any other console.log lines desired to debug the run calculator
-        //if (!continuing) console.log(this.OneLiner(current,report_as));
+        //uncomment other console.log lines if more detail is desired to debug the run calculator
+        if (!continuing && debugging) console.log(this.OneLiner(current,report_as));
       }
       //console.log(max_loops - num_loops_left);
       if (num_loops_left == 0) {
@@ -1164,10 +1199,13 @@ class RunCalculator {
     var st = 0;
     var ic = p[0].iceIdx;
     for (var i = 0; i < p.length; i++) {
-      if (p[i].card_str_mods.length > st)
-        result +=
+	  var nospc = false;
+      if (p[i].card_str_mods.length > st) {
+		if (p[i].card_str_mods[p[i].card_str_mods.length - 1].amt != 0) result +=
           p[i].card_str_mods[p[i].card_str_mods.length - 1].use.title[0] +
           ".st";
+		else nospc = true;
+	  }
       else if (p[i].sr_broken.length > br)
         result +=
           p[i].sr_broken[p[i].sr_broken.length - 1].use.title[0] + ".br";
@@ -1181,7 +1219,7 @@ class RunCalculator {
       }
       br = p[i].sr_broken.length;
       st = p[i].card_str_mods.length;
-      result += " ";
+      if (!nospc) result += " ";
     }
     //and also output the cost
     result += "]";

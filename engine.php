@@ -19,6 +19,7 @@
 		?>
 		<script src="deck/lz-string.min.js"></script>
 		<script src="deck/seedrandom.min.js"></script>
+		<script>var cardSet = [];</script>
 		<?php
 		echo '<link rel="stylesheet" type="text/css" href="style.css?' . filemtime('style.css') . '" />';
 		echo '<script src="init.js?' . filemtime('init.js') . '"></script>';
@@ -28,8 +29,8 @@
 		echo '<script src="mechanics.js?' . filemtime('mechanics.js') . '"></script>';
 		echo '<script src="utility.js?' . filemtime('utility.js') . '"></script>';
 		echo '<script src="sets/systemgateway.js?' . filemtime('sets/systemgateway.js') . '"></script>';
+		echo '<script src="sets/systemupdate2021.js?' . filemtime('sets/systemupdate2021.js') . '"></script>';
 		echo '<script src="sets/tutorial.js?' . filemtime('sets/tutorial.js') . '"></script>';
-		echo '<script src="sets/cheat.js?' . filemtime('sets/cheat.js') . '"></script>';
 		echo '<script src="decks.js?' . filemtime('decks.js') . '"></script>';
 		echo '<script src="runcalculator.js?' . filemtime('runcalculator.js') . '"></script>';
 		echo '<script src="ai_corp.js?' . filemtime('ai_corp.js') . '"></script>';
@@ -65,8 +66,8 @@
 				<span onclick="$('#menu').css('display','none');" class="close-cross">X</span>
 				<h1>Chiriboga</h1>
 				<button id="exittomenu" onclick="window.location.href='index.php';" class="button">Exit to main menu</button>
-				<button id="editdeck" onclick="window.location.href='decklauncher.html';" class="button">Edit this deck</button>
-				<button onclick="window.location.href='decklauncher.html';" class="button">Edit new random deck</button>
+				<button id="editdeck" onclick="window.location.href='decklauncher.php';" class="button">Edit this deck</button>
+				<button onclick="window.location.href='decklauncher.php';" class="button">Edit new random deck</button>
 				<div class="options">
 					<label for="narration"><input type="checkbox" id="narration">Narrate AI (experimental)</label>
 				</div>

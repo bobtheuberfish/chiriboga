@@ -37,21 +37,21 @@ tutorial[5] = {
         corp.creditPool = 7;
         runner.creditPool = 5;
 		//set up field
-		RunnerTestField(76, //identity
+		RunnerTestField(30076, //identity
 			[], //heapCards
-			[26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,28,29], //stackCards
-			[20,20,27,30,30], //gripCards
-			[15], //installed
+			[30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30028,30029], //stackCards
+			[30020,30020,30027,30030,30030], //gripCards
+			[30015], //installed
 			[], //stolen
 			cardBackTexturesRunner,glowTextures,strengthTextures);
-		CorpTestField(77, //identity
+		CorpTestField(30077, //identity
 			[], //archivesCards
-			[42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42], //rndCards
-			[73,37], //hqCards
+			[30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042,30042], //rndCards
+			[30073,30037], //hqCards
 			[], //archivesInstalled
-			[74], //rndInstalled
-			[74], //hqInstalled
-			[[42,73]], //remotes (array of arrays)
+			[30074], //rndInstalled
+			[30074], //hqInstalled
+			[[30042,30073]], //remotes (array of arrays)
 			[], //scored
 			cardBackTexturesCorp,glowTextures,strengthTextures);
 		corp.identityCard.faceUp=true; //not sure why this is needed but it is
@@ -182,7 +182,7 @@ tutorial[5] = {
       str: "Run 4.5",
       action: function () {
 		TutorialCommandMessage = {}
-        TutorialMessage("After the last piece of ice, the Runner will approach the server, but first the Corp has an opportunity to rez cards.\n\nRez Manegarm Skunkworks.");
+        TutorialMessage("After the last piece of ice, the Runner will choose whether to approach the server, but first the Corp has an opportunity to rez cards.\n\nRez Manegarm Skunkworks.");
 		TutorialBlacklist = null;
         TutorialReplacer = function (input) {
           if ((input=='n')&&(!corp.remoteServers[0].root[0].rezzed)) {
@@ -324,21 +324,21 @@ tutorial[4] = {
         corp.creditPool = 5;
         runner.creditPool = 5;
 		//set up field
-		RunnerTestField(76, //identity
+		RunnerTestField(30076, //identity
 			[], //heapCards
-			[26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,28,29], //stackCards
-			[20,20,27,30,30], //gripCards
-			[26,34], //installed
+			[30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30028,30029], //stackCards
+			[30020,30020,30027,30030,30030], //gripCards
+			[30026,30034], //installed
 			[], //stolen
 			cardBackTexturesRunner,glowTextures,strengthTextures);
-		CorpTestField(77, //identity
+		CorpTestField(30077, //identity
 			[], //archivesCards
-			[74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,75,75], //rndCards
-			[75,75,71,71], //hqCards
+			[30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30075,30075], //rndCards
+			[30075,30075,30071,30071], //hqCards
 			[], //archivesInstalled
-			[74], //rndInstalled
-			[74], //hqInstalled
-			[[45,73],[67]], //remotes (array of arrays)
+			[30074], //rndInstalled
+			[30074], //hqInstalled
+			[[30045,30073],[30067]], //remotes (array of arrays)
 			[], //scored
 			cardBackTexturesCorp,glowTextures,strengthTextures);
 		corp.identityCard.faceUp=true; //not sure why this is needed but it is
@@ -570,17 +570,17 @@ tutorial[3] = {
         corp.creditPool = 5;
         runner.creditPool = 5;
 		//set up field
-		RunnerTestField(76, //identity
+		RunnerTestField(30076, //identity
 			[], //heapCards
-			[26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,28,29], //stackCards
-			[18,28,28,29,29], //gripCards
+			[30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30028,30029], //stackCards
+			[30018,30028,30028,30029,30029], //gripCards
 			[], //installed
 			[], //stolen
 			cardBackTexturesRunner,glowTextures,strengthTextures);
-		CorpTestField(77, //identity
+		CorpTestField(30077, //identity
 			[], //archivesCards
-			[74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,75,75,75], //rndCards
-			[75,74,71,71,71], //hqCards
+			[30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30075,30075,30075], //rndCards
+			[30075,30074,30071,30071,30071], //hqCards
 			[], //archivesInstalled
 			[], //rndInstalled
 			[], //hqInstalled
@@ -753,17 +753,17 @@ tutorial[2] = {
         corp.creditPool = 5;
         runner.creditPool = 8;
 		//set up field
-		RunnerTestField(76, //identity
+		RunnerTestField(30076, //identity
 			[], //heapCards
-			[26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26], //stackCards
+			[30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026,30026], //stackCards
 			[], //gripCards
 			[], //installed
 			[], //stolen
 			cardBackTexturesRunner,glowTextures,strengthTextures);
-		CorpTestField(77, //identity
+		CorpTestField(30077, //identity
 			[], //archivesCards
-			[74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74], //rndCards
-			[74,74,74,74,74], //hqCards
+			[30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074], //rndCards
+			[30074,30074,30074,30074,30074], //hqCards
 			[], //archivesInstalled
 			[], //rndInstalled
 			[], //hqInstalled
@@ -1033,17 +1033,17 @@ tutorial[1] = {
         corp.creditPool = 5;
         runner.creditPool = 1;
 		//set up field
-		RunnerTestField(76, //identity
+		RunnerTestField(30076, //identity
 			[], //heapCards
-			[14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14], //stackCards
-			[30,20], //gripCards
-			[27], //installed
+			[30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014], //stackCards
+			[30030,30020], //gripCards
+			[30027], //installed
 			[], //stolen
 			cardBackTexturesRunner,glowTextures,strengthTextures);
-		CorpTestField(77, //identity
+		CorpTestField(30077, //identity
 			[], //archivesCards
-			[67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67], //rndCards
-			[67,67,67,67,67], //hqCards
+			[30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067], //rndCards
+			[30067,30067,30067,30067,30067], //hqCards
 			[], //archivesInstalled
 			[], //rndInstalled
 			[], //hqInstalled
@@ -1136,17 +1136,17 @@ tutorial[0] = {
         corp.creditPool = 5;
         runner.creditPool = 5;
 		//set up field
-		RunnerTestField(76, //identity
+		RunnerTestField(30076, //identity
 			[], //heapCards
-			[14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14], //stackCards
+			[30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014,30014], //stackCards
 			[], //gripCards
 			[], //installed
 			[], //stolen
 			cardBackTexturesRunner,glowTextures,strengthTextures);
-		CorpTestField(77, //identity
+		CorpTestField(30077, //identity
 			[], //archivesCards
-			[67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67,67], //rndCards
-			[67,67,67,67,67], //hqCards
+			[30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067,30067], //rndCards
+			[30067,30067,30067,30067,30067], //hqCards
 			[], //archivesInstalled
 			[], //rndInstalled
 			[], //hqInstalled

@@ -95,18 +95,20 @@
  * Create a card instance from definition.<br/>New card.location is not set.<br/>Nothing is logged.
  *
  * @method InstanceCard
- * @param {Card[]} cardSet the set containing the original definition to create instances from
  * @param {int} setNumber index of the original definition to create instances from
  * @returns {Card} newly created instance
  */
 function InstanceCard(
-  cardSet,
   setNumber,
   backTextures,
   glowTextures,
   strengthTextures = { ice: null, ib: null, broken: null, rc: null, crc: null }
 ) {
   var cardDefinition = cardSet[setNumber];
+  if (typeof cardDefinition == 'undefined') {
+	  //maybe it is a tutorial
+	  cardDefinition = tutorial[setNumber];
+  }
   var player = cardDefinition.player;
   cardDefinition.player = null; //unset to prevent recursion going nuts
   var card = jQuery.extend(true, {}, cardDefinition);
@@ -182,14 +184,12 @@ function InstanceCard(
  * Create card instances from definition and push into an array. Returns an array of cards pushed.<br/>Nothing is logged.
  *
  * @method InstanceCardsPush
- * @param {Card[]} cardSet the set containing the original definition to create instances from
  * @param {int} setNumber index of the original definition to create instances from
  * @param {Card[]} destination array to push the Card instances into
  * @param {int} num number of copies of the card to add
  * @returns {Card[]} newly created instances
  */
 function InstanceCardsPush(
-  cardSet,
   setNumber,
   destination,
   num,
@@ -201,7 +201,6 @@ function InstanceCardsPush(
   //push a deep copy num times
   for (var i = 0; i < num; i++) {
     var card = InstanceCard(
-      cardSet,
       setNumber,
       backTextures,
       glowTextures,
@@ -275,7 +274,6 @@ function CorpTestField(
   if (corp.identityCard) corp.identityCard.renderer.destinationPosition = -1000;
   //now make new one
   corp.identityCard = InstanceCard(
-      systemGateway,
       identity,
       cardBackTexturesCorp,
       glowTextures,
@@ -283,7 +281,6 @@ function CorpTestField(
   );
   for (var i = 0; i < archivesCards.length; i++) {
     InstanceCardsPush(
-      systemGateway,
       archivesCards[i],
       corp.archives.cards,
       1,
@@ -298,7 +295,6 @@ function CorpTestField(
     }
     for (var i = 0; i < rndCards.length; i++) {
       InstanceCardsPush(
-        systemGateway,
         rndCards[i],
         corp.RnD.cards,
         1,
@@ -311,7 +307,6 @@ function CorpTestField(
   if (hqCards.length > 0) {
     for (var i = 0; i < hqCards.length; i++) {
       InstanceCardsPush(
-        systemGateway,
         hqCards[i],
         corp.HQ.cards,
         1,
@@ -324,9 +319,8 @@ function CorpTestField(
     ChangePhase(phases.corpStartDraw);
   }
   for (var i = 0; i < archivesInstalled.length; i++) {
-    if (systemGateway[archivesInstalled[i]].cardType == "ice")
+    if (cardSet[archivesInstalled[i]].cardType == "ice")
       InstanceCardsPush(
-        systemGateway,
         archivesInstalled[i],
         corp.archives.ice,
         1,
@@ -336,7 +330,6 @@ function CorpTestField(
       );
     else
       InstanceCardsPush(
-        systemGateway,
         archivesInstalled[i],
         corp.archives.root,
         1,
@@ -346,9 +339,8 @@ function CorpTestField(
       );
   }
   for (var i = 0; i < rndInstalled.length; i++) {
-    if (systemGateway[rndInstalled[i]].cardType == "ice")
+    if (cardSet[rndInstalled[i]].cardType == "ice")
       InstanceCardsPush(
-        systemGateway,
         rndInstalled[i],
         corp.RnD.ice,
         1,
@@ -358,7 +350,6 @@ function CorpTestField(
       );
     else
       InstanceCardsPush(
-        systemGateway,
         rndInstalled[i],
         corp.RnD.root,
         1,
@@ -368,9 +359,8 @@ function CorpTestField(
       );
   }
   for (var i = 0; i < hqInstalled.length; i++) {
-    if (systemGateway[hqInstalled[i]].cardType == "ice")
+    if (cardSet[hqInstalled[i]].cardType == "ice")
       InstanceCardsPush(
-        systemGateway,
         hqInstalled[i],
         corp.HQ.ice,
         1,
@@ -380,7 +370,6 @@ function CorpTestField(
       );
     else
       InstanceCardsPush(
-        systemGateway,
         hqInstalled[i],
         corp.HQ.root,
         1,
@@ -393,9 +382,8 @@ function CorpTestField(
     var newServer = NewServer("Remote " + j, false);
     corp.remoteServers.push(newServer);
     for (var i = 0; i < remotes[j].length; i++) {
-      if (systemGateway[remotes[j][i]].cardType == "ice")
+      if (cardSet[remotes[j][i]].cardType == "ice")
         InstanceCardsPush(
-          systemGateway,
           remotes[j][i],
           newServer.ice,
           1,
@@ -405,7 +393,6 @@ function CorpTestField(
         );
       else
         InstanceCardsPush(
-          systemGateway,
           remotes[j][i],
           newServer.root,
           1,
@@ -417,7 +404,6 @@ function CorpTestField(
   }
   for (var i = 0; i < scored.length; i++) {
     var newCard = InstanceCardsPush(
-      systemGateway,
       scored[i],
       corp.scoreArea,
       1,
@@ -453,7 +439,6 @@ function RunnerTestField(
 ) {
 	if (runner.identityCard.title != "Tutorial") {
 		runner.identityCard = InstanceCard(
-		  systemGateway,
 		  identity,
 		  cardBackTexturesRunner,
 		  glowTextures,
@@ -462,7 +447,6 @@ function RunnerTestField(
 	}
 	for (var i = 0; i < heapCards.length; i++) {
     InstanceCardsPush(
-      systemGateway,
       heapCards[i],
       runner.heap,
       1,
@@ -477,7 +461,6 @@ function RunnerTestField(
     }
     for (var i = 0; i < stackCards.length; i++) {
       InstanceCardsPush(
-        systemGateway,
         stackCards[i],
         runner.stack,
         1,
@@ -490,7 +473,6 @@ function RunnerTestField(
   if (gripCards.length > 0) {
     for (var i = 0; i < gripCards.length; i++) {
       InstanceCardsPush(
-        systemGateway,
         gripCards[i],
         runner.grip,
         1,
@@ -504,12 +486,11 @@ function RunnerTestField(
   }
   for (var i = 0; i < installed.length; i++) {
     var dest = runner.rig.resources;
-    if (systemGateway[installed[i]].cardType == "program")
+    if (cardSet[installed[i]].cardType == "program")
       dest = runner.rig.programs;
-    else if (systemGateway[installed[i]].cardType == "hardware")
+    else if (cardSet[installed[i]].cardType == "hardware")
       dest = runner.rig.hardware;
     var newCard = InstanceCardsPush(
-      systemGateway,
       installed[i],
       dest,
       1,
@@ -521,7 +502,6 @@ function RunnerTestField(
   }
   for (var i = 0; i < stolen.length; i++) {
     var newCard = InstanceCardsPush(
-      systemGateway,
       stolen[i],
       runner.scoreArea,
       1,
@@ -575,15 +555,13 @@ function LoadDecks() {
   var specifiedMentor = URIParameter("mentor");
   if (specifiedMentor != "") { //later, more options?
     runner.identityCard = InstanceCard(
-      tutorial,
       specifiedMentor,
       cardBackTexturesRunner,
       glowTextures,
       strengthTextures
     ); //note that card.location is not set for identity cards
     corp.identityCard = InstanceCard(
-      systemGateway,
-      77,
+      30077,
       cardBackTexturesCorp,
       glowTextures,
       strengthTextures
@@ -594,23 +572,30 @@ function LoadDecks() {
   var deckJson = {};
 
   //*RUNNER*
-  //LOAD Runner deck, if specified (as an LZ compressed JSON object containing .identity= and .systemGateway=[], with cards specified by number in the set)
+  //LOAD Runner deck, if specified (as an LZ compressed JSON object containing .identity= and .cards=[], with cards specified by number in the set)
   var specifiedRunnerDeck = URIParameter("r");
   if (specifiedRunnerDeck != "") {
     deckJson = JSON.parse(
       LZString.decompressFromEncodedURIComponent(specifiedRunnerDeck)
     );
+	//support legacy (gateway) format by looping through .systemGateway and converting to 30000 + set number
+	if (typeof deckJson.systemGateway !== 'undefined') {
+		if (typeof deckJson.cards == 'undefined') deckJson.cards = [];
+		for (var i=0; i<deckJson.systemGateway.length; i++) {
+			deckJson.cards.push(30000+parseInt(deckJson.systemGateway[i]));
+		}
+	}
+	//also update the identity if it is legacy
+	if (parseInt(deckJson.identity) < 10001) deckJson.identity = parseInt(deckJson.identity) + 30000;
     runner.identityCard = InstanceCard(
-      systemGateway,
       deckJson.identity,
       cardBackTexturesRunner,
       glowTextures,
       strengthTextures
     ); //note that card.location is not set for identity cards
-    for (var i = 0; i < deckJson.systemGateway.length; i++) {
+    for (var i = 0; i < deckJson.cards.length; i++) {
       InstanceCardsPush(
-        systemGateway,
-        deckJson.systemGateway[i],
+        deckJson.cards[i],
         runner.stack,
         1,
         cardBackTexturesRunner,
@@ -621,119 +606,21 @@ function LoadDecks() {
   }
   //RUNNER RANDOM System Gateway Deck
   if (runner.stack.length == 0) {
-    var runnerIdentities = [1, 10, 19];
+    var runnerIdentities = [30001, 30010, 30019, 31001];
     deckJson.identity =
       runnerIdentities[RandomRange(0, runnerIdentities.length - 1)];
     runner.identityCard = InstanceCard(
-      systemGateway,
       deckJson.identity,
       cardBackTexturesRunner,
       glowTextures,
       strengthTextures
     ); //note that card.location is not set for identity cards
-    var runnerCards = [
-      2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23,
-      24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34,
-    ];
-    deckJson.systemGateway = [];
-    //consoles
-    var consoleCards = [3, 23, 14];
-    deckJson.systemGateway = deckJson.systemGateway.concat(
-      DeckBuildRandomly(
-        runner.identityCard,
-        systemGateway,
-        consoleCards,
-        runner.stack,
-        1,
-        0,
-        cardBackTexturesRunner,
-        glowTextures,
-        strengthTextures
-      )
-    );
-    //fracters
-    var fracterCards = [6, 16];
-    deckJson.systemGateway = deckJson.systemGateway.concat(
-      DeckBuildRandomly(
-        runner.identityCard,
-        systemGateway,
-        fracterCards,
-        runner.stack,
-        runner.stack.length + RandomRange(1, 2),
-        3,
-        cardBackTexturesRunner,
-        glowTextures,
-        strengthTextures
-      )
-    );
-    //decoders
-    var decoderCards = [5, 26];
-    deckJson.systemGateway = deckJson.systemGateway.concat(
-      DeckBuildRandomly(
-        runner.identityCard,
-        systemGateway,
-        decoderCards,
-        runner.stack,
-        runner.stack.length + RandomRange(1, 2),
-        3,
-        cardBackTexturesRunner,
-        glowTextures,
-        strengthTextures
-      )
-    );
-    //killer
-    var killerCards = [15, 25];
-    deckJson.systemGateway = deckJson.systemGateway.concat(
-      DeckBuildRandomly(
-        runner.identityCard,
-        systemGateway,
-        killerCards,
-        runner.stack,
-        runner.stack.length + RandomRange(1, 2),
-        3,
-        cardBackTexturesRunner,
-        glowTextures,
-        strengthTextures
-      )
-    );
-    //economy
-    var economyCards = [7, 18, 20, 27, 29, 30, 33]; //only includes cards that would fairly certainly provide credits
-    var influenceUsed = CountInfluence(
-      runner.identityCard,
-      systemGateway,
-      deckJson.systemGateway
-    );
-    deckJson.systemGateway = deckJson.systemGateway.concat(
-      DeckBuildRandomly(
-        runner.identityCard,
-        systemGateway,
-        economyCards,
-        runner.stack,
-        runner.stack.length + RandomRange(9, 11),
-        9 - influenceUsed,
-        cardBackTexturesRunner,
-        glowTextures,
-        strengthTextures
-      )
-    );
-    //any other cards
-    influenceUsed = CountInfluence(
-      runner.identityCard,
-      systemGateway,
-      deckJson.systemGateway
-    );
-    deckJson.systemGateway = deckJson.systemGateway.concat(
-      DeckBuildRandomly(
-        runner.identityCard,
-        systemGateway,
-        runnerCards,
-        runner.stack,
-        40,
-        15 - influenceUsed,
-        cardBackTexturesRunner,
-        glowTextures,
-        strengthTextures
-      )
+    deckJson.cards = DeckBuild(
+	  runner.identityCard,
+	  runner.stack,
+      cardBackTexturesRunner,
+      glowTextures,
+      strengthTextures
     );
   }
   //whichever way the deck is built, update the "Edit this deck" link if the player is viewing as the runner
@@ -743,34 +630,37 @@ function LoadDecks() {
     );
     $("#editdeck").attr(
       "onclick",
-      "window.location.href='decklauncher.html?r=" + compressedDeckString + "';"
+      "window.location.href='decklauncher.php?r=" + compressedDeckString + "';"
     );
   }
   PrintDeck(runner.identityCard, runner.stack);
 
-  //InstanceCardsPush(cheat,1,runner.grip,1,cardBackTexturesRunner,glowTextures,strengthTextures);
-  //var newCard = InstanceCardsPush(systemGateway,33,runner.rig.resources,1,cardBackTexturesRunner,glowTextures,strengthTextures)[0];
-  //newCard.faceUp = true;
-
   //*CORP*
-  //LOAD Corp deck, if specified (as an LZ compressed JSON object containing .identity= and .systemGateway=[], wth cards specified by number in the set)
+  //LOAD Corp deck, if specified (as an LZ compressed JSON object containing .identity= and .cards=[], wth cards specified by number in the set)
   deckJson = {};
   var specifiedCorpDeck = URIParameter("c");
   if (specifiedCorpDeck != "") {
     deckJson = JSON.parse(
       LZString.decompressFromEncodedURIComponent(specifiedCorpDeck)
     );
+	//support legacy (gateway) format by looping through .systemGateway and converting to 30000 + set number
+	if (typeof deckJson.systemGateway !== 'undefined') {
+		if (typeof deckJson.cards == 'undefined') deckJson.cards = [];
+		for (var i=0; i<deckJson.systemGateway.length; i++) {
+			deckJson.cards.push(30000+parseInt(deckJson.systemGateway[i]));
+		}
+	}
+	//also update the identity if it is legacy
+	if (parseInt(deckJson.identity) < 10001) deckJson.identity = parseInt(deckJson.identity) + 30000;
     corp.identityCard = InstanceCard(
-      systemGateway,
       deckJson.identity,
       cardBackTexturesCorp,
       glowTextures,
       strengthTextures
     ); //note that card.location is not set for identity cards
-    for (var i = 0; i < deckJson.systemGateway.length; i++) {
+    for (var i = 0; i < deckJson.cards.length; i++) {
       InstanceCardsPush(
-        systemGateway,
-        deckJson.systemGateway[i],
+        deckJson.cards[i],
         corp.RnD.cards,
         1,
         cardBackTexturesCorp,
@@ -781,81 +671,21 @@ function LoadDecks() {
   }
   //CORP RANDOM System Gateway Deck
   if (corp.RnD.cards.length == 0) {
-    var corpIdentities = [35, 43, 51, 59];
+    var corpIdentities = [30035, 30043, 30051, 30059];
     deckJson.identity =
       corpIdentities[RandomRange(0, corpIdentities.length - 1)];
     corp.identityCard = InstanceCard(
-      systemGateway,
       deckJson.identity,
       cardBackTexturesCorp,
       glowTextures,
       strengthTextures
     ); //note that card.location is not set for identity cards
-    deckJson.systemGateway = [];
-    var agendaCards = [60, 44, 36, 67, 68, 69, 70, 52];
-    deckJson.systemGateway = deckJson.systemGateway.concat(
-      DeckBuildRandomAgendas(
-        corp.identityCard,
-        systemGateway,
-        agendaCards,
-        corp.RnD.cards,
-        44,
-        cardBackTexturesCorp,
-        glowTextures,
-        strengthTextures
-      )
-    );
-    var economyCards = [37, 48, 56, 64, 71, 75]; //(credit economy only)
-    deckJson.systemGateway = deckJson.systemGateway.concat(
-      DeckBuildRandomly(
-        corp.identityCard,
-        systemGateway,
-        economyCards,
-        corp.RnD.cards,
-        corp.RnD.cards.length + RandomRange(9, 11),
-        3,
-        cardBackTexturesCorp,
-        glowTextures,
-        strengthTextures
-      )
-    );
-    var influenceUsed = CountInfluence(
-      corp.identityCard,
-      systemGateway,
-      deckJson.systemGateway
-    );
-    var iceCards = [38, 62, 39, 46, 54, 47, 72, 63, 55, 73, 74];
-    deckJson.systemGateway = deckJson.systemGateway.concat(
-      DeckBuildRandomly(
-        corp.identityCard,
-        systemGateway,
-        iceCards,
-        corp.RnD.cards,
-        corp.RnD.cards.length + RandomRange(15, 18),
-        9 - influenceUsed,
-        cardBackTexturesCorp,
-        glowTextures,
-        strengthTextures
-      )
-    );
-    influenceUsed = CountInfluence(
-      corp.identityCard,
-      systemGateway,
-      deckJson.systemGateway
-    );
-    var otherCards = [40, 41, 42, 45, 49, 50, 53, 57, 58, 61, 65, 66];
-    deckJson.systemGateway = deckJson.systemGateway.concat(
-      DeckBuildRandomly(
-        corp.identityCard,
-        systemGateway,
-        otherCards,
-        corp.RnD.cards,
-        44,
-        15 - influenceUsed,
-        cardBackTexturesCorp,
-        glowTextures,
-        strengthTextures
-      )
+    deckJson.cards = DeckBuild(
+	  corp.identityCard,
+	  corp.RnD.cards,
+      cardBackTexturesCorp,
+      glowTextures,
+      strengthTextures
     );
   }
   //whichever way the deck is built, update the "Edit this deck" link if the player is viewing as the corp
@@ -865,33 +695,33 @@ function LoadDecks() {
     );
     $("#editdeck").attr(
       "onclick",
-      "window.location.href='decklauncher.html?c=" + compressedDeckString + "';"
+      "window.location.href='decklauncher.php?c=" + compressedDeckString + "';"
     );
   }
   PrintDeck(corp.identityCard, corp.RnD.cards);
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-  //debugging = true; //set true to pause execution on error
+  debugging = true; //set true to pause execution on error
   //mainLoopDelay = 10; //for speedy AI vs AI testing
 
   /*
-	RunnerTestField(1, //identity
+	RunnerTestField(30001, //identity
 		[], //heapCards
-		[14,14,14,14], //stackCards
-		[14,14,14,14,14], //gripCards
-		[3], //installed
+		[30014,30014,30014,30014], //stackCards
+		[30014,30014,30014,30014,30014], //gripCards
+		[30003], //installed
 		[], //stolen
 		cardBackTexturesRunner,glowTextures,strengthTextures);
 	
-	CorpTestField(35, //identity
+	CorpTestField(30035, //identity
 		[], //archivesCards
-		[73,72,47,73,73,39], //rndCards
+		[30073,30072,30047,30073,30073,30039], //rndCards
 		[], //hqCards
 		[], //archivesInstalled
-		[54], //rndInstalled
+		[30054], //rndInstalled
 		[], //hqInstalled
-		[[69,58]], //remotes (array of arrays)
+		[[30069,30058]], //remotes (array of arrays)
 		[], //scored
 		cardBackTexturesCorp,glowTextures,strengthTextures);
     */
