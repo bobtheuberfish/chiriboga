@@ -182,7 +182,7 @@ tutorial[5] = {
       str: "Run 4.5",
       action: function () {
 		TutorialCommandMessage = {}
-        TutorialMessage("After the last piece of ice, the Runner will choose whether to approach the server, but first the Corp has an opportunity to rez cards.\n\nRez Manegarm Skunkworks.");
+        TutorialMessage("The Runner has passed the last piece of ice and then chosen not to jack out.\nNow the Corp has an opportunity to rez cards before the Runner approaches the server.\n\nRez Manegarm Skunkworks.");
 		TutorialBlacklist = null;
         TutorialReplacer = function (input) {
           if ((input=='n')&&(!corp.remoteServers[0].root[0].rezzed)) {
@@ -197,7 +197,7 @@ tutorial[5] = {
       str: "Run 4.6.2",
       action: function () {
 		TutorialCommandMessage = {}
-        TutorialMessage("Having Manegarm Skunkworks active meant the Runner had to spend extra clicks or credits to breach the server.",true);
+        TutorialMessage("Having Manegarm Skunkworks active means the Runner has to spend extra clicks or credits to breach the server.",true);
 		TutorialBlacklist = null;
       },
     },

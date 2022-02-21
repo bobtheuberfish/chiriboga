@@ -606,7 +606,7 @@ function LoadDecks() {
   }
   //RUNNER RANDOM System Gateway Deck
   if (runner.stack.length == 0) {
-    var runnerIdentities = [30001, 30010, 30019, 31001];
+    var runnerIdentities = [30001, 30010, 30019, 31001, 31002];
     deckJson.identity =
       runnerIdentities[RandomRange(0, runnerIdentities.length - 1)];
     runner.identityCard = InstanceCard(
@@ -702,11 +702,11 @@ function LoadDecks() {
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-  debugging = true; //set true to pause execution on error
+  debugging = false; //set true to pause execution on error
   //mainLoopDelay = 10; //for speedy AI vs AI testing
 
   /*
-	RunnerTestField(30001, //identity
+	RunnerTestField(31002, //identity
 		[], //heapCards
 		[30014,30014,30014,30014], //stackCards
 		[30014,30014,30014,30014,30014], //gripCards
@@ -719,9 +719,9 @@ function LoadDecks() {
 		[30073,30072,30047,30073,30073,30039], //rndCards
 		[], //hqCards
 		[], //archivesInstalled
-		[30054], //rndInstalled
+		[30054,30054], //rndInstalled
 		[], //hqInstalled
-		[[30069,30058]], //remotes (array of arrays)
+		[[30069]], //remotes (array of arrays)
 		[], //scored
 		cardBackTexturesCorp,glowTextures,strengthTextures);
     */

@@ -45,3 +45,45 @@ cardSet[31001] = {
     },
   ],
 };
+
+cardSet[31002] = {
+  title: 'Reina Roja: Freedom Fighter',
+  imageFile: "31002.png",
+  player: runner,
+  faction: "Anarch",
+  cardType: "identity",
+  deckSize: 45,
+  usedThisTurn: false,
+  runnerTurnBegin: {
+    Resolve: function () {
+      this.usedThisTurn = false;
+    },
+    automatic: true,
+  },
+  corpTurnBegin: {
+    Resolve: function () {
+      this.usedThisTurn = false;
+    },
+    automatic: true,
+  },
+  modifyRezCost: {
+    Resolve: function (card) {
+	  //The first piece of ice the Corp rezzes each turn costs 1 credit more to rez
+	  if (!this.usedThisTurn) {
+		if (CheckCardType(card, ["ice"])) return 1;
+	  }
+      return 0; //no modification to cost
+    },
+  },
+  cardRezzed: {
+    Resolve: function (card) {
+	  //TODO a squidge of research: rulings regarding Send a Message
+	    //my guess is the "ignore all costs" blanks Reina
+		//and then any further ice doesn't extra cost because it's not the first ice rezzed
+		//if yes then Reina implementation is done because that's how I did it
+		//AI I'm just going to ignore the effect for now and add no new code (sufficient handle in RezCost)
+		//Deckbuilding is finished also
+      if (CheckCardType(card, ["ice"])) this.usedThisTurn = true;
+    },
+  },
+};
