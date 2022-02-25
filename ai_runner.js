@@ -141,6 +141,18 @@ class RunnerAI {
     }
     return ret; //reached bottom of R&D
   }
+  
+  //get a rough score for ice comparison
+  _iceComparisonScore(iceCard) {
+	  var ret = 0;
+	  var estimatedValue = 3; //most common ice printed rez cost
+	  if (PlayerCanLook(runner,iceCard)) estimatedValue=iceCard.rezCost;
+	  var server = GetServer(iceCard);
+	  ret = runner.AI._getCachedPotential(server) * estimatedValue;
+	  if (typeof iceCard.hostedCards !== "undefined")
+		ret -= iceCard.hostedCards.length; //assume hosted cards weaken it
+	return ret;
+  }
 
   constructor() {
     this.preferred = null;
@@ -1060,6 +1072,24 @@ console.log(this.preferred);
       }
 	  //otherwise just choose next card
 	  return 0;
+    }
+
+	//check for events that can only be played in a window of opportunity
+    if (optionList.includes("play")) {
+        this.playWhenCan = ["En Passant"]; //cards which should be played when they can
+        for (var i = 0; i < this.playWhenCan.length; i++) {
+          //if this.playWhenCan[i] is found in hand, and can be played, play it
+          cardToPlay = this._copyOfCardExistsIn(this.playWhenCan[i], runner.grip);
+          if (cardToPlay) {
+            this._log("there is an event card with a window of opportunity");
+            if (FullCheckPlay(cardToPlay)) {
+              this._log("and I could play it");
+              return this._returnPreference(optionList, "play", {
+                cardToPlay: cardToPlay,
+              });
+            }
+          }
+        }
     }
 
     //if run is an option, assess the possible runs

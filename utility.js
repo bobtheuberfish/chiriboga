@@ -2317,6 +2317,7 @@ function CountInfluence(identityCard, indices) {
  * @param {Card[]} destination array to push the Card instances into (indices will be pushed instead if cardBack etc are not specified)
  * @param {int} maxLength maximum length for destination to become
  * @param {int} maxInfluence maximum influence for list to have
+ * @param {int} minLength minimum length for destination to become
  * @returns {int[]} set id of each card instanced
  */
 function DeckBuildRandomly(
@@ -2325,6 +2326,8 @@ function DeckBuildRandomly(
   destination,
   maxLength,
   maxInfluence,
+  minLength,
+  exactInfluence,
   cardBack,
   glowTextures,
   strengthTextures
@@ -2346,6 +2349,14 @@ function DeckBuildRandomly(
       }
     }
   }
+  
+  //determine highest influence in pool
+  var maxedIndices = [];
+  var highestInfInPool = 0;
+  for (var i = 0; i < indices.length; i++) {
+	  if (cardSet[indices[i]].faction != identityCard.faction && cardSet[indices[i]].influence > highestInfInPool && !maxedIndices.includes(i)) highestInfInPool = cardSet[indices[i]].influence;
+  }
+  
   var totalInfluence = 0; //just for this run of the function, not including anything already in the deck
   while (
     destination.length < maxLength &&
@@ -2358,14 +2369,29 @@ function DeckBuildRandomly(
       limitPerDeck = cardSet[cardNumber].limitPerDeck;
     if (countSoFar[randomIndex] < limitPerDeck) {
       var legalCard = false;
-      if (cardSet[cardNumber].faction == identityCard.faction) legalCard = true;
+	  var cardSlotsThatWillBeLeft = minLength - destination.length - 1;
+      if (cardSet[cardNumber].faction == identityCard.faction || cardSet[cardNumber].influence == 0) {
+		  var influenceThatWillBeLeft = maxInfluence - totalInfluence;
+		  if (!exactInfluence || influenceThatWillBeLeft == 0 || cardSlotsThatWillBeLeft > 0) legalCard = true;
+	  }
       else {
-        if (totalInfluence + cardSet[cardNumber].influence <= maxInfluence) {
+		var infFlex = 2;
+		if ((maxLength < 2)||(totalInfluence >= maxInfluence)) infFlex = 0; //the flex is only there for accidental overflow, don't waste it
+		var suitableInfluence = true;
+		if (exactInfluence) {
+			infFlex = 0;
+			var influenceThatWillBeLeft = maxInfluence - totalInfluence - cardSet[cardNumber].influence;
+//console.log(cardSlotsThatWillBeLeft+" card slots left, "+influenceThatWillBeLeft+" inf remaining after inclusion of "+cardSet[cardNumber].title+" with inf: "+cardSet[cardNumber].influence);
+			if ( (cardSlotsThatWillBeLeft > influenceThatWillBeLeft) && (cardSet[cardNumber].influence > 0) ) suitableInfluence = false; //don't use up all the influence immediately (card pool may not have enough in-faction cards to complete the quota otherwise)
+			else if (cardSlotsThatWillBeLeft == 0 && influenceThatWillBeLeft > 0 && cardSet[cardNumber].influence < highestInfInPool) suitableInfluence = false; //try not to waste any influence
+		}
+        if (totalInfluence + cardSet[cardNumber].influence <= maxInfluence + infFlex && suitableInfluence) {
           totalInfluence += cardSet[cardNumber].influence;
           legalCard = true;
         }
       }
       if (legalCard) {
+//console.log("Choosing "+cardSet[cardNumber].title+" ("+cardSet[cardNumber].influence+" inf, "+(maxLength-destination.length)+" cards and "+(maxInfluence-totalInfluence)+" inf remaining)");
         countSoFar[randomIndex]++;
         if (typeof cardBack !== "undefined")
           InstanceCardsPush(
@@ -2381,6 +2407,14 @@ function DeckBuildRandomly(
         ret.push(cardNumber);
       }
     }
+	else if (!maxedIndices.includes(randomIndex)) {
+	  //don't include this as highest influence in pool
+	  maxedIndices.push(randomIndex);
+	  var highestInfInPool = 0;
+	  for (var i = 0; i < indices.length; i++) {
+		  if (cardSet[indices[i]].faction != identityCard.faction && cardSet[indices[i]].influence > highestInfInPool && !maxedIndices.includes(i)) highestInfInPool = cardSet[indices[i]].influence;
+	  }
+	}
   }
   //report timeout error, if relevant
   if (Date.now() - startTime >= deckBuildingMaxTime) {
@@ -2488,11 +2522,13 @@ function DeckBuildRandomAgendas(
  *
  * @method DeckBuild
  * @param {Card} identityCard identity card to base deckbuilding around
+ * @param {string[]} setIdentifiers array of sets to use cards from e.g. sg, su21
  * @param {Card[]} destination array to push the Card instances into
  * @returns {int[]} set id of each card instanced
  */
 function DeckBuild(
   identityCard,
+  setIdentifiers,
   destination,
   cardBack,
   glowTextures,
@@ -2503,59 +2539,76 @@ function DeckBuild(
   
   if (identityCard.player == runner) {
 	  //RUNNER deckbuilding
-	  
 	  var runnerFaction = identityCard.faction;
 	  var influenceUsed = 0;
 	  //consoles
-	  var consoleCards = [30003, 30023, 30014];
+	  var consoleCards = [];
+	  if (setIdentifiers.includes('sg')) consoleCards = consoleCards.concat([30003, 30023, 30014]);
+	  if (setIdentifiers.includes('su2021')) consoleCards = consoleCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		consoleCards,
 		destination,
 		1,
 		0,
+		0,
+		false,
 		cardBack,
 		glowTextures,
 		strengthTextures
 	  ));
 	  //fracters
-	  var fracterCards = [30006, 30016];
+	  var fracterCards = [];
+	  if (setIdentifiers.includes('sg')) fracterCards = fracterCards.concat([30006, 30016]);
+	  if (setIdentifiers.includes('su2021')) fracterCards = fracterCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		fracterCards,
 		destination,
 		destination.length + RandomRange(1, 2),
 		3,
+		0,
+		false,
 		cardBack,
 		glowTextures,
 		strengthTextures
 	  ));
 	  //decoders
-	  var decoderCards = [30005, 30026];
+	  var decoderCards = [];
+	  if (setIdentifiers.includes('sg')) decoderCards = decoderCards.concat([30005, 30026]);
+	  if (setIdentifiers.includes('su2021')) decoderCards = decoderCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		decoderCards,
 		destination,
 		destination.length + RandomRange(1, 2),
 		3,
+		0,
+		false,
 		cardBack,
 		glowTextures,
 		strengthTextures
 	  ));
 	  //killer
-	  var killerCards = [30015, 30025];
+	  var killerCards = [];
+	  if (setIdentifiers.includes('sg')) killerCards = killerCards.concat([30015, 30025]);
+	  if (setIdentifiers.includes('su2021')) killerCards = killerCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		killerCards,
 		destination,
 		destination.length + RandomRange(1, 2),
 		3,
+		0,
+		false,
 		cardBack,
 		glowTextures,
 		strengthTextures
 	  ));
 	  //economy
-	  var economyCards = [30007, 30018, 30020, 30027, 30029, 30030, 30033]; //only includes cards that would fairly certainly provide credits
+	  var economyCards = []; //only includes cards that would fairly certainly provide credits
+	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30007, 30018, 30020, 30027, 30029, 30030, 30033]);
+	  if (setIdentifiers.includes('su2021')) economyCards = economyCards.concat([]);
 	  var influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
@@ -2566,15 +2619,19 @@ function DeckBuild(
 		destination,
 		destination.length + RandomRange(9, 11),
 		9 - influenceUsed,
+		0,
+		false,
 		cardBack,
 		glowTextures,
 		strengthTextures
 	  ));
 	  //any other cards
-      var otherCards = [
+      var otherCards = [];
+	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([
         30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30011, 30012, 30013, 30014, 30015, 30016, 30017, 30018, 30020, 30021, 30022, 30023,
         30024, 30025, 30026, 30027, 30028, 30029, 30030, 30031, 30032, 30033, 30034,
-      ];
+      ]);
+	  if (setIdentifiers.includes('su2021')) otherCards = otherCards.concat([31003]);
 	  influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
@@ -2585,6 +2642,8 @@ function DeckBuild(
 		destination,
 		identityCard.deckSize,
 		15 - influenceUsed,
+		identityCard.deckSize,
+		true,
 		cardBack,
 		glowTextures,
 		strengthTextures
@@ -2593,7 +2652,9 @@ function DeckBuild(
 	  //CORP deckbuilding
 	  
 	  //agendas
-	  var agendaCards = [30060, 30044, 30036, 30067, 30068, 30069, 30070, 30052];
+	  var agendaCards = [];
+	  if (setIdentifiers.includes('sg')) agendaCards = agendaCards.concat([30060, 30044, 30036, 30067, 30068, 30069, 30070, 30052]);
+	  if (setIdentifiers.includes('su2021')) agendaCards = agendaCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomAgendas(
 		identityCard,
 		agendaCards,
@@ -2604,13 +2665,17 @@ function DeckBuild(
 		strengthTextures
 	  ));
 	  //economy
-	  var economyCards = [30037, 30048, 30056, 30064, 30071, 30075]; //(credit economy only)
+	  var economyCards = []; //(credit economy only)
+	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30037, 30048, 30056, 30064, 30071, 30075]);
+	  if (setIdentifiers.includes('su2021')) economyCards = economyCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		economyCards,
 		destination,
 		destination.length + RandomRange(9, 11),
 		3,
+		0,
+		false,
 		cardBack,
 		glowTextures,
 		strengthTextures
@@ -2620,13 +2685,19 @@ function DeckBuild(
 		cardsAdded
 	  );
 	  //ice
-	  var iceCards = [30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074];
+	  var iceCards = [];
+	  if (setIdentifiers.includes('sg')) iceCards = iceCards.concat([30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074]);
+	  if (setIdentifiers.includes('su2021')) iceCards = iceCards.concat([]);
+	  var numIceCardsToAdd = RandomRange(15, 17);
+	  var iceInfluenceBudget = 9 - influenceUsed;
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		iceCards,
 		destination,
-		destination.length + RandomRange(15, 18),
-		9 - influenceUsed,
+		destination.length + numIceCardsToAdd,
+		iceInfluenceBudget,
+		0,
+		false,
 		cardBack,
 		glowTextures,
 		strengthTextures
@@ -2636,13 +2707,17 @@ function DeckBuild(
 		cardsAdded
 	  );
 	  //other cards
-	  var otherCards = [30040, 30041, 30042, 30045, 30049, 30050, 30053, 30057, 30058, 30061, 30065, 30066];
+	  var otherCards = [];
+	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30057, 30058, 30061, 30065, 30066]);
+	  if (setIdentifiers.includes('su2021')) otherCards = otherCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,
 		destination,
 		44,
 		15 - influenceUsed,
+		44,
+		true,
 		cardBack,
 		glowTextures,
 		strengthTextures

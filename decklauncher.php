@@ -137,7 +137,7 @@
 				}
 			  } //create a random deck for this identity
 			  else {
-				var cardsChosen = DeckBuild(cardSet[json.identity]);
+				var cardsChosen = DeckBuild(cardSet[json.identity],["sg","su2021"]);
 				//convert generated deck into counts
 				for (var i = 0; i < cardsChosen.length; i++) {
 				  var pci = playerCards.indexOf(cardsChosen[i]);
@@ -293,7 +293,7 @@
 					  validDeck = false;
 					}
 				  } else {
-					$("#output").append(cardTitle + " not found in System Gateway<br/>");
+					$("#output").append(cardTitle + " not found<br/>");
 					validDeck = false;
 				  }
 				}

@@ -591,7 +591,7 @@ function Cancel() {
   //generic cases
   EnumeratePhase();
   executingCommand = "n"; //i.e. act as if the previous phase was finished
-  MakeChoice();
+  //MakeChoice();
 }
 
 /**

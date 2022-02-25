@@ -15,9 +15,11 @@ function MakeRun(server) {
   GainCredits(runner, corp.badPublicity, "bad publicity"); //(Nisei 2021 1.2)
   AutomaticTriggers("runBegins", server); //(Nisei 2021 1.3) but only automatics at the moment
   approachIce = attackedServer.ice.length - 1;
-  if (attackedServer.ice.length > 0) ChangePhase(phases.runApproachIce);
-  //(Nisei 2021 1.4.1 sends to 2.1)
-  else ChangePhase(phases.runDecideContinue); //(Nisei 2021 1.4.2 sends to 4)
+  if (attackedServer.ice.length > 0) {
+	  //(Nisei 2021 1.4.1 sends to 2.1)
+	  ChangePhase(phases.runApproachIce);
+  }
+  else ChangePhase(phases.runDecideContinue); //(Nisei 2021 1.4.2 sends to 4; 4.1 doesn't apply so go directly to 4.2)
   Render(); //to update server glow
 }
 

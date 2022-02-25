@@ -56,6 +56,7 @@
  .runnerTurnBegin
  .runBegins //called with input (server) (currently treats all as automatic)
  .encounterEnds //note encountering will now be false but approachIce available to use
+ .passesIce //called when movement begins (approachIce still refers to the ice passed)
  .approachServer //called when approaching the server (before runner decides whether to continue the run)
  .runSuccessful //called before breaching the server
  .breachServer //called before accessing cards, return an int modifier e.g. -1, 0, 1 to access more or less cards (currently treats all as automatic)
@@ -570,6 +571,7 @@ function LoadDecks() {
   }
 
   var deckJson = {};
+  var setsToUse = ["sg","su2021"]; //for random deckbuilding
 
   //*RUNNER*
   //LOAD Runner deck, if specified (as an LZ compressed JSON object containing .identity= and .cards=[], with cards specified by number in the set)
@@ -606,7 +608,9 @@ function LoadDecks() {
   }
   //RUNNER RANDOM System Gateway Deck
   if (runner.stack.length == 0) {
-    var runnerIdentities = [30001, 30010, 30019, 31001, 31002];
+    var runnerIdentities = [];
+	if (setsToUse.includes('sg')) runnerIdentities = runnerIdentities.concat([30001, 30010, 30019]);
+	if (setsToUse.includes('su2021')) runnerIdentities = runnerIdentities.concat([31001, 31002]);
     deckJson.identity =
       runnerIdentities[RandomRange(0, runnerIdentities.length - 1)];
     runner.identityCard = InstanceCard(
@@ -617,6 +621,7 @@ function LoadDecks() {
     ); //note that card.location is not set for identity cards
     deckJson.cards = DeckBuild(
 	  runner.identityCard,
+	  setsToUse,
 	  runner.stack,
       cardBackTexturesRunner,
       glowTextures,
@@ -671,7 +676,9 @@ function LoadDecks() {
   }
   //CORP RANDOM System Gateway Deck
   if (corp.RnD.cards.length == 0) {
-    var corpIdentities = [30035, 30043, 30051, 30059];
+    var corpIdentities = [];
+	if (setsToUse.includes('sg')) corpIdentities = corpIdentities.concat([30035, 30043, 30051, 30059]);
+	if (setsToUse.includes('su2021')) corpIdentities = corpIdentities.concat([]);
     deckJson.identity =
       corpIdentities[RandomRange(0, corpIdentities.length - 1)];
     corp.identityCard = InstanceCard(
@@ -682,6 +689,7 @@ function LoadDecks() {
     ); //note that card.location is not set for identity cards
     deckJson.cards = DeckBuild(
 	  corp.identityCard,
+	  setsToUse,
 	  corp.RnD.cards,
       cardBackTexturesCorp,
       glowTextures,
@@ -702,38 +710,39 @@ function LoadDecks() {
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-  debugging = false; //set true to pause execution on error
+  debugging = true; //set true to pause execution on error
   //mainLoopDelay = 10; //for speedy AI vs AI testing
 
   /*
 	RunnerTestField(31002, //identity
 		[], //heapCards
 		[30014,30014,30014,30014], //stackCards
-		[30014,30014,30014,30014,30014], //gripCards
-		[30003], //installed
+		[31003,30014,30014,30014,30014], //gripCards
+		[30003,30026], //installed
 		[], //stolen
 		cardBackTexturesRunner,glowTextures,strengthTextures);
 	
 	CorpTestField(30035, //identity
 		[], //archivesCards
 		[30073,30072,30047,30073,30073,30039], //rndCards
-		[], //hqCards
+		[30065], //hqCards
 		[], //archivesInstalled
-		[30054,30054], //rndInstalled
+		[30072,30073], //rndInstalled
 		[], //hqInstalled
 		[[30069]], //remotes (array of arrays)
 		[], //scored
 		cardBackTexturesCorp,glowTextures,strengthTextures);
-    */
+    
   //GainCredits(runner,12);
-  //GainCredits(corp,14);
-  //ChangePhase(phases.corpStartDraw);
+  GainCredits(corp,14);
+  ChangePhase(phases.corpStartDraw);
   //ChangePhase(phases.runnerStartResponse);
   //ChangePhase(phases.runnerEndOfTurn);
-  //AddTags(2);
+  AddTags(2);
   //runner.clickTracker = 1;
   //ChangePhase(phases.corpDiscardStart);
   //MakeRun(corp.remoteServers[0]);
   //attackedServer = corp.RnD;
   //ChangePhase(phases.runApproachServer); //i.e. skip all the ice
+  */
 }

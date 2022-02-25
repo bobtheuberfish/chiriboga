@@ -1187,10 +1187,7 @@ cardSet[30019] = {
         var iceCard = choices[i].card;
         if (iceCard.rezzed) {
           //no point swapping unrezzed ice with unrezzed ice
-          var server = GetServer(iceCard);
-          thisScore = runner.AI._getCachedPotential(server) * iceCard.rezCost;
-          if (typeof iceCard.hostedCards !== "undefined")
-            thisScore -= iceCard.hostedCards.length; //assume hosted cards weaken it
+		  thisScore = runner.AI._iceComparisonScore(iceCard);
           if (thisScore > bestScore) {
             bestScore = thisScore;
             bestIndex = i;

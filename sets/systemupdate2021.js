@@ -77,13 +77,90 @@ cardSet[31002] = {
   },
   cardRezzed: {
     Resolve: function (card) {
-	  //TODO a squidge of research: rulings regarding Send a Message
-	    //my guess is the "ignore all costs" blanks Reina
-		//and then any further ice doesn't extra cost because it's not the first ice rezzed
-		//if yes then Reina implementation is done because that's how I did it
-		//AI I'm just going to ignore the effect for now and add no new code (sufficient handle in RezCost)
-		//Deckbuilding is finished also
       if (CheckCardType(card, ["ice"])) this.usedThisTurn = true;
     },
   },
+};
+
+cardSet[31003] = {
+	title: 'En Passant',
+	imageFile: "31003.png",
+	player: runner,
+	faction: "Anarch",
+    influence: 2,
+	cardType: "event",
+    subTypes: ["Sabotage"],
+    cardType: "event",
+    playCost: 0,
+	//play only if you made a successful run this turn
+	madeSuccessfulRunThisTurn: false,
+	runnerTurnBegin: {
+		Resolve: function () {
+		  this.madeSuccessfulRunThisTurn = false;
+		},
+		automatic: true,
+		availableWhenInactive: true,
+	},
+	corpTurnBegin: {
+		Resolve: function () {
+		  this.madeSuccessfulRunThisTurn = false;
+		},
+		automatic: true,
+		availableWhenInactive: true,
+	},
+	runSuccessful: {
+		Resolve: function () {
+		  this.madeSuccessfulRunThisTurn = true;
+		},
+		automatic: true,
+		availableWhenInactive: true,
+	},
+	//Trash 1 unrezzed piece of ice you passed during your last run
+	icePassedLastRun: [],
+	Enumerate: function () {
+		if (!this.madeSuccessfulRunThisTurn) return [];
+		var iplr = this.icePassedLastRun; //so it can be used by the choices enumerator
+        var choices = ChoicesInstalledCards(corp, function (card) {
+          //only include trashable unrezzed ice from the pased-last-run list
+          if (!card.rezzed && iplr.includes(card) && CheckCardType(card, ["ice"]) && CheckTrash(card))
+            return true;
+          return false;
+        });
+		//**AI code (in this case, implemented by setting and returning the preferred option)
+		if (runner.AI != null) {
+		  var bestChoice = []; //by default, don't do it
+		  var highestComparisonScore = 0;
+		  for (var i=0; i<choices.length; i++) {
+			  var iceCard = choices[i].card;
+			  var thisComparisonScore = runner.AI._iceComparisonScore(iceCard);
+		      //don't bother with any ice that has 2 or lower comparisonScore (standard unrezzed score is 3, minus a hosted card would be 2)
+			  if (thisComparisonScore > 2 && thisComparisonScore > highestComparisonScore) {
+				highestComparisonScore = thisComparisonScore;
+				bestChoice = [choices[i]];
+			  }
+		  }
+		  return bestChoice;
+		}
+	    return choices;	  
+	},
+	runBegins: {
+		Resolve: function (params) {
+			this.icePassedLastRun = [];
+		},
+		automatic: true,
+		availableWhenInactive: true,
+	},
+	passesIce: {
+		Resolve: function (params) {
+			//"By passing the last piece of ice protecting the server, the Runner is considered to have passed all of it." (Lukas Litzsinger)
+			for (var i=approachIce; i<attackedServer.ice.length; i++) {
+				if (!this.icePassedLastRun.includes(attackedServer.ice[i])) this.icePassedLastRun.push(attackedServer.ice[i]);
+			}
+		},
+		automatic: true,
+		availableWhenInactive: true,
+	},
+	Resolve: function (params) {
+		Trash(params.card, true); //true means can be prevented
+	},
 };

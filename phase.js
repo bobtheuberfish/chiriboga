@@ -151,7 +151,7 @@ phaseTemplates.standardResponse = {
             return;
           }
           Log("Corp did not rez ice");
-          ChangePhase(phases.runDecideContinue);
+          ChangePhase(phases.runPassesIce);
           return;
         } else if (currentPhase.identifier == "Run 3.1") {
           //Run: Encounter triggers fire (Nisei 2021 3.1)
@@ -1157,7 +1157,7 @@ phases.runSubroutines = {
       subroutine++;
       if (
         currentPhase == phases.runUnsuccessful ||
-        currentPhase == phases.runDecideContinue
+        currentPhase == phases.runPassesIce
       )
         this.n(); //some things need finishing up if run has been ended or sent to approach a different ice
     },
@@ -1166,7 +1166,7 @@ phases.runSubroutines = {
       if (currentPhase.identifier == "Run Subroutines") {
         //phase hasn't been changed by external force, need to choose it here:
         //subroutines done; approach next ice or continue run (no need to check for run end because EndTheRun calls ChangePhase)
-        ChangePhase(phases.runDecideContinue); //approachIce will be decremented if runner continues
+        ChangePhase(phases.runPassesIce); //approachIce will be decremented if runner continues
       }
       //move to 'encounter ends' pseudo phase
       phases.runEncounterEnd.next = currentPhase;
@@ -1185,7 +1185,17 @@ phases.runEncounterEnd = CreatePhaseFromTemplate(
 );
 phases.runEncounterEnd.triggerCallbackName = "encounterEnds";
 
-//Run: decide whether to continue the run (Nisei 2021 4.3) this is part of the Movement Phase
+//Run: Runner passes ice and movement phase begins (Nisei 2021 4.1)
+phases.runPassesIce = CreatePhaseFromTemplate(
+  phaseTemplates.globalTriggers,
+  runner,
+  "Run: Movement",
+  "Run: 4.1",
+  null
+);
+phases.runPassesIce.triggerCallbackName = "passesIce";
+
+//Run: paid ability window and decide whether to continue the run (Nisei 2021 4.2 and 4.3) this is part of the Movement Phase
 phases.runDecideContinue = CreatePhaseFromTemplate(
   phaseTemplates.noRezResponse,
   runner,
@@ -1454,7 +1464,8 @@ phases.runnerEndOfTurn.next = phases.corpStartDraw; //"Runner 2.3"
 phases.runApproachIce.next = phases.runRezApproachedIce; //"Run 2.1"
 phases.runRezApproachedIce.next = phases.runEncounterIce; //"Run 2.2"
 phases.runEncounterIce.next = phases.runSubroutines; //"Run 3.1"
-phases.runSubroutines.next = phases.runDecideContinue; //"Run Subroutines"
+phases.runSubroutines.next = phases.runPassesIce; //"Run Subroutines"
+phases.runPassesIce.next = phases.runDecideContinue; //"Run 4.1"
 phases.runDecideContinue.next = phases.runResponseBeforeApproach; //"Run 4.3"
 phases.runResponseBeforeApproach.next = phases.runApproachServer; //"Run 4.5"  by default after ice will move to approach server (change to indicate ice is there to approach)
 phases.runApproachServer.next = phases.runSuccessful; //"Run 4.6.2"
