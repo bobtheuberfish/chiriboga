@@ -306,7 +306,23 @@ class RunCalculator {
     //known icebreaker list (could consider putting these on each card rather than here)
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     var title = card.title;
-	if (title == "Quetzal: Free Spirit") {
+    if (title == "Corroder") {
+      result = result.concat(
+        this.ImplementIcebreaker(
+          point,
+          card,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Barrier"],
+          1,
+          1,
+          1,
+          1,
+          creditsLeft
+        )
+      ); //cost to str, amt to str, cost to brk, amt to brk	
+    } else if (title == "Quetzal: Free Spirit") {
 	  if (!card.usedThisTurn) {
 		//can only use once
         var str_mod_by_this = 0; //zero mod, just using it because it persists

@@ -288,6 +288,80 @@ cardSet[31005] = {
   },
 };
 
+cardSet[31006] = {
+  title: "Corroder",
+  imageFile: "31006.png",
+  player: runner,
+  faction: "Anarch",
+  influence: 2,
+  cardType: "program",
+  subTypes: ["Icebreaker", "Fracter"],
+  memoryCost: 1,
+  installCost: 2,
+  strength: 2,
+  strengthBoost: 0,
+  modifyStrength: {
+    Resolve: function (card) {
+      if (card == this) return this.strengthBoost;
+      return 0; //no modification to strength
+    },
+  },
+  //Interface -> 1[c]: Break 1 barrier subroutine.
+  //1[c]: +1 strength.
+  abilities: [
+    {
+      text: "Break 1 barrier subroutine.",
+      Enumerate: function () {
+        if (!CheckEncounter()) return [];
+        if (!CheckSubType(attackedServer.ice[approachIce], "Barrier")) return [];
+        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckStrength(this)) return [];
+        return ChoicesEncounteredSubroutines();
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          1,
+          "using",
+          this,
+          function () {
+            Break(params.subroutine);
+          },
+          this
+        );
+      },
+    },
+    {
+      text: "+1 strength.",
+      Enumerate: function () {
+        if (!CheckEncounter()) return []; //technically you can +1 strength outside encounters but I'm putting this here for interface usability
+        if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
+        if (!CheckUnbrokenSubroutines()) return []; //as above
+        if (!CheckSubType(attackedServer.ice[approachIce], "Barrier")) return []; //as above
+        if (!CheckCredits(1, runner, "using", this)) return [];
+        return [{}];
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          1,
+          "using",
+          this,
+          function () {
+            BoostStrength(this, 1);
+          },
+          this
+        );
+      },
+    },
+  ],
+  encounterEnds: {
+    Resolve: function () {
+      this.strengthBoost = 0;
+    },
+    automatic: true,
+  },
+};
 /*
 cardSet[31071] = {
   title: "Hostile Takeover",

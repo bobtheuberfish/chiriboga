@@ -2561,7 +2561,7 @@ function DeckBuild(
 	  //fracters
 	  var fracterCards = [];
 	  if (setIdentifiers.includes('sg')) fracterCards = fracterCards.concat([30006, 30016]);
-	  if (setIdentifiers.includes('su21')) fracterCards = fracterCards.concat([]);
+	  if (setIdentifiers.includes('su21')) fracterCards = fracterCards.concat([31006]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		fracterCards,
