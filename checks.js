@@ -444,15 +444,18 @@ function CheckSteal() {
 }
 
 /**
- * Checks whether a card can be score.<br/>Logdebugs the result.
+ * Checks whether a card can be scored.<br/>Logdebugs the result.
  *
  * @method CheckScore
+ * @param [Boolean] ignoreRequirement set true to ignore advancement requirement
  * @returns {Boolean} true if can be scored, false otherwise (e.g. not an agenda)
  */
-function CheckScore(card) {
+function CheckScore(card,ignoreRequirement=false) {
   if (card.cardType !== "agenda") return false;
-  if (typeof card.advancement == "undefined") return false;
-  if (card.advancement < AdvancementRequirement(card)) return false;
+  if (!ignoreRequirement) {
+	  if (typeof card.advancement == "undefined") return false;
+	  if (card.advancement < AdvancementRequirement(card)) return false;
+  }
   if (CardEffectsForbid("score", card)) return false; //forbidden by card effects
   return true;
 }
@@ -556,12 +559,15 @@ function CheckCallback(card, callbackName) {
 }
 
 /**
- * Checks whether purge is possible (i.e. there are any virus counters).<br/>LogDebugs the result.
+ * Checks whether purge is possible.<br/>LogDebugs the result.
  *
  * @method CheckPurge
  * @returns {Boolean} true if purge is possible, false otherwise
  */
 function CheckPurge() {
+  //"The Corp can always use a purge effect, even if there are no virus counters currently hosted on any cards." - CR 10.1.2
+  
+	/*
   var installedRunnerCards = InstalledCards(runner);
   for (var i = 0; i < installedRunnerCards.length; i++) {
     if (typeof installedRunnerCards[i].virus !== "undefined") {
@@ -582,4 +588,7 @@ function CheckPurge() {
   }
   LogDebug("There are no virus counters");
   return false;
+  */
+  
+  return true;
 }

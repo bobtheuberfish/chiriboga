@@ -89,6 +89,7 @@
  .cardEncountered //called with input (card) when a card is encountered (currently treats all as automatic)
  .cardTrashed //called with input (card) when a card is trashed (currently treats all as automatic)
  .cardAdvanced //called with input (card) when a card is advanced (currently treats all as automatic)
+ .purged //called with input (number of virus counters removed) when virus counters are purged (currently treats all as automatic)
  .cannot //called with input (string, card) where the string is a phase option (e.g. "score"), if true is returned, Check<String> will return false (all automatic)
 */
 
@@ -571,7 +572,7 @@ function LoadDecks() {
   }
 
   var deckJson = {};
-  var setsToUse = ["sg","su2021"]; //for random deckbuilding
+  var setsToUse = ["sg","su21"]; //for random deckbuilding
 
   //*RUNNER*
   //LOAD Runner deck, if specified (as an LZ compressed JSON object containing .identity= and .cards=[], with cards specified by number in the set)
@@ -610,7 +611,7 @@ function LoadDecks() {
   if (runner.stack.length == 0) {
     var runnerIdentities = [];
 	if (setsToUse.includes('sg')) runnerIdentities = runnerIdentities.concat([30001, 30010, 30019]);
-	if (setsToUse.includes('su2021')) runnerIdentities = runnerIdentities.concat([31001, 31002]);
+	if (setsToUse.includes('su21')) runnerIdentities = runnerIdentities.concat([31001, 31002]);
     deckJson.identity =
       runnerIdentities[RandomRange(0, runnerIdentities.length - 1)];
     runner.identityCard = InstanceCard(
@@ -678,7 +679,7 @@ function LoadDecks() {
   if (corp.RnD.cards.length == 0) {
     var corpIdentities = [];
 	if (setsToUse.includes('sg')) corpIdentities = corpIdentities.concat([30035, 30043, 30051, 30059]);
-	if (setsToUse.includes('su2021')) corpIdentities = corpIdentities.concat([]);
+	if (setsToUse.includes('su21')) corpIdentities = corpIdentities.concat([]);
     deckJson.identity =
       corpIdentities[RandomRange(0, corpIdentities.length - 1)];
     corp.identityCard = InstanceCard(
@@ -710,7 +711,7 @@ function LoadDecks() {
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-  debugging = true; //set true to pause execution on error
+  debugging = false; //set true to pause execution on error
   //mainLoopDelay = 10; //for speedy AI vs AI testing
 
   /*

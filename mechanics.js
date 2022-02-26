@@ -629,10 +629,15 @@ function BrainDamage(num) {
  * @method Purge
  */
 function Purge() {
+  var numPurged = 0;
   ApplyToAllCards(function (card) {
-    if (typeof (card.virus !== "undefined")) card.virus = 0;
+    if (typeof (card.virus !== "undefined")) {
+		numPurged += card.virus;
+		card.virus = 0;
+	}
   });
   Log("Virus counters purged");
+  AutomaticTriggers("purged", numPurged);
 }
 
 /**

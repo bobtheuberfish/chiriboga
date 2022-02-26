@@ -227,3 +227,83 @@ cardSet[31004] = {
 	  return false;
   },
 };
+
+cardSet[31005] = {
+  title: "Clot",
+  imageFile: "31005.png",
+  player: runner,
+  faction: "Anarch",
+  influence: 2,
+  cardType: "program",
+  subTypes: ["Virus"],
+  installCost: 2,
+  memoryCost: 1,
+  //The Corp cannot score an agenda during the same turn they installed that agenda.
+  agendasInstalledThisTurn: [],
+  corpTurnBegin: {
+    Resolve: function () {
+      this.agendasInstalledThisTurn = [];
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  runnerTurnBegin: {
+    Resolve: function () {
+      this.agendasInstalledThisTurn = [];
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  cardInstalled: {
+    Resolve: function (card) {
+		if (CheckCardType(card, ["agenda"])) {
+			if (!this.agendasInstalledThisTurn.includes(card)) {
+				this.agendasInstalledThisTurn.push(card);
+			}
+		}
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  cannot: {
+    Resolve: function (str, card) {
+        if (str == "score") {
+			if (this.agendasInstalledThisTurn.includes(card)) return true; //cannot score
+		}
+        return false; //nothing else forbidden
+    }, //nothing forbidden
+  },
+  //When the Corp purges virus counters, trash this program.
+  purged: {
+		Resolve: function (numPurged) {
+			Trash(this,true); //true means it can be prevented
+		}
+  },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install more than one copy of Clot
+	if (runner.AI._copyOfCardExistsIn("Clot", InstalledCards(runner))) return -1; //don't install
+    return 0; //do install
+  },
+};
+
+/*
+cardSet[31071] = {
+  title: "Hostile Takeover",
+  imageFile: "31071.jpg",
+  player: corp,
+  cardType: "agenda",
+  subTypes: ["Expansion"],
+  agendaPoints: 1,
+  advancementRequirement: 2,
+  scored: {
+    Resolve: function () {
+      if (intended.score == this) {
+        GainCredits(corp, 7);
+        BadPublicity(1);
+      }
+    },
+  },
+};
+*/

@@ -1566,8 +1566,9 @@ class CorpAI {
 	  return AdvancementRequirement(card) - Counters(card,"advancement");
   }
 
-  _isFullyAdvanceableAgenda(card) { //can be finished this turn
+  _isFullyAdvanceableAgenda(card) { //can be finished and scored this turn
 	if (!CheckCardType(card, ["agenda"])) return false;
+	if (!CheckScore(card,true)) return false; //the true means ignore advancement requirement
 	var canFullyAdvance = this._potentialAdvancement(card,true) >= this._advancementRequired(card);
 	return canFullyAdvance;
   }
@@ -1724,11 +1725,16 @@ class CorpAI {
 		  //each card with virus counters over 2 has a chance of provoking a purge
 		  var virus_max = 10; //the higher this number, the less chance of a purge
 		  var virus_min = 2;
-		  var installedCards = InstalledCards(runner);
-		  for (var i = 0; i < installedCards.length; i++) {
+		  var installedRunnerCards = InstalledCards(runner);
+		  if (this._copyOfCardExistsIn("Clot",installedRunnerCards)) {
+			  //if a Clot is in play, increased chance to purge
+			  virus_min-=2;
+		  }
+		  for (var i = 0; i < installedRunnerCards.length; i++) {
+			var randomNum = RandomRange(virus_min, virus_max);
 			if (
-			  Counters(installedCards[i], "virus") >
-			  RandomRange(virus_min, virus_max)
+			  Counters(installedRunnerCards[i], "virus") >
+			  randomNum
 			)
 			  return optionList.indexOf("purge");
 		  }

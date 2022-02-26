@@ -451,7 +451,7 @@ function CardEffectsForbid(id, card) {
         card
       )
     )
-      return true; //at least one card effect forbids it
+      return true; //at least one card effect forbids it for this card
   }
   return false;
 }
