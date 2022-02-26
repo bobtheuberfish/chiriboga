@@ -1578,7 +1578,7 @@ class CorpAI {
 	if (cardToPlay) {
 	  this._log("there is a card to play "+msg);
 	  var playThis = true; //if no specific rules have been defined then just play it whenever you can
-	  if (typeof(cardToPlay.AIWouldPlay) == 'function') playThis = cardToPlay.AIWouldPlay();
+	  if (typeof(cardToPlay.AIWouldPlay) == 'function') playThis = cardToPlay.AIWouldPlay.call(cardToPlay);
 	  if (playThis&&FullCheckPlay(cardToPlay)) {
 		if (logwillplay) this._log("I will play it");
 		return true;

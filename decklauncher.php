@@ -137,7 +137,7 @@
 				}
 			  } //create a random deck for this identity
 			  else {
-				var cardsChosen = DeckBuild(cardSet[json.identity],["sg","su2021"]);
+				var cardsChosen = DeckBuild(cardSet[json.identity],["sg","su21"]);
 				//convert generated deck into counts
 				for (var i = 0; i < cardsChosen.length; i++) {
 				  var pci = playerCards.indexOf(cardsChosen[i]);

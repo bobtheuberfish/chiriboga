@@ -1949,13 +1949,14 @@ function ChoicesCardInstall(card, ignoreCreditCost = false) {
  *
  * @method ChoicesArrayInstall
  * @param {Card[]} src array of cards
+ * @param {Boolean} ignoreCreditCost to assume install cost is zero (runner only)
  * @returns {Params[]} list of cards to choose from (each object has at least .card and .label)
  */
-function ChoicesArrayInstall(src) {
+function ChoicesArrayInstall(src, ignoreCreditCost = false) {
   var ret = [];
   for (var i = 0; i < src.length; i++) {
     var card = src[i];
-    ret = ret.concat(ChoicesCardInstall(card));
+    ret = ret.concat(ChoicesCardInstall(card,ignoreCreditCost));
   }
   return ret;
 }
@@ -2544,7 +2545,7 @@ function DeckBuild(
 	  //consoles
 	  var consoleCards = [];
 	  if (setIdentifiers.includes('sg')) consoleCards = consoleCards.concat([30003, 30023, 30014]);
-	  if (setIdentifiers.includes('su2021')) consoleCards = consoleCards.concat([]);
+	  if (setIdentifiers.includes('su21')) consoleCards = consoleCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		consoleCards,
@@ -2560,7 +2561,7 @@ function DeckBuild(
 	  //fracters
 	  var fracterCards = [];
 	  if (setIdentifiers.includes('sg')) fracterCards = fracterCards.concat([30006, 30016]);
-	  if (setIdentifiers.includes('su2021')) fracterCards = fracterCards.concat([]);
+	  if (setIdentifiers.includes('su21')) fracterCards = fracterCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		fracterCards,
@@ -2576,7 +2577,7 @@ function DeckBuild(
 	  //decoders
 	  var decoderCards = [];
 	  if (setIdentifiers.includes('sg')) decoderCards = decoderCards.concat([30005, 30026]);
-	  if (setIdentifiers.includes('su2021')) decoderCards = decoderCards.concat([]);
+	  if (setIdentifiers.includes('su21')) decoderCards = decoderCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		decoderCards,
@@ -2592,7 +2593,7 @@ function DeckBuild(
 	  //killer
 	  var killerCards = [];
 	  if (setIdentifiers.includes('sg')) killerCards = killerCards.concat([30015, 30025]);
-	  if (setIdentifiers.includes('su2021')) killerCards = killerCards.concat([]);
+	  if (setIdentifiers.includes('su21')) killerCards = killerCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		killerCards,
@@ -2608,7 +2609,7 @@ function DeckBuild(
 	  //economy
 	  var economyCards = []; //only includes cards that would fairly certainly provide credits
 	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30007, 30018, 30020, 30027, 30029, 30030, 30033]);
-	  if (setIdentifiers.includes('su2021')) economyCards = economyCards.concat([]);
+	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([]);
 	  var influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
@@ -2631,7 +2632,7 @@ function DeckBuild(
         30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30011, 30012, 30013, 30014, 30015, 30016, 30017, 30018, 30020, 30021, 30022, 30023,
         30024, 30025, 30026, 30027, 30028, 30029, 30030, 30031, 30032, 30033, 30034,
       ]);
-	  if (setIdentifiers.includes('su2021')) otherCards = otherCards.concat([31003]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31003, 31004]);
 	  influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
@@ -2654,7 +2655,7 @@ function DeckBuild(
 	  //agendas
 	  var agendaCards = [];
 	  if (setIdentifiers.includes('sg')) agendaCards = agendaCards.concat([30060, 30044, 30036, 30067, 30068, 30069, 30070, 30052]);
-	  if (setIdentifiers.includes('su2021')) agendaCards = agendaCards.concat([]);
+	  if (setIdentifiers.includes('su21')) agendaCards = agendaCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomAgendas(
 		identityCard,
 		agendaCards,
@@ -2667,7 +2668,7 @@ function DeckBuild(
 	  //economy
 	  var economyCards = []; //(credit economy only)
 	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30037, 30048, 30056, 30064, 30071, 30075]);
-	  if (setIdentifiers.includes('su2021')) economyCards = economyCards.concat([]);
+	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		economyCards,
@@ -2687,7 +2688,7 @@ function DeckBuild(
 	  //ice
 	  var iceCards = [];
 	  if (setIdentifiers.includes('sg')) iceCards = iceCards.concat([30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074]);
-	  if (setIdentifiers.includes('su2021')) iceCards = iceCards.concat([]);
+	  if (setIdentifiers.includes('su21')) iceCards = iceCards.concat([]);
 	  var numIceCardsToAdd = RandomRange(15, 17);
 	  var iceInfluenceBudget = 9 - influenceUsed;
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
@@ -2709,7 +2710,7 @@ function DeckBuild(
 	  //other cards
 	  var otherCards = [];
 	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30057, 30058, 30061, 30065, 30066]);
-	  if (setIdentifiers.includes('su2021')) otherCards = otherCards.concat([]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,

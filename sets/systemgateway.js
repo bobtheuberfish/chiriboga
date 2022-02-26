@@ -653,7 +653,8 @@ cardSet[30011] = {
     //**AI code (in this case, implemented by setting and returning the preferred option)
     if (runner.AI != null && choices.length > 0) {
       var choice = choices[0]; //choose arbitrary by default in case algorithm fails
-      var preferredcard = runner.AI._icebreakerInStackNotInHandOrArray(
+      var preferredcard = runner.AI._icebreakerInPileNotInHandOrArray(
+	    runner.stack,
         InstalledCards(runner)
       );
       for (var i = 0; i < choices.length; i++) {

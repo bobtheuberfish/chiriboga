@@ -495,7 +495,8 @@ class RunnerAI {
   }
 
   //returns something between [] and ["Fracter","Decoder","Killer"]
-  _essentialBreakerTypesNotInHandOrArray(installedRunnerCards) {
+  //you can override ["Fracter","Decoder","Killer"] with your own list of subtypes to check icebreakers for
+  _essentialBreakerTypesNotInHandOrArray(installedRunnerCards, overrideBreakerTypes=null) {
     var breakersInHandOrInstalled = [];
     for (var j = 0; j < installedRunnerCards.length; j++) {
       if (CheckSubType(installedRunnerCards[j], "Icebreaker"))
@@ -506,6 +507,7 @@ class RunnerAI {
         breakersInHandOrInstalled.push(runner.grip[j]);
     }
     var breakerTypes = ["Fracter", "Decoder", "Killer"];
+	if (overrideBreakerTypes) breakerTypes = overrideBreakerTypes;
     var result = [];
     for (var j = 0; j < breakerTypes.length; j++) {
       //if this breaker type is not already in hand or installed, add it to result
@@ -522,27 +524,28 @@ class RunnerAI {
   }
 
   //returns the first card found fulfilling this description (or an AI if needed, or null if none found)
-  _icebreakerInStackNotInHandOrArray(installedRunnerCards) {
+  _icebreakerInPileNotInHandOrArray(pileToCheck,installedRunnerCards) {
     var essentialBreakerTypesNotInHandOrArray =
       this._essentialBreakerTypesNotInHandOrArray(installedRunnerCards);
     for (var j = 0; j < essentialBreakerTypesNotInHandOrArray.length; j++) {
       //need one, is there one in deck?
-      for (var k = 0; k < runner.stack.length; k++) {
+      for (var k = 0; k < pileToCheck.length; k++) {
         if (
           CheckSubType(
-            runner.stack[k],
+            pileToCheck[k],
             essentialBreakerTypesNotInHandOrArray[j]
           )
         ) {
-          return runner.stack[k];
+          return pileToCheck[k];
         }
       }
     }
-    //we eeed one but couldn't find it - maybe get an AI instead
-    if (essentialBreakerTypesNotInHandOrArray.length > 0) {
-      for (var k = 0; k < runner.stack.length; k++) {
-        if (CheckSubType(runner.stack[k], "AI")) {
-          return runner.stack[k];
+    //we need one but couldn't find it - maybe get an AI instead (if there is not already one in hand or array)
+	var aiNotInHandOrArray = this._essentialBreakerTypesNotInHandOrArray(installedRunnerCards, ["AI"]);
+    if (essentialBreakerTypesNotInHandOrArray.length > 0 && aiNotInHandOrArray.length > 0) {
+      for (var k = 0; k < pileToCheck.length; k++) {
+        if (CheckSubType(pileToCheck[k], "AI")) {
+          return pileToCheck[k];
         }
       }
     }
@@ -620,7 +623,7 @@ class RunnerAI {
           //keep if have a spare mu and a breaker type in deck thats not in hand or play
           if (sparemu > 0) {
             var worthBreaker =
-              this._icebreakerInStackNotInHandOrArray(installedRunnerCards);
+              this._icebreakerInPileNotInHandOrArray(runner.stack,installedRunnerCards);
             if (worthBreaker) {
               //if a successful run has already been made this turn and can afford the install, then Mutual Favor is efficient
               if (
@@ -1106,6 +1109,14 @@ console.log(this.preferred);
             useConduit = triggerChoices[i].card;
         }
       }
+	  //and from particular cards
+	  var useRetrievalRun = null;
+      if (optionList.includes("play")) {
+        useRetrievalRun = this._copyOfCardExistsIn("Retrieval Run", runner.grip);
+        if (useRetrievalRun) {
+          if ( !FullCheckPlay(useRetrievalRun) || !useRetrievalRun.AIWouldPlay.call(useRetrievalRun) ) useRetrievalRun = null;
+        }
+      }
 
       //go through all the servers
       this.serverList = [
@@ -1184,6 +1195,7 @@ console.log(this.preferred);
                 this.serverList[i].potential = 0.5;
             }
           }
+		  //special potential from triggers and cards
           if (useRedTeam) {
             //might get a little credit from this (the 0.5 is arbitrary)
             if (!useRedTeam.runHQ && server == corp.HQ)
@@ -1205,6 +1217,9 @@ console.log(this.preferred);
             if (conduitDepth < corp.RnD.length)
               this.serverList[i].potential += 0.5; //arbitrary, for being able to gain virus counters (ignore if dig reaching the bottom of R&D)
           }
+		  if (useRetrievalRun && server == corp.archives) {
+			  this.serverList[i].potential += 1.5; //arbitrary, for getting that important card install
+		  }
         } //remote
         else {
           this.serverList[i].potential = 0; //empty has no potential
@@ -1571,6 +1586,17 @@ console.log(this.preferred);
             )
           );
           if (pathdamage < runner.grip.length) {
+			//path is still safe, now choose which card to use
+			  
+			//specific situational cards
+			if (useRetrievalRun) {
+              return this._returnPreference(optionList, "play", {
+                cardToPlay: useRetrievalRun
+				//no need for nextPrefs server because can only run archives
+              });
+			}
+			
+			//general run cards just trying to get extra benefit out of runs
             var unrezzedIceThisServer = 0;
             for (var i = 0; i < this.serverList[0].server.ice.length; i++) {
               if (!this.serverList[0].server.ice[i].rezzed)
@@ -1881,7 +1907,7 @@ console.log(this.preferred);
 				if (optionList.includes("play"))
 				{
 					var playThis = true; //if no specific rules have been defined then just play it whenever you can
-					if (typeof(card.AIWouldPlay) == 'function') playThis = card.AIWouldPlay();
+					if (typeof(card.AIWouldPlay) == 'function') playThis = card.AIWouldPlay.call(card);
 					if (playThis&&FullCheckPlay(card)&&(!this._wastefulToPlay(card)))
 					{
 this._log("maybe play this...");

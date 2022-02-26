@@ -164,3 +164,66 @@ cardSet[31003] = {
 		Trash(params.card, true); //true means can be prevented
 	},
 };
+
+cardSet[31004] = {
+  title: 'Retrieval Run',
+  imageFile: "31004.png",
+  player: runner,
+  faction: "Anarch",
+  influence: 2,
+  subTypes: ["Run"],
+  cardType: "event",
+  playCost: 3,
+  //Run Archives. If successful, instead of breaching Archives, you may install 1 program from your heap, ignoring all costs.
+  Resolve: function (params) {
+    MakeRun(corp.archives);
+  },
+  runSuccessful: {
+    Resolve: function () {
+		var choices = [{id:0, label: "Breach", button: "Breach", card:null }];
+		var installablesFromHeap = ChoicesArrayInstall(runner.heap,true); //the true means ignore costs
+		//all programs in heap
+		for (var i=0; i<installablesFromHeap.length; i++) {
+			if (CheckCardType(installablesFromHeap[i].card, ["program"])) choices.push(installablesFromHeap[i]);
+		}
+		
+		//**AI code (in this case, implemented by setting and returning the preferred option)
+		if (runner.AI != null && choices.length > 1) {
+		  var choice = choices[0]; //choose breach by default in case algorithm fails
+		  var preferredcard = this.SharedPreferredCard();
+		  for (var i = 0; i < choices.length; i++) {
+			if (choices[i].card == preferredcard) choice = choices[i];
+		  }
+		  choices = [choice];
+		}
+		
+		//decision and implementation code
+		function decisionCallback(params) {
+		  if (params.card !== null) {
+			currentPhase.next = phases.runEnds;
+			Install(params.card, params.server, true); //the true means ignore all costs
+		  }
+		}
+		var decisionPhase = DecisionPhase(
+		  runner,
+		  choices,
+		  decisionCallback,
+		  "Retrieval Run",
+		  "Retrieval Run",
+		  this
+		);
+    },
+  },
+  SharedPreferredCard: function() {
+	  //just icebreakers for now but maybe there are other programs worth retreiving?
+	  return runner.AI._icebreakerInPileNotInHandOrArray(
+			runner.heap,
+			InstalledCards(runner)
+	  );
+  },
+  AIWouldPlay: function() {
+	  //only play if there are cards worth retrieving from heap
+	  if (this.SharedPreferredCard()) return true;
+	  return false;
+  },
+};
