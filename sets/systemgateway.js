@@ -109,7 +109,7 @@ cardSet[30003] = {
       Enumerate: function () {
         if (this.usedThisTurn) return [];
         if (!CheckAccessing()) return [];
-        if (!CheckTrash(accessingCard)) return []; //i.e. is not already in the trash
+        if (!CheckTrash(accessingCard)) return []; ////not already in the trash, not disallowed
         if (PlayerHand(runner).length < 2) return [];
         return [{}];
       },
@@ -540,6 +540,11 @@ cardSet[30008] = {
     if (numRezzedIce == 0) return -1; //don't install
     return 0; //do install
   },
+  //install before run if the server is central
+  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+	  if (typeof server.cards !== "undefined") return 1; //yes
+	  return 0; //no
+  },
 };
 cardSet[30009] = {
   title: "Cookbook",
@@ -558,6 +563,24 @@ cardSet[30009] = {
         if (CheckSubType(card, "Virus")) AddCounters(card, "virus", 1);
       }
     },
+  },
+  //require two clicks spare for run, require virus card in hand with AIInstallBeforeRun > 0, and enough spare credits to still run after installing both
+  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+	  if (runClickCost < runner.clickTracker - 2) {
+		  for (var i=0; i<runner.grip.length; i++) {
+			  if (CheckSubType(runner.grip[i],"Virus")) {
+				if (typeof runner.grip[i].AIInstallBeforeRun == "function") {
+					var virusIBRPriority = runner.grip[i].AIInstallBeforeRun.call(runner.grip[i],server,runCreditCost,runClickCost);
+					if (virusIBRPriority > 0) {
+						if ( runCreditCost < AvailableCredits(runner) - InstallCost(this) - InstallCost(runner.grip[i]) ) {
+							return virusIBRPriority + 1; //yes, at higher priority than that virus card
+						}
+					}
+				}
+			  }
+		  }
+	  }
+	  return 0; //no
   },
 };
 cardSet[30010] = {
@@ -783,6 +806,13 @@ cardSet[30013] = {
     automatic: true,
     availableWhenInactive: true,
   },
+  //install before run if the server is HQ and Docklands is in worthkeeping
+  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+	if (server == corp.HQ) {
+		if (runner.AI.cardsWorthKeeping.includes(this)) return 1; //yes
+	}
+	return 0; //no
+  },	  		  
 };
 cardSet[30014] = {
   title: "Pennyshaver",
@@ -1157,6 +1187,20 @@ cardSet[30018] = {
       },
     },
   ],
+  //install before run if this server is central and hasn't been run this turn
+  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+	  if (typeof server.cards !== "undefined") {
+		var alreadyRunThisTurn = false;
+		if (server == corp.HQ)
+		  alreadyRunThisTurn = this.runHQ;
+		else if (server == corp.RnD)
+		  alreadyRunThisTurn = this.runRnD;
+		else if (server == corp.archives)
+		  alreadyRunThisTurn = this.runArchives;
+		if (!alreadyRunThisTurn) return 1; //yes
+	  }
+	  return 0; //no
+  },
 };
 cardSet[30019] = {
   title: "Tāo Salonga: Telepresence Magician",
@@ -1515,6 +1559,13 @@ cardSet[30024] = {
       },
     },
   ],
+  //install before run if the server is R&D and Conduit is in worthkeeping
+  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+	if (server == corp.RnD) {
+		if (runner.AI.cardsWorthKeeping.includes(this)) return 1; //yes
+	}
+	return 0; //no
+  },
 };
 cardSet[30025] = {
   title: "Echelon",
@@ -2937,7 +2988,7 @@ cardSet[30050] = {
     cardsInServer += thisServer.root.length;
     if (cardsInServer < 2) return false; //don't trigger
     if (corp.HQ.cards.length - corp.AI._agendasInHand() < 2) return false; //or we would be throwing out agendas
-    //TODO situations in which throwing out the agendas would be preferable e.g. high agenda density in hand
+    //TODO situations in which throwing out the agendas would be preferable e.g. high agenda density in hand, or have Spin Doctor installed
     //and they would be safer in Archives e.g. no runner clicks left or spin doctor is in hand (with a click remaining) or play
     return true;
   },

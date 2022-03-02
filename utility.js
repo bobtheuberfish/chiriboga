@@ -1013,9 +1013,10 @@ function ResolveAccess(originalLocation) {
  *
  * @method InstalledMemoryCost
  * @param {Card} [destination] host card, default = null
+ * @param {Card[]} [ignoreCards] cards to ignore memory use, default = []
  * @returns {int} total installed memory cost
  */
-function InstalledMemoryCost(destination = null) {
+function InstalledMemoryCost(destination = null, ignoreCards=[]) {
   var arrayToCheck = InstalledCards(runner);
   if (destination != null) {
     //if a card with its own MU was specified, check the cards hosted there instead
@@ -1026,7 +1027,7 @@ function InstalledMemoryCost(destination = null) {
   var imu = 0;
   for (var i = 0; i < arrayToCheck.length; i++) {
     if (typeof arrayToCheck[i].memoryCost !== "undefined")
-      imu += arrayToCheck[i].memoryCost;
+      if (!ignoreCards.includes(arrayToCheck[i])) imu += arrayToCheck[i].memoryCost;
   }
   return imu;
 }
@@ -1544,6 +1545,20 @@ function InstallCost(
       return cardlist.length;
     }
   } else return GetCardProperty(installingCard, "installCost");
+}
+
+
+/**
+ * Gets the trash cost of a card.<br/>Nothing is logged.
+ *
+ * @method TrashCost
+ * @param {Card} card to check install cost for
+ * @returns {int} trash cost (credits)
+ */
+function TrashCost(
+  card
+) {
+	return GetCardProperty(card, "trashCost");
 }
 
 /**
@@ -2632,7 +2647,7 @@ function DeckBuild(
         30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30011, 30012, 30013, 30014, 30015, 30016, 30017, 30018, 30020, 30021, 30022, 30023,
         30024, 30025, 30026, 30027, 30028, 30029, 30030, 30031, 30032, 30033, 30034,
       ]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31003, 31004, 31005]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31003, 31004, 31005, 31007]);
 	  influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
@@ -2660,7 +2675,7 @@ function DeckBuild(
 		identityCard,
 		agendaCards,
 		destination,
-		44, //TODO use deckSize (but build for lease agenda density e.g. 44 for 40)
+		44, //TODO use deckSize (but build for least agenda density e.g. 44 for 40)
 		cardBack,
 		glowTextures,
 		strengthTextures

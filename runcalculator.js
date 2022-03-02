@@ -989,7 +989,7 @@ class RunCalculator {
         if (typeof knownCardsInServer[i].trashCost !== "undefined") {
           if (carnivoreAvailable) carnivoreAvailable = false;
           //assume Carnivore could be used for trash cost (this just assumes the first card cost so it's too simple)
-          else approachCredits += knownCardsInServer[i].trashCost;
+          else approachCredits += TrashCost(knownCardsInServer[i]);
         }
       }
 

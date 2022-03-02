@@ -79,6 +79,7 @@
  .modifyStrength //called with input (card) when getting strength, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .modifyRezCost //called with input (card) when getting rez cost, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .modifyInstallCost //called with input (card) when getting install cost, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
+ .modifyTrashCost //called with input (card) when getting install cost, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .modifyAdvancementRequirement //called with input (card) when getting advancement requirement, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .modifyBasicActionRunnerDraw //called with input (num) when runner about to draw as a basic action, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .modifyBasicActionCorpDraw //called with input (num) when corp about to draw as a basic action, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)

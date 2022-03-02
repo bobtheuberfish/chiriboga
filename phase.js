@@ -99,7 +99,6 @@ phaseTemplates.standardResponse = {
       AutomaticTriggers("cardEncountered", attackedServer.ice[approachIce]);
     } else if (currentPhase.identifier == "Run 4.3") {
       //Run: Movement (Nisei 2021 4.3)
-      //TODO fire triggers 'when runner passes' (Nisei 2021 4.1) this could be here or its own phase
       movement = true;
     }
   },
@@ -1297,10 +1296,11 @@ phases.runAccessingCard = {
   Enumerate: {
     trash: function () {
       if (CheckTrash(accessingCard)) {
+		//this option is only available if the card has a printed trash cost
         if (typeof accessingCard.trashCost != "undefined") {
           if (
             CheckCredits(
-              accessingCard.trashCost,
+              TrashCost(accessingCard),
               runner,
               "trashing",
               accessingCard
@@ -1327,7 +1327,7 @@ phases.runAccessingCard = {
     trash: function () {
       SpendCredits(
         runner,
-        accessingCard.trashCost,
+        TrashCost(accessingCard),
         "trashing",
         accessingCard,
         function () {

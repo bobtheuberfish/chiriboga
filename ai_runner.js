@@ -6,19 +6,32 @@ class RunnerAI {
     console.log("AI: " + message);
   }
 
+  _cardsOkToTrashOnInstall(installedRunnerCards) {
+	var okToTrash = [];
+    for (var i = 0; i < installedRunnerCards.length; i++) {
+      if (typeof installedRunnerCards[i].AIOkToTrash == "function") {
+		  if (installedRunnerCards[i].AIOkToTrash.call(installedRunnerCards[i])) okToTrash.push(installedRunnerCards[i]);
+	  }
+    }
+	return okToTrash;
+  }
+
+  //okToTrash is a list of cards to ignore the memory usage of
+  _spareMemoryUnits(okToTrash, destination=null) {
+	return MemoryUnits(destination) - InstalledMemoryCost(destination,okToTrash);
+  }
+
   _installWouldExceedMU(card) {
     if (typeof card.memoryCost === "undefined") return false;
-
+	//ignore memory usage of cards which are ok to trash
+	var installedRunnerCards = InstalledCards(runner);
+	var okToTrash = this._cardsOkToTrashOnInstall(installedRunnerCards);
     //loop through install options. return false as soon as an option is found that doesn't exceed mu budget
     var choices = ChoicesCardInstall(card, true); //true ignores credit cost);
     for (var i = 0; i < choices.length; i++) {
       var destination = null;
       if (typeof card.host !== "undefined") destination = host;
-      if (
-        card.memoryCost + InstalledMemoryCost(destination) <=
-        MemoryUnits(destination)
-      )
-        return false;
+      if (card.memoryCost <= this._spareMemoryUnits(okToTrash,destination)) return false;
     }
     return true;
   }
@@ -128,14 +141,17 @@ class RunnerAI {
   }
 
   //this function also includes known agendas that would be accessed
-  _countNewCardsThatWouldBeAccessedInRnD(depth) {
+  //ignoreCards is an array to not include in count
+  _countNewCardsThatWouldBeAccessedInRnD(depth,ignoreCards=[]) {
     var ret = 0;
     for (var i = corp.RnD.cards.length - 1; i > -1; i--) {
-      if (
-        !corp.RnD.cards[i].knownToRunner ||
-        corp.RnD.cards[i].cardType == "agenda"
-      )
-        ret += 1;
+	  if (!ignoreCards.includes(corp.RnD.cards[i])) {
+		  if (
+			!corp.RnD.cards[i].knownToRunner ||
+			corp.RnD.cards[i].cardType == "agenda"
+		  )
+			ret += 1;
+	  }
       depth--;
       if (depth == 0) return ret; //no more cards to access
     }
@@ -564,6 +580,8 @@ class RunnerAI {
           atLeastOne.splice(j, 1);
       }
     }
+	//ignore memory usage of cards which are ok to trash (precalculate here for efficiency)
+	var okToTrash = this._cardsOkToTrashOnInstall(installedRunnerCards);
     //loop through hand to find cards worth keeping
     var ret = [];
     for (var i = 0; i < runner.grip.length; i++) {
@@ -601,7 +619,7 @@ class RunnerAI {
             keep = true;
         }
         //some we need for MU
-        var sparemu = runner._renderOnlyMU;
+        var sparemu = this._spareMemoryUnits(okToTrash);
         if (sparemu < 2) {
           //keep if available mu is 1 or less
           if (
@@ -818,6 +836,7 @@ console.log(this.preferred);
               { prop: "card", key: "cardToInstall" },
               { prop: "host", key: "hostToInstallTo" },
             ];
+		  else if (cmd == "trash") data = [{ prop: "card", key: "cardToTrash" }];
           //for more examples see ai_corp.js
 
           if (data.length < 1)
@@ -873,6 +892,29 @@ console.log(this.preferred);
       if (this.cardsWorthKeeping.length < 1) return 0; //mulligan
       return 1; //by default, not mulligan
     }
+	
+	if (currentPhase.identifier == "Runner Install") {
+		//trash on install
+		if (optionList.includes("trash")) {
+			//check for trashable installed programs defined as OkToTrash
+			var installedRunnerCards = InstalledCards(runner);
+			for (var i = 0; i < installedRunnerCards.length; i++) {
+				if ( CheckCardType(installedRunnerCards[i], ["program"]) && CheckTrash(installedRunnerCards[i]) ) {
+					if (typeof installedRunnerCards[i].AIOkToTrash == "function") {
+						if (installedRunnerCards[i].AIOkToTrash.call(installedRunnerCards[i])) {
+							return this._returnPreference(optionList, "trash", {
+							  cardToTrash: installedRunnerCards[i],
+							});
+						}
+					}
+				}
+			}
+		}
+		
+		if (optionList.includes("n")) {
+		  return optionList.indexOf("n"); //by default don't trash
+		}
+	}
 
     if (executingCommand == "discard") {
 	  //check for duplicate uniques (i.e. a copy is installed or another in hand) first
@@ -923,22 +965,58 @@ console.log(this.preferred);
 
     if (currentPhase.identifier == "Run Accessing") {
       //accessing a card
-      //listed in order of preference
-      if (optionList.includes("steal")) return optionList.indexOf("steal");
-      if (optionList.includes("trash")) {
-        //don't trash installed ambushes
-        if (
-          CheckSubType(accessingCard, "Ambush") &&
-          CheckInstalled(accessingCard) &&
-          optionList.includes("n")
-        )
-          return optionList.indexOf("n");
-        //trash everything else, though
-        return optionList.indexOf("trash");
-      }
-      if (optionList.includes("trigger")) return optionList.indexOf("trigger");
+      //prioritise in order of preference
+      var highestPriorityTriggerCard = null;
+	  var highestPriorityTriggerValue = 0;
+	  var accessctas = ChoicesTriggerableAbilities(runner, "access");
+	  for (var i=0; i<accessctas.length; i++) {
+		  if (accessctas[i].card) {
+			  var thisCardATP = 1; //by default fire the trigger but not high priority
+			  //if a priority-determining function is defined, use that
+			  if (typeof accessctas[i].card.AIAccessTriggerPriority == "function") {
+				  var thisCardATP = accessctas[i].card.AIAccessTriggerPriority.call(accessctas[i].card,optionList);
+			  }
+			  if (thisCardATP > highestPriorityTriggerValue) {
+				  highestPriorityTriggerCard = accessctas[i].card;
+				  highestPriorityTriggerValue = thisCardATP;
+			  }
+		  }
+	  }
+	  var prioritiseTriggerCard = null;
+	  //priority > 3: card trigger preferred over steal
+	  if (highestPriorityTriggerValue > 3) prioritiseTriggerCard = highestPriorityTriggerCard;
+	  //priority 3: steal
+      else if (optionList.includes("steal")) return optionList.indexOf("steal");
+	  //assume the remaining options relate to trashing
+	  else {
+		  //never trash installed ambushes, even with card ability
+		  var accessedCardIsInstalledAmbush = (
+			  CheckSubType(accessingCard, "Ambush") &&
+			  CheckInstalled(accessingCard) &&
+			  optionList.includes("n")
+		  );
+		  if (!accessedCardIsInstalledAmbush) {
+			  //priority > 2: card trigger preferred over trash cost
+			  if (highestPriorityTriggerValue > 2) prioritiseTriggerCard = highestPriorityTriggerCard;
+			  //priority 2: trash cost
+			  else if (optionList.includes("trash")) return optionList.indexOf("trash");
+			  //priority > 1: card trigger preferred over any trigger
+			  else if (highestPriorityTriggerValue > 1) prioritiseTriggerCard = highestPriorityTriggerCard;
+			  //priority 1: any trigger
+			  else if (optionList.includes("trigger") && highestPriorityTriggerValue == 1) return optionList.indexOf("trigger");
+			  //priority > 0: card trigger preferred over no trash
+			  else if (highestPriorityTriggerValue > 0) prioritiseTriggerCard = highestPriorityTriggerCard;
+		  }
+	  }
+	  //card trigger selected, return that
+	  if (prioritiseTriggerCard) {
+		return this._returnPreference(optionList, "trigger", {
+		  cardToTrigger: prioritiseTriggerCard,
+		});		  
+	  }
+	  //no trash
       if (optionList.includes("n")) return optionList.indexOf("n");
-	  //otherwise just choose next card
+	  //trash, install, trigger not an option? probably just choosing next card
 	  return 0;
     }
 
@@ -1208,13 +1286,14 @@ console.log(this.preferred);
           if (useConduit && server == corp.RnD) {
             //extra potential the deeper you can dig (except cards already known)
             var conduitDepth = Counters(useConduit, "virus") + 1;
+			//ignore top card as it is not 'bonus'
             var conduitBonusCards =
-              this._countNewCardsThatWouldBeAccessedInRnD(conduitDepth);
+              this._countNewCardsThatWouldBeAccessedInRnD(conduitDepth,[corp.RnD.cards[corp.RnD.cards.length-1]]);
             if (conduitBonusCards > 0) {
               //only use it if it gives a benefit (it still gains counters from runs with other cards either way)
               this.serverList[i].potential += conduitBonusCards - 1;
             } else useConduit = null;
-            if (conduitDepth < corp.RnD.length)
+            if (conduitDepth < corp.RnD.cards.length)
               this.serverList[i].potential += 0.5; //arbitrary, for being able to gain virus counters (ignore if dig reaching the bottom of R&D)
           }
 		  if (useRetrievalRun && server == corp.archives) {
@@ -1456,107 +1535,47 @@ console.log(this.preferred);
         var runCreditCost = endPoint.runner_credits_spent;
         var runClickCost = endPoint.runner_clicks_spent;
 
-        //maybe install something first?
-        if (optionList.includes("install")) {
-          //Docklands if the server is HQ and Docklands is in worthkeeping
-          if (this.serverList[0].server == corp.HQ) {
-            cardToInstall = this._copyOfCardExistsIn(
-              "Docklands Pass",
-              this.cardsWorthKeeping
-            );
-            if (cardToInstall) {
-              if (ChoicesCardInstall(cardToInstall).length > 0)
-                return this._returnPreference(optionList, "install", {
-                  cardToInstall: cardToInstall,
-                  hostToInstallTo: null,
-                });
-            }
-          }
-          //Conduit if the server is R&D and Conduit is in worthkeeping
-          if (this.serverList[0].server == corp.RnD) {
-            cardToInstall = this._copyOfCardExistsIn(
-              "Conduit",
-              this.cardsWorthKeeping
-            );
-            if (cardToInstall) {
-              if (ChoicesCardInstall(cardToInstall).length > 0)
-                return this._returnPreference(optionList, "install", {
-                  cardToInstall: cardToInstall,
-                  hostToInstallTo: null,
-                });
-            }
-          }
-          //Leech
-          if (typeof (this.serverList[0].server.cards !== "undefined")) {
-            //central
-            cardToInstall = this._copyOfCardExistsIn("Leech", runner.grip);
-            if (cardToInstall) {
-              if (!this._wastefulToInstall(cardToInstall)) {
-                var choices = ChoicesCardInstall(cardToInstall);
-                if (choices.length > 0) {
-                  //this checks credits, mu, available hosts, etc.
-                  var preferredInstallChoice =
-                    cardToInstall.AIPreferredInstallChoice(choices);
-                  if (preferredInstallChoice > -1) {
-                    return this._returnPreference(optionList, "install", {
-                      cardToInstall: cardToInstall,
-                      hostToInstallTo: choices[preferredInstallChoice].host,
-                    });
-                  }
-                }
-              }
-            }
-          }
-          //Tranquilizer
-          if (runner._renderOnlyMU > 3) {
-            //only make a it a priority if there's spare MU (don't take slots that might be breakers later)
-            cardToInstall = this._copyOfCardExistsIn(
-              "Tranquilizer",
-              runner.grip
-            );
-            if (cardToInstall) {
-              if (!this._wastefulToInstall(cardToInstall)) {
-                var choices = ChoicesCardInstall(cardToInstall);
-                if (choices.length > 0) {
-                  //this checks credits, mu, available hosts, etc.
-                  var preferredInstallChoice =
-                    cardToInstall.AIPreferredInstallChoice(choices);
-                  if (preferredInstallChoice > -1) {
-                    return this._returnPreference(optionList, "install", {
-                      cardToInstall: cardToInstall,
-                      hostToInstallTo: choices[preferredInstallChoice].host,
-                    });
-                  }
-                }
-              }
-            }
-          }
-          //Red Team if the run can be made with 2 less credits and 1 less click, and this server hasn't been run this turn
-          if (typeof (this.serverList[0].server.cards !== "undefined")) {
-            //central
-            if (
-              runCreditCost < AvailableCredits(runner) - 2 &&
-              runClickCost < runner.clickTracker - 1
-            ) {
-              cardToInstall = this._copyOfCardExistsIn("Red Team", runner.grip);
-              if (cardToInstall) {
-                var alreadyRunThisTurn = false;
-                if (this.serverList[0].server == corp.HQ)
-                  alreadyRunThisTurn = cardToInstall.runHQ;
-                else if (this.serverList[0].server == corp.RnD)
-                  alreadyRunThisTurn = cardToInstall.runRnD;
-                else if (this.serverList[0].server == corp.archives)
-                  alreadyRunThisTurn = cardToInstall.runArchives;
-                if (!alreadyRunThisTurn) {
-                  if (ChoicesCardInstall(cardToInstall).length > 0)
-                    return this._returnPreference(optionList, "install", {
-                      cardToInstall: cardToInstall,
-                      hostToInstallTo: null,
-                    });
-                }
-              }
-            }
-          }
+        //maybe install something first? (as long as can still complete the run after using the click to install)
+		//we are ignoring the lost card (i.e. lower max damage) for now
+		//the potential check is balance that short term gains may be more worth it than setup
+        if (this.serverList[0].potential < 2 && optionList.includes("install") && runClickCost < runner.clickTracker - 1) {
+		  cardToInstall = null;
+		  var ibrHighestPriority = 0;
+		  //loop through cards in hand and check installables that have AIInstallBeforeRun defined and high enough priority returned
+		  //AIInstallBeforeRun returns 0 for "don't", > 0 for "do" with higher return value meaning higher priority
+		  for (var i=0; i<runner.grip.length; i++) {
+			var ibrCard = runner.grip[i];
+			if (typeof ibrCard.AIInstallBeforeRun == "function") {
+			  if (CheckInstall(ibrCard)) {
+				var ibrPriority = ibrCard.AIInstallBeforeRun.call(ibrCard,this.serverList[0].server,runCreditCost,runClickCost);
+				if (ibrPriority > ibrHighestPriority) {
+				  if (!this._wastefulToInstall(ibrCard)) {
+					  if (runCreditCost < AvailableCredits(runner) - InstallCost(ibrCard)) {
+						  var ibrChoices = ChoicesCardInstall(ibrCard);
+						  if (ibrChoices.length > 0) {
+							  var ibrIsValidPlay = false;
+							  if (typeof ibrCard.AIPreferredInstallChoice == "undefined") ibrIsValidPlay = true;
+							  else if (ibrCard.AIPreferredInstallChoice.call(ibrCard,ibrChoices) > -1) ibrIsValidPlay = true;
+							  if (ibrIsValidPlay) {
+								cardToInstall = ibrCard;
+								ibrHighestPriority = ibrPriority;
+							  }
+						  }
+						  
+					  }
+				  }
+				}
+			  }
+			}
+		  }
+		  //card found to install before run (and all checks passed above), install it
+		  if (cardToInstall) {
+			this._log("I should install "+cardToInstall.title+" before running");
+			return this._returnPreference(optionList, "install", {
+			  cardToInstall: cardToInstall,
+			  hostToInstallTo: null,
+			}); //assumes unhosted cards for now
+		  }
         }
 
         //maybe run by playing a run event?

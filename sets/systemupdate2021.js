@@ -362,6 +362,80 @@ cardSet[31006] = {
     automatic: true,
   },
 };
+
+cardSet[31007] = {
+  title: "Imp",
+  imageFile: "31007.png",
+  player: runner,
+  faction: "Anarch",
+  influence: 3,
+  cardType: "program",
+  subTypes: ["Virus"],
+  installCost: 2,
+  memoryCost: 1,
+  //When you install this program, place 2 virus counters on it.
+  cardInstalled: {
+    Resolve: function (card) {
+      if (card == this) AddCounters(this, "virus", 2);
+    },
+  },
+  //Access > Hosted virus counter: Trash the card you are accessing. Use this ability only once per turn.
+  usedThisTurn: false,
+  runnerTurnBegin: {
+    Resolve: function () {
+      this.usedThisTurn = false;
+    },
+    automatic: true,
+  },
+  corpTurnBegin: {
+    Resolve: function () {
+      this.usedThisTurn = false;
+    },
+    automatic: true,
+  },
+  abilities: [
+    {
+      text: "Hosted virus counter: Trash the card you are accessing.",
+      Enumerate: function () {
+        if (this.usedThisTurn) return [];
+        if (!CheckAccessing()) return [];
+        if (!CheckTrash(accessingCard)) return []; //not already in the trash, not disallowed
+        if (!CheckCounters(this, "virus", 1)) return [];
+        return [{}];
+      },
+      Resolve: function (params) {
+        this.usedThisTurn = true;
+        RemoveCounters(this, "virus", 1);
+		TrashAccessedCard(true); //true means it can be prevented (it is not a cost)
+      },
+    },
+  ],
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install another copy of Imp if one already exists with virus counters
+	var existingCopy = runner.AI._copyOfCardExistsIn("Imp", InstalledCards(runner));
+	if (existingCopy) {
+		if (CheckCounters(existingCopy, "virus", 1)) return -1; //don't install
+	}
+    return 0; //do install
+  },
+  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+	  //extra costs of install have already been considered, so yes install it
+	  return 1; //yes
+  },
+  AIOkToTrash: function() {
+	  //install over this program if it has no virus counters
+	  return !CheckCounters(this, "virus", 1);
+  },
+  AIAccessTriggerPriority: function(optionList) {
+	  //if trash by cost is not an option or would cost more than 2 credits (arbitrary), use this
+	  if (!optionList.includes("trash") || TrashCost(accessingCard) > 2) return 3; //priority > 2: card trigger preferred over trash cost
+	  //otherwise don't use this at all
+	  return 0;
+  },
+};
+
 /*
 cardSet[31071] = {
   title: "Hostile Takeover",

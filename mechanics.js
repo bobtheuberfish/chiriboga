@@ -212,6 +212,7 @@ function Install(
         if (installDestination == runner.rig.resources) return [];
         if (installDestination == runner.rig.hardware) return [];
         if (installingCard.cardType == "program") {
+			/*
           //for usability we will skip trashing if there is enough MU left
           if (
             installingCard.cardType == "program" &&
@@ -224,6 +225,7 @@ function Install(
               return [];
           }
           //but we'll leave this line here just in case, or for later
+		  */
           return ChoicesInstalledCards(runner, function (card) {
             return CheckCardType(card, ["program"]);
           }); //The Runner can choose to trash any number of his installed programs at the beginning of an install program action. [Core rulebook]
