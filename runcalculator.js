@@ -306,7 +306,23 @@ class RunCalculator {
     //known icebreaker list (could consider putting these on each card rather than here)
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     var title = card.title;
-    if (title == "Corroder") {
+    if (title == "Mimic") {
+      result = result.concat(
+        this.ImplementIcebreaker(
+          point,
+          card,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Sentry"],
+          Infinity, //fixed strength breaker
+          0,
+          1,
+          1,
+          creditsLeft
+        )
+      ); //cost to str, amt to str, cost to brk, amt to brk	
+    } else if (title == "Corroder") {
       result = result.concat(
         this.ImplementIcebreaker(
           point,

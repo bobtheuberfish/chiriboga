@@ -2608,7 +2608,7 @@ function DeckBuild(
 	  //killer
 	  var killerCards = [];
 	  if (setIdentifiers.includes('sg')) killerCards = killerCards.concat([30015, 30025]);
-	  if (setIdentifiers.includes('su21')) killerCards = killerCards.concat([]);
+	  if (setIdentifiers.includes('su21')) killerCards = killerCards.concat([31008]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		killerCards,

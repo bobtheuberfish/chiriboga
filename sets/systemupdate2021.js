@@ -436,6 +436,57 @@ cardSet[31007] = {
   },
 };
 
+cardSet[31008] = {
+  title: "Mimic",
+  imageFile: "31008.png",
+  player: runner,
+  faction: "Anarch",
+  influence: 1,
+  cardType: "program",
+  subTypes: ["Icebreaker", "Killer"],
+  memoryCost: 1,
+  installCost: 3,
+  strength: 3,
+  strengthBoost: 0,
+  modifyStrength: {
+    Resolve: function (card) {
+      if (card == this) return this.strengthBoost;
+      return 0; //no modification to strength
+    },
+  },
+  //Interface -> 1[c]: Break 1 sentry subroutine.
+  abilities: [
+    {
+      text: "Break 1 sentry subroutine.",
+      Enumerate: function () {
+        if (!CheckEncounter()) return [];
+        if (!CheckSubType(attackedServer.ice[approachIce], "Sentry")) return [];
+        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckStrength(this)) return [];
+        return ChoicesEncounteredSubroutines();
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          1,
+          "using",
+          this,
+          function () {
+            Break(params.subroutine);
+          },
+          this
+        );
+      },
+    },
+  ],
+  encounterEnds: {
+    Resolve: function () {
+      this.strengthBoost = 0;
+    },
+    automatic: true,
+  },
+};
+
 /*
 cardSet[31071] = {
   title: "Hostile Takeover",
