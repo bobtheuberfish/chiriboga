@@ -148,6 +148,17 @@ function DownloadCapturedLog() {
 	  }
 	  extraOutput += "];\n";
   }
+  if (debugging) {
+	  extraOutput += "runner.creditPool = "+runner.creditPool+";\n";
+	  extraOutput += "corp.creditPool = "+corp.creditPool+";\n";
+	  extraOutput += "runner.clickTracker = "+runner.clickTracker+";\n";
+	  extraOutput += "corp.clickTracker = "+corp.clickTracker+";\n";
+	  var phasesKeys = Object.keys(phases);
+	  for (var i=0; i< phasesKeys.length; i++) {
+		  if (phases[phasesKeys[i]] == currentPhase) extraOutput += "ChangePhase(phases."+phasesKeys[i]+"); ";
+	  }
+	  extraOutput += "//"+currentPhase.title+"\n";
+  }
   
   //send extra output and log
   var logOutput = capturedLog.concat(extraOutput);
@@ -2647,7 +2658,7 @@ function DeckBuild(
         30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30011, 30012, 30013, 30014, 30015, 30016, 30017, 30018, 30020, 30021, 30022, 30023,
         30024, 30025, 30026, 30027, 30028, 30029, 30030, 30031, 30032, 30033, 30034,
       ]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31003, 31004, 31005, 31007]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31003, 31004, 31005, 31007, 31009]);
 	  influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded

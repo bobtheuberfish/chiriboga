@@ -17,21 +17,21 @@ class RunnerAI {
   }
 
   //okToTrash is a list of cards to ignore the memory usage of
-  _spareMemoryUnits(okToTrash, destination=null) {
+  _spareMemoryUnits(installedRunnerCards,destination=null) {
+	var okToTrash = this._cardsOkToTrashOnInstall(installedRunnerCards);
 	return MemoryUnits(destination) - InstalledMemoryCost(destination,okToTrash);
   }
 
   _installWouldExceedMU(card) {
     if (typeof card.memoryCost === "undefined") return false;
-	//ignore memory usage of cards which are ok to trash
+	//predetermine installed runner cards for efficiency
 	var installedRunnerCards = InstalledCards(runner);
-	var okToTrash = this._cardsOkToTrashOnInstall(installedRunnerCards);
     //loop through install options. return false as soon as an option is found that doesn't exceed mu budget
     var choices = ChoicesCardInstall(card, true); //true ignores credit cost);
     for (var i = 0; i < choices.length; i++) {
       var destination = null;
       if (typeof card.host !== "undefined") destination = host;
-      if (card.memoryCost <= this._spareMemoryUnits(okToTrash,destination)) return false;
+      if (card.memoryCost <= this._spareMemoryUnits(installedRunnerCards,destination)) return false;
     }
     return true;
   }
@@ -102,14 +102,15 @@ class RunnerAI {
   }
 
   //check if a matching type breaker is installed (or AI)
-  _matchingBreakerIsInstalled(iceCard) {
+  //returns the matching breaker or null if none found
+  _matchingBreakerInstalled(iceCard) {
     var installedRunnerCards = InstalledCards(runner);
     for (var i = 0; i < installedRunnerCards.length; i++) {
       if (CheckSubType(installedRunnerCards[i], "Icebreaker")) {
-        if (BreakerMatchesIce(installedRunnerCards[i], iceCard)) return true;
+        if (BreakerMatchesIce(installedRunnerCards[i], iceCard)) return installedRunnerCards[i];
       }
     }
-    return false;
+    return null;
   }
 
   //creates three groupings: ice, asset/agenda/upgrade, and operation
@@ -202,8 +203,6 @@ class RunnerAI {
       "Pennyshaver",
     ]; //cards which can be triggered to gain credits
     this.drawInstall = ["Verbal Plasticity"]; //cards which can be installed to draw cards
-	//cards which can be installed to break subroutines but aren't icebreakers
-    this.specialBreakers = ["Botulus", "Tranquilizer"];
 	//cards which can be installed to increase maximum hand size
 	this.maxHandIncreasers = ["T400 Memory Diamond"];
   }
@@ -580,113 +579,33 @@ class RunnerAI {
           atLeastOne.splice(j, 1);
       }
     }
-	//ignore memory usage of cards which are ok to trash (precalculate here for efficiency)
-	var okToTrash = this._cardsOkToTrashOnInstall(installedRunnerCards);
+	//precalculate spareMU here for efficiency
+    var spareMU = this._spareMemoryUnits(installedRunnerCards);
     //loop through hand to find cards worth keeping
     var ret = [];
     for (var i = 0; i < runner.grip.length; i++) {
       var keep = false;
       var card = runner.grip[i];
       if (!this._wastefulToInstall(card)) {
-        //don't overwrite existing unique or exceed mu
-        //coded here for now but could include these (or some) in the card definitions instead e.g. AIWorthKeeping
+        //_wastefulToInstall makes sure we don't overwrite existing unique or exceed mu
+		
+        //check for any card-specific reason
+		if (typeof card.AIWorthKeeping == "function") {
+			if (card.AIWorthKeeping.call(card,installedRunnerCards,spareMU)) keep = true;
+		}
 
-        //some cards are just always worth keeping
-        if (card.title == "Sure Gamble") keep = true;
-        //some need to be kept for economy
-        if (Credits(runner) < 5) {
-          //arbitrary
-          if (card.title == "Creative Commission") keep = true;
-          else if (card.title == "Telework Contract") keep = true;
-          else if (card.title == "Fermenter") keep = true;
-        }
-        //or for card draw
-        if (runner.grip.length < 3) {
-          //arbitrary
-          if (card.title == "VRcation") keep = true;
-        }
         //some we desire atLeastOne
         for (var j = 0; j < atLeastOne.length; j++) {
           if (CheckSubType(card, atLeastOne[j])) keep = true;
         }
         //or AI or other special breaker (e.g. Botulus, Tranquilizer)
-        if (CheckSubType(card, "AI") || this.specialBreakers.includes(card.title)) {
+        if (CheckSubType(card, "AI") || card.AISpecialBreaker) {
           //keep unless all breaker types are already present in grip/programs
           if (
             this._essentialBreakerTypesNotInHandOrArray(installedRunnerCards)
               .length > 0
           )
             keep = true;
-        }
-        //some we need for MU
-        var sparemu = this._spareMemoryUnits(okToTrash);
-        if (sparemu < 2) {
-          //keep if available mu is 1 or less
-          if (
-            card.title == "DZMZ Optimizer" ||
-            card.title == "T400 Memory Diamond"
-          )
-            keep = true;
-        }
-        //or something more specific
-        if (card.title == "Cookbook") {
-          //keep if any virus cards in hand
-          for (var j = 0; j < runner.grip.length; j++) {
-            if (CheckSubType(runner.grip[j], "Virus")) {
-              keep = true;
-              break;
-            }
-          }
-        } else if (card.title == "Mutual Favor") {
-          //keep if have a spare mu and a breaker type in deck thats not in hand or play
-          if (sparemu > 0) {
-            var worthBreaker =
-              this._icebreakerInPileNotInHandOrArray(runner.stack,installedRunnerCards);
-            if (worthBreaker) {
-              //if a successful run has already been made this turn and can afford the install, then Mutual Favor is efficient
-              if (
-                card.madeSuccessfulRunThisTurn &&
-                CheckCredits(InstallCost(worthBreaker), runner, "installing")
-              )
-                keep = true;
-              //otherwise don't Mutual Favor if there's already a breaker in hand worth playing...
-              else {
-                var essentials =
-                  this._essentialBreakerTypesNotInArray(installedRunnerCards);
-                var worthBreakersInHand = false;
-                for (var j = 0; j < runner.grip.length; j++) {
-                  for (var k = 0; k < essentials.length; k++) {
-                    if (CheckSubType(runner.grip[j], essentials[k])) {
-                      worthBreakersInHand = true;
-                      break;
-                    }
-                  }
-                  if (worthBreakersInHand) break;
-                }
-                if (!worthBreakersInHand) keep = true;
-              }
-            }
-          }
-        } else if (card.title == "Docklands Pass") {
-          //keep if run into HQ is possible and HQ hasn't been breached this turn
-          if (!card.breachedHQThisTurn && runner.clickTracker > 1) {
-            var storedCWK = this.cardsWorthKeeping; //oversimplified workaround for the fact that docklands will consider HQ unrunnable if it is in hand and might be lost...
-            this.cardsWorthKeeping = [];
-            if (this._getCachedCost(corp.HQ) != Infinity) keep = true;
-            this.cardsWorthKeeping = storedCWK;
-          }
-        } else if (card.title == "Conduit") {
-          //keep if there is not already a Conduit installed and a run into R&D is possible
-          var alreadyConduit = false;
-          for (var j = 0; j < runner.rig.programs.length; j++) {
-            if (runner.rig.programs[j].title == "Conduit") {
-              alreadyConduit = true;
-              break;
-            }
-          }
-          if (!alreadyConduit) {
-            if (this._getCachedCost(corp.RnD) != Infinity) keep = true;
-          }
         }
       }
       if (keep) ret.push(card);
@@ -702,7 +621,7 @@ class RunnerAI {
       if (PlayerCanLook(runner, iceCard)) {
         if (BreakerMatchesIce(card, iceCard)) {
           //console.log("Matching breaker is " + card.title);
-          if (!this._matchingBreakerIsInstalled(iceCard)) return 1;
+          if (!this._matchingBreakerInstalled(iceCard)) return 1;
           //high
           else return -1; //low
         }
@@ -774,6 +693,16 @@ class RunnerAI {
 		if (canBeInstalled && !this._wastefulToInstall(cardToInstall)) return true;
 	  }
 	  return false;
+  }
+
+  _maxOverDraw() {
+    //max number of cards to go over max hand size
+    if (runner.clickTracker > 2 && Credits(runner) > 0)
+      return runner.clickTracker - 2; //ok to draw extra early in turn if not completely broke (might find good econ)
+    return 0;
+  }
+  _currentOverDraw() {
+    return runner.grip.length - MaxHandSize(runner);
   }
 
   //returns index of choice
@@ -1157,19 +1086,28 @@ console.log(this.preferred);
 
 	//check for events that can only be played in a window of opportunity
     if (optionList.includes("play")) {
-        this.playWhenCan = ["En Passant"]; //cards which should be played when they can
-        for (var i = 0; i < this.playWhenCan.length; i++) {
-          //if this.playWhenCan[i] is found in hand, and can be played, play it
-          cardToPlay = this._copyOfCardExistsIn(this.playWhenCan[i], runner.grip);
-          if (cardToPlay) {
-            this._log("there is an event card with a window of opportunity");
-            if (FullCheckPlay(cardToPlay)) {
-              this._log("and I could play it");
-              return this._returnPreference(optionList, "play", {
-                cardToPlay: cardToPlay,
-              });
-            }
-          }
+		//find highest priority window of opportunity card
+        var cardToPlay=null;
+		var cardPriority=0;
+        for (var i = 0; i < runner.grip.length; i++) {
+		    if (runner.grip[i].AIPlayWhenCan) {
+			  if (runner.grip[i].AIPlayWhenCan > cardPriority) {
+				if (FullCheckPlay(runner.grip[i])) {
+				  var playThis = true; //if no specific rules have been defined then just play it whenever you can
+				  if (typeof(runner.grip[i].AIWouldPlay) == 'function') playThis = runner.grip[i].AIWouldPlay.call(runner.grip[i]);
+				  if (playThis) {					
+					cardToPlay=runner.grip[i];
+					cardPriority=runner.grip[i].AIPlayWhenCan;
+				  }
+				}
+			  }
+		    }
+		}
+        if (cardToPlay) {
+          this._log("there is a card I would play with a window of opportunity");
+		  return this._returnPreference(optionList, "play", {
+			cardToPlay: cardToPlay,
+		  });
         }
     }
 
@@ -1410,9 +1348,10 @@ console.log(this.preferred);
             for (var j = 0; j < server.ice.length; j++) {
               var iceCard = server.ice[j];
               if (PlayerCanLook(runner, iceCard)) {
-                if (!this._matchingBreakerIsInstalled(iceCard)) {
+                if (!this._matchingBreakerInstalled(iceCard)) {
                   for (var k = 0; k < this.cardsWorthKeeping.length; k++) {
-					var isSpecialBreaker = this.specialBreakers.includes(this.cardsWorthKeeping[k].title);
+					var isSpecialBreaker = false;
+					if (this.cardsWorthKeeping[k].AISpecialBreaker) isSpecialBreaker=true;
                     if (
                       ( CheckSubType(this.cardsWorthKeeping[k], "Icebreaker") || isSpecialBreaker ) &&
                       optionList.includes("install")
@@ -1718,10 +1657,8 @@ console.log(this.preferred);
 
     //if not running...then maybe need to draw?
     this._log("Don't want to run right now");
-    var maxOverDraw = 0; //max number of cards to go over max hand size
-    if (runner.clickTracker > 2 && Credits(runner) > 0)
-      maxOverDraw = runner.clickTracker - 2; //ok to draw extra early in turn if not completely broke (might find good econ)
-    var currentOverDraw = runner.grip.length - MaxHandSize(runner);
+	var maxOverDraw = this._maxOverDraw();
+	var currentOverDraw = this._currentOverDraw();
     if (currentOverDraw < maxOverDraw) {
       //a card that could be installed?
       if (optionList.includes("install")) {
@@ -1753,22 +1690,28 @@ console.log(this.preferred);
 
       //or maybe an event card?
       if (optionList.includes("play")) {
-        this.drawPlay = []; //cards which can be played to draw cards
-        if (currentOverDraw + 2 < maxOverDraw) this.drawPlay.push("VRcation"); //simple arbitrary bonus to current draw to prevent wild overdraw (and try to take into account the one this will burn)
-        if (currentOverDraw + 1 < maxOverDraw)
-          this.drawPlay.push("Wildcat Strike"); //simple arbitrary bonus to current draw to prevent wild overdraw
-        for (var i = 0; i < this.drawPlay.length; i++) {
-          //if this.drawPlay[i] is found in hand, and can be played, play it
-          cardToPlay = this._copyOfCardExistsIn(this.drawPlay[i], runner.grip);
-          if (cardToPlay) {
-            this._log("there is a card I'd like to play");
-            if (FullCheckPlay(cardToPlay)) {
-              this._log("and I could play it");
-              return this._returnPreference(optionList, "play", {
-                cardToPlay: cardToPlay,
-              });
-            }
-          }
+		//find highest priority draw card
+        var cardToPlay=null;
+		var cardPriority=0;
+        for (var i = 0; i < runner.grip.length; i++) {
+		    if (runner.grip[i].AIPlayToDraw) {
+			  if (runner.grip[i].AIPlayToDraw > cardPriority) {
+				if (FullCheckPlay(runner.grip[i])) {
+				  var playThis = true; //if no specific rules have been defined then just play it whenever you can
+				  if (typeof(runner.grip[i].AIWouldPlay) == 'function') playThis = runner.grip[i].AIWouldPlay.call(runner.grip[i]);
+				  if (playThis) {					
+					cardToPlay=runner.grip[i];
+					cardPriority=runner.grip[i].AIPlayToDraw;
+				  }
+				}
+			  }
+		    }
+		}
+        if (cardToPlay) {
+          this._log("there is an event card I would play to draw");
+		  return this._returnPreference(optionList, "play", {
+			cardToPlay: cardToPlay,
+		  });
         }
       }
 
@@ -1820,10 +1763,14 @@ console.log(this.preferred);
               FullCheckPlay(cardToPlay) &&
               !this._wastefulToPlay(cardToPlay)
             ) {
-              this._log("there's one I could play");
-              return this._returnPreference(optionList, "play", {
-                cardToPlay: cardToPlay,
-              });
+			  var playThis = true; //if no specific rules have been defined then just play it whenever you can
+			  if (typeof(cardToPlay.AIWouldPlay) == 'function') playThis = cardToPlay.AIWouldPlay.call(cardToPlay);
+			  if (playThis) {
+				  this._log("there's one I would play");
+				  return this._returnPreference(optionList, "play", {
+					cardToPlay: cardToPlay,
+				  });
+			  }
             }
           }
         }
@@ -1897,21 +1844,24 @@ console.log(this.preferred);
       } else if (optionList.includes("install")) {
         //install
         var canBeInstalled = true;
+		var installDestination = null; //directly to rig (no host)
         var choices = ChoicesCardInstall(card);
         if (!CheckInstall(card)) canBeInstalled = false;
         //this doesn't check costs
         else if (choices.length < 1) canBeInstalled = false;
         //this checks credits, mu, available hosts, etc.
         else if (typeof card.AIPreferredInstallChoice == "function") {
-          if (card.AIPreferredInstallChoice(choices) < 0)
+		  var apicIndex = card.AIPreferredInstallChoice(choices);
+          if (apicIndex < 0)
             canBeInstalled = false; //card AI code deemed it unworthy
+		  else installDestination = choices[apicIndex].host;
         }
         if (canBeInstalled && !this._wastefulToInstall(card)) {
           this._log("there's one I could install");
           return this._returnPreference(optionList, "install", {
             cardToInstall: card,
-            hostToInstallTo: null,
-          }); //assumes unhosted cards for now
+            hostToInstallTo: installDestination,
+          });
         }
       }
     }

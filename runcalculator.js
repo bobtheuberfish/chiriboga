@@ -67,94 +67,9 @@ class RunCalculator {
       result.subTypes = [].concat(ice.subTypes);
 
       //apply specific details
-      var title = ice.title;
-      if (title == "Ansel 1.0") {
-        if (this.precalculated.runnerInstalledCardsLength > 0) {
-          //programs are run-critical. other things still not good but maybe ok
-          var installedPrograms = ChoicesInstalledCards(
-            runner,
-            function (card) {
-              return CheckCardType(card, ["program"]);
-            }
-          );
-          if (installedPrograms.length > 0) result.sr.push([["misc_serious"]]);
-          else result.sr.push([["misc_moderate"]]);
-        } else result.sr.push([[]]); //push a blank sr so that indices match
-        if ((corp.HQ.cards.length == 0)&&(corp.archives.cards.length == 0)) result.sr.push([[]]); //push a blank sr so that indices match
-		else result.sr.push([["misc_moderate"]]);
-        if (incomplete) result.sr.push([[]]); //push a blank sr so that indices match
-		else result.sr.push([["misc_serious"]]); //cannot steal or trash cards
-      } else if (title == "Brân 1.0") {
-        result.sr = [[["misc_serious"]], [["endTheRun"]], [["endTheRun"]]];
-      } else if (title == "Diviner") {
-        var secondEffect = "endTheRun";
-        var evenCardsInHand = 0;
-        for (var i = 0; i < runner.grip.length; i++) {
-          var printedCost = 0;
-          if (typeof runner.grip[i].installCost !== "undefined")
-            printedCost = runner.grip[i].installCost;
-          else if (typeof runner.grip[i].playCost !== "undefined")
-            printedCost = runner.grip[i].playCost;
-          if (printedCost % 2 != 1) evenCardsInHand++;
-        }
-        result.sr = [[["netDamage"]]];
-        //if all cards in hand are even then there is no second effect
-        if (evenCardsInHand == 0) result.sr[0][0].push("endTheRun");
-        else if (evenCardsInHand < runner.grip.length)
-          result.sr[0][0].push("misc_moderate"); //maybe will end, maybe not
-      } else if (title == "Karunā") {
-        result.sr = [
-          [
-            ["netDamage", "netDamage", "endTheRun"],
-            ["netDamage", "netDamage"],
-          ],
-          [["netDamage", "netDamage"]],
-        ];
-      } else if (title == "Funhouse") {
-        result.encounterEffects = [["endTheRun"], ["tag"]];
-        result.sr = [
-          [["payCredits", "payCredits", "payCredits", "payCredits"], ["tag"]], //pay 4 credits
-        ];
-      } else if (title == "Ping") {
-        result.sr = [[["endTheRun"]]];
-      } else if (title == "Ballista") {
-        result.sr = [
-          [["endTheRun"]], //oversimplifies it but may be sufficient
-        ];
-      } else if (title == "Pharos") {
-        result.sr = [[["tag"]], [["endTheRun"]], [["endTheRun"]]];
-      } else if (title == "Palisade") {
-        result.sr = [[["endTheRun"]]];
-      } else if (title == "Tithe") {
-        if (maxCorpCred > 4) {
-          //i.e. corp has lots of credits (this threshold is arbitrary)
-          result.sr = [[["netDamage"]], [["misc_minor"]]];
-        } else {
-          result.sr = [[["netDamage"]], [["misc_moderate"]]];
-        }
-      } else if (title == "Whitespace") {
-        result.sr = [
-          [["loseCredits", "loseCredits", "loseCredits"]], //lose 3 credits
-          [
-            [
-              "payCredits",
-              "payCredits",
-              "payCredits",
-              "payCredits",
-              "payCredits",
-              "payCredits",
-              "payCredits",
-              "runnerGainCredits",
-              "runnerGainCredits",
-              "runnerGainCredits",
-              "runnerGainCredits",
-              "runnerGainCredits",
-              "runnerGainCredits",
-              "runnerGainCredits",
-            ],
-          ], //this works out to 'if the runner has less than 7c, this isn't a valid path'
-        ];
-      } //default case - used for ice that haven't been coded specifically above
+	  if (typeof ice.AIImplementIce == "function") {
+		  result = ice.AIImplementIce.call(ice, result, maxCorpCred, incomplete);
+	  } //default case - used for ice that haven't been coded specifically above
       else {
         for (var i = 0; i < ice.subroutines.length; i++) {
           result.sr.push([["misc_moderate"]]);
@@ -197,6 +112,7 @@ class RunCalculator {
         runner_clicks_spent: point.runner_clicks_spent,
         virus_counters_spent: point.virus_counters_spent,
         card_str_mods: point.card_str_mods,
+		persistents: point.persistents,
         sr_broken: point.sr_broken.concat(combinations[i]),
         effects: point.effects,
       });
@@ -227,6 +143,7 @@ class RunCalculator {
           persist: persist,
         },
       ]),
+	  persistents: point.persistents,
       sr_broken: point.sr_broken,
       effects: point.effects,
     };
@@ -303,242 +220,11 @@ class RunCalculator {
     var clicksLeft = this._clicksLeft() - point.runner_clicks_spent;
     var creditsLeft = this._creditsLeft() - point.runner_credits_spent;
 
-    //known icebreaker list (could consider putting these on each card rather than here)
-	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
-    var title = card.title;
-    if (title == "Mimic") {
-      result = result.concat(
-        this.ImplementIcebreaker(
-          point,
-          card,
-          cardStrength,
-          iceAI,
-          iceStrength,
-          ["Sentry"],
-          Infinity, //fixed strength breaker
-          0,
-          1,
-          1,
-          creditsLeft
-        )
-      ); //cost to str, amt to str, cost to brk, amt to brk	
-    } else if (title == "Corroder") {
-      result = result.concat(
-        this.ImplementIcebreaker(
-          point,
-          card,
-          cardStrength,
-          iceAI,
-          iceStrength,
-          ["Barrier"],
-          1,
-          1,
-          1,
-          1,
-          creditsLeft
-        )
-      ); //cost to str, amt to str, cost to brk, amt to brk	
-    } else if (title == "Quetzal: Free Spirit") {
-	  if (!card.usedThisTurn) {
-		//can only use once
-        var str_mod_by_this = 0; //zero mod, just using it because it persists
-        for (var i = 0; i < point.card_str_mods.length; i++) {
-          if (point.card_str_mods[i].use == card) str_mod_by_this++;
-        }
-        if (str_mod_by_this < 1) {
-			var results_to_concat = this.ImplementIcebreaker(
-			  point,
-			  card,
-			  Infinity, //Quetzal doesn't actually have a strength...
-			  iceAI,
-			  iceStrength,
-			  ["Barrier"],
-			  0, //doesn't need to up str so will just do zero for these
-			  0,
-			  0, //0 credits to break
-			  1, //break 1
-			  creditsLeft
-			);
-			//use a zero str mod to create a persistent effect
-			for (var i=0; i<results_to_concat.length; i++) {
-				results_to_concat[i].card_str_mods.push({
-				  iceIdx: point.iceIdx,
-				  card: null, //not relevant for this pseudo-str-up
-				  use: card,
-				  amt: 0,
-				  persist: true,
-				});
-			}
-			result = result.concat(results_to_concat);
-		}
-	  }
-	} else if (title == "Botulus") {
-      if (card.host == iceAI.ice) {
-        var sr_broken_by_this = 0;
-        for (var i = 0; i < point.sr_broken.length; i++) {
-          if (point.sr_broken[i].use == card) sr_broken_by_this++;
-        }
-        if (sr_broken_by_this < Counters(card, "virus")) {
-          //number of sr_broken by this card cannot exceed hosted virus counters
-          result = result.concat(this.SrBreak(card, iceAI, point, 1)); //break 1 subroutine
-        }
-      }
-    } else if (title == "Ansel 1.0") {
-      if (card == iceAI.ice) {
-        if (clicksLeft > 0) {
-          var breakresult = this.SrBreak(card, iceAI, point, 1);
-          for (var j = 0; j < breakresult.length; j++) {
-            breakresult[j].runner_clicks_spent += 1;
-          }
-          result = result.concat(breakresult);
-        }
-      }
-    } else if (title == "Brân 1.0") {
-      if (card == iceAI.ice) {
-        if (clicksLeft > 0) {
-          var breakresult = this.SrBreak(card, iceAI, point, 1);
-          for (var j = 0; j < breakresult.length; j++) {
-            breakresult[j].runner_clicks_spent += 1;
-          }
-          result = result.concat(breakresult);
-        }
-      }
-    } else if (title == "Cleaver") {
-      result = result.concat(
-        this.ImplementIcebreaker(
-          point,
-          card,
-          cardStrength,
-          iceAI,
-          iceStrength,
-          ["Barrier"],
-          2,
-          1,
-          1,
-          2,
-          creditsLeft
-        )
-      ); //cost to str, amt to str, cost to brk, amt to brk
-    } else if (title == "Buzzsaw") {
-      result = result.concat(
-        this.ImplementIcebreaker(
-          point,
-          card,
-          cardStrength,
-          iceAI,
-          iceStrength,
-          ["Code Gate"],
-          3,
-          1,
-          1,
-          2,
-          creditsLeft
-        )
-      ); //cost to str, amt to str, cost to brk, amt to brk
-    } else if (title == "Leech") {
-      var str_mod_by_this = 0;
-      for (var i = 0; i < point.card_str_mods.length; i++) {
-        if (point.card_str_mods[i].use == card) str_mod_by_this++;
-      }
-      if (str_mod_by_this < Counters(card, "virus")) {
-        //number of str_mod by this card cannot exceed hosted virus counters
-        var modifyresult = this.StrModify(card, iceAI.ice, point, -1, true); //-1 strength, the true stores this past the encounter
-        modifyresult.virus_counters_spent += 1;
-        result = result.concat(modifyresult);
-      }
-    } else if (title == "Carmen") {
-      result = result.concat(
-        this.ImplementIcebreaker(
-          point,
-          card,
-          cardStrength,
-          iceAI,
-          iceStrength,
-          ["Sentry"],
-          2,
-          3,
-          1,
-          1,
-          creditsLeft
-        )
-      ); //cost to str, amt to str, cost to brk, amt to brk
-    } else if (title == "Marjanah") {
-      var marcost = 2;
-      if (card.madeSuccessfulRunThisTurn) marcost = 1;
-      result = result.concat(
-        this.ImplementIcebreaker(
-          point,
-          card,
-          cardStrength,
-          iceAI,
-          iceStrength,
-          ["Barrier"],
-          1,
-          1,
-          marcost,
-          1,
-          creditsLeft
-        )
-      ); //cost to str, amt to str, cost to brk, amt to brk
-    } else if (title == "Echelon") {
-      result = result.concat(
-        this.ImplementIcebreaker(
-          point,
-          card,
-          cardStrength,
-          iceAI,
-          iceStrength,
-          ["Sentry"],
-          3,
-          2,
-          1,
-          1,
-          creditsLeft
-        )
-      ); //cost to str, amt to str, cost to brk, amt to brk
-    } else if (title == "Unity") {
-      var strup = this.precalculated.runnerInstalledIcebreakersLength;
-      result = result.concat(
-        this.ImplementIcebreaker(
-          point,
-          card,
-          cardStrength,
-          iceAI,
-          iceStrength,
-          ["Code Gate"],
-          1,
-          strup,
-          1,
-          1,
-          creditsLeft
-        )
-      ); //cost to str, amt to str, cost to brk, amt to brk
-    } else if (title == "Mayfly") {
-      //unless have a spare, only use Mayfly for worthwhile targets (the 1.5 is arbitrary, and the false prevents infinite loop)
-      var mayflyInGrip = false;
-      for (var i = 0; i < runner.grip.length; i++) {
-        if (runner.grip[i].title == "Mayfly") {
-          mayflyInGrip = true;
-          break;
-        }
-      }
-      if (runner.AI._getCachedPotential(server, false) > 1.5 || mayflyInGrip)
-        result = result.concat(
-          this.ImplementIcebreaker(
-            point,
-            card,
-            cardStrength,
-            iceAI,
-            iceStrength,
-            [],
-            1,
-            1,
-            1,
-            1,
-            creditsLeft
-          )
-        ); //cost to str, amt to str, cost to brk, amt to brk
-    }
+    //apply icebreaker specific details
+	if (typeof card.AIImplementBreaker == "function") {
+		result = card.AIImplementBreaker.call(card,result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft);
+	}
+	
     return result;
   }
 
@@ -718,10 +404,16 @@ class RunCalculator {
       //all checks above good, no waste? ok lets consider option to move on
       if (!a_card_was_used_unnecessarily) {
         //some properties persist from one encounter to the next
+		//card_str_mods with .persist true
         var card_str_mods = [];
         for (var i = 0; i < point.card_str_mods.length; i++) {
           if (point.card_str_mods[i].persist)
             card_str_mods.push(point.card_str_mods[i]);
+        }
+		//and all other persistents
+		var persistents = [];
+        for (var i = 0; i < point.persistents.length; i++) {
+          persistents.push(point.persistents[i]);
         }
         //clear the point ready for the next encounter
         var encounterOptions = [[]];
@@ -785,6 +477,7 @@ class RunCalculator {
               runner_clicks_spent: point.runner_clicks_spent,
               virus_counters_spent: point.virus_counters_spent,
               card_str_mods: card_str_mods,
+			  persistents: persistents,
               sr_broken: [],
               //effects:point.effects.concat([sr_effects]).concat([encounter_effects]),
               effects: point.effects.concat([encounter_effects]), //sr_effects is already concatenated above
@@ -1094,6 +787,7 @@ class RunCalculator {
                 runner_clicks_spent: approachOptions[j].clicks,
                 virus_counters_spent: 0,
                 card_str_mods: [],
+				persistents: [],
                 sr_broken: [],
                 effects: [encounter_effects].concat(approachOptions[j].effects),
               },
@@ -1206,6 +900,7 @@ class RunCalculator {
             runner_clicks_spent: approachOptions[j].clicks,
             virus_counters_spent: 0,
             card_str_mods: [],
+			persistents: [],
             sr_broken: [],
             effects: [].concat(approachOptions[j].effects),
           },

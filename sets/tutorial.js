@@ -66,7 +66,7 @@ tutorial[5] = {
       action: function () {
 		TutorialCommandMessage = {}
         TutorialMessage("UPGRADES can be installed in any server, not just remote servers.\n\nInstall Manegarm Skunkworks in HQ or R&D by dragging it from hand and releasing it over the server.");
-		TutorialBlacklist = ['draw','gain',corp.HQ.cards[0],corp.remoteServers[0],null,corp.archives];
+		TutorialBlacklist = ['purge','draw','gain',corp.HQ.cards[0],corp.remoteServers[0],null,corp.archives];
       },
     },
     {
@@ -83,7 +83,7 @@ tutorial[5] = {
 		TutorialCommandMessage = {};
 		currentPhase.requireHumanInput=true;
         TutorialMessage("Upgrades, assets and agendas are all installed in the ROOT of a server, whereas ice is installed PROTECTING a server.\n\nInstall Nico campaign in the root of the remote server.");
-		TutorialBlacklist = ['draw','gain',corp.HQ.cards[0]];
+		TutorialBlacklist = ['purge','draw','gain',corp.HQ.cards[0]];
         TutorialReplacer = function (input) {
           if ( MouseIsOverServer(corp.HQ) || MouseIsOverServer(corp.RnD) || MouseIsOverServer(corp.archives) || MouseIsOverServer(null) ) {
 			TutorialMessage("In a normal game you would be able to choose which server to install to.\n\nFor this tutorial, choose the existing remote server.");
@@ -139,7 +139,7 @@ tutorial[5] = {
       str: "Corp 2.2",
       action: function () {
 		TutorialMessage("Install Tithe protecting the remote server.\n\nAny number of ice can be installed protecting a server, but there is an install cost of 1 credit for each ice already installed.");
-		TutorialBlacklist = ['draw','gain'];
+		TutorialBlacklist = ['purge','draw','gain'];
         TutorialReplacer = function (input) {
           if ( MouseIsOverServer(corp.HQ) || MouseIsOverServer(corp.RnD) || MouseIsOverServer(corp.archives) || MouseIsOverServer(null) ) {
 			TutorialMessage("In a normal game you would be able to choose which server to install to.\n\nFor this tutorial, choose the existing remote server.");

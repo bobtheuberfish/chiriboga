@@ -44,6 +44,35 @@ cardSet[31001] = {
       },
     },
   ],
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+	if (!this.usedThisTurn) {
+		//can only use once
+		//you can put anything in persisents and it will stick around down the run path
+		//in this case we just store this card to show it has been used
+        if (!point.persistents.includes(this)) {
+			var results_to_concat = runner.AI.rc.ImplementIcebreaker(
+			  point,
+			  this,
+			  Infinity, //Quetzal doesn't actually have a strength...
+			  iceAI,
+			  iceStrength,
+			  ["Barrier"],
+			  0, //doesn't need to up str so will just do zero for these
+			  0,
+			  0, //0 credits to break
+			  1, //break 1
+			  creditsLeft
+			);
+			//save persistent effect (i.e. only use this breaker once)
+			for (var i=0; i<results_to_concat.length; i++) {
+				results_to_concat[i].persistents.push(this);
+			}
+			result = result.concat(results_to_concat);
+		}
+	}
+	return result;
+  },
 };
 
 cardSet[31002] = {
@@ -163,6 +192,7 @@ cardSet[31003] = {
 	Resolve: function (params) {
 		Trash(params.card, true); //true means can be prevented
 	},
+    AIPlayWhenCan: 2, //priority 2 (moderate)
 };
 
 cardSet[31004] = {
@@ -178,6 +208,8 @@ cardSet[31004] = {
   Resolve: function (params) {
     MakeRun(corp.archives);
   },
+  storedModifiedPhase: null,
+  storedModifiedNext: null,
   runSuccessful: {
     Resolve: function () {
 		var choices = [{id:0, label: "Breach", button: "Breach", card:null }];
@@ -200,8 +232,8 @@ cardSet[31004] = {
 		//decision and implementation code
 		function decisionCallback(params) {
 		  if (params.card !== null) {
-			currentPhase.next = phases.runEnds;
-			Install(params.card, params.server, true); //the true means ignore all costs
+			ChangePhase(phases.runEnds); //change phase in advance ready for install to finish
+			Install(params.card, params.host, true, null, true); //the first true means ignore all costs, the second means return to phase (i.e. runEnds)
 		  }
 		}
 		var decisionPhase = DecisionPhase(
@@ -361,6 +393,25 @@ cardSet[31006] = {
     },
     automatic: true,
   },
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    result = result.concat(
+        runner.AI.rc.ImplementIcebreaker(
+          point,
+          this,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Barrier"],
+          1,
+          1,
+          1,
+          1,
+          creditsLeft
+        )
+    ); //cost to str, amt to str, cost to brk, amt to brk	
+	return result;
+  },
 };
 
 cardSet[31007] = {
@@ -484,6 +535,54 @@ cardSet[31008] = {
       this.strengthBoost = 0;
     },
     automatic: true,
+  },
+  AIFixedStrength: true,
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    result = result.concat(
+        runner.AI.rc.ImplementIcebreaker(
+          point,
+          this,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Sentry"],
+          Infinity, //fixed strength breaker
+          0,
+          1,
+          1,
+          creditsLeft
+        )
+    ); //cost to str, amt to str, cost to brk, amt to brk	
+	return result;
+  },
+};
+
+cardSet[31009] = {
+  title: "Ice Carver",
+  imageFile: "31009.png",
+  player: runner,
+  faction: "Anarch",
+  influence: 3,
+  cardType: "resource",
+  subTypes: ["Virtual"],
+  installCost: 3,
+  unique: true,
+  modifyStrength: {
+	//While you are encountering a piece of ice, it gets -1 strength.
+    Resolve: function (card) {
+      if (CheckEncounter()) {
+		if (GetApproachEncounterIce() == card) return -1;
+	  }
+      return 0; //no modification to strength
+    },
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if a fixed strength card is installed
+	  for (var i=0; i<installedRunnerCards.length; i++) {
+		if (installedRunnerCards[i].AIFixedStrength) return true;
+	  }
+	  return false;
   },
 };
 

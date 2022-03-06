@@ -77,6 +77,12 @@ cardSet[30002] = {
       corp.AI.preferred = { title: "Wildcat Strike", option: choice };
     }
   },
+  AIWouldPlay: function() {
+	//prevent wild overdraw
+    if (runner.AI._currentOverDraw() + 1 < runner.AI._maxOverDraw()) return true;
+	return false;
+  },
+  AIPlayToDraw: 1, //priority 1 (yes play but there are better options)
 };
 cardSet[30003] = {
   title: "Carnivore",
@@ -226,6 +232,21 @@ cardSet[30004] = {
     }
     return bestIndex;
   },
+  AISpecialBreaker:true,
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    if (this.host == iceAI.ice) {
+        var sr_broken_by_this = 0;
+        for (var i = 0; i < point.sr_broken.length; i++) {
+          if (point.sr_broken[i].use == this) sr_broken_by_this++;
+        }
+        if (sr_broken_by_this < Counters(this, "virus")) {
+          //number of sr_broken by this card cannot exceed hosted virus counters
+          result = result.concat(runner.AI.rc.SrBreak(this, iceAI, point, 1)); //break 1 subroutine
+        }
+    }
+	return result;
+  },
 };
 cardSet[30005] = {
   title: "Buzzsaw",
@@ -328,6 +349,25 @@ cardSet[30005] = {
     },
     automatic: true,
   },
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    result = result.concat(
+        runner.AI.rc.ImplementIcebreaker(
+          point,
+          this,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Code Gate"],
+          3,
+          1,
+          1,
+          2,
+          creditsLeft
+        )
+    ); //cost to str, amt to str, cost to brk, amt to brk
+	return result;
+  },
 };
 cardSet[30006] = {
   title: "Cleaver",
@@ -428,6 +468,25 @@ cardSet[30006] = {
     },
     automatic: true,
   },
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    result = result.concat(
+        runner.AI.rc.ImplementIcebreaker(
+          point,
+          this,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Barrier"],
+          2,
+          1,
+          1,
+          2,
+          creditsLeft
+        )
+    ); //cost to str, amt to str, cost to brk, amt to brk
+	return result;
+  },
 };
 cardSet[30007] = {
   title: "Fermenter",
@@ -472,6 +531,11 @@ cardSet[30007] = {
     //don't trigger if less than 3 virus counters
     if (!CheckCounters(this, "virus", 3)) return false;
     return true;
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if need money
+	  if (Credits(runner) < 5) return true;
+	  return false;
   },
 };
 cardSet[30008] = {
@@ -521,9 +585,42 @@ cardSet[30008] = {
       },
     },
   ],
+  AIPermitMoreLeeches: function(installedRunnerCards) {
+	//arbitrary but basically make sure there is at least 3 mu of other things (or unused)
+	var maxLeeches = MemoryUnits() - 3;
+	var numLeeches = 0;
+	for (var i=0; i<installedRunnerCards.length; i++) {
+		if (GetTitle(installedRunnerCards[i]) == "Leech") numLeeches++;
+	}
+	return (numLeeches < maxLeeches);
+  },
   AIPreferredInstallChoice: function (
     choices //outputs the preferred index from the provided choices list (return -1 to not install)
   ) {
+	//don't use up too much mu on just leeches (just assuming destination is program row, for now)
+	var installedRunnerCards = InstalledCards(runner);
+	if (this.AIPermitMoreLeeches(installedRunnerCards)) {
+		//install leech if there is a breaker in play with lower strength than a matching ice
+		var installedCorpCards = InstalledCards(corp);
+		for (var i = 0; i < installedCorpCards.length; i++) {
+		  var card = installedCorpCards[i];
+		  //don't cheat i.e. only check ice that is known
+		  if (card.rezzed || card.knownToRunner) {
+			if (CheckCardType(card, ["ice"])) {
+			  var matchingBreaker = runner.AI._matchingBreakerInstalled(card);
+			  if (matchingBreaker) {
+				  if (Strength(matchingBreaker) < Strength(card)) return 0; //do install
+			  }
+			}
+		  }
+		}
+		//or a fixed strength breaker
+		for (var i=0; i<installedRunnerCards.length; i++) {
+		  if (installedRunnerCards[i].AIFixedStrength) return 0; //do install
+		}
+	}
+	return -1; //don't install
+	/* previous algorithm
     //don't install leech if there is any rezzed ice that we don't have a matching breaker for (or no rezzed ice)
     var installedCorpCards = InstalledCards(corp);
     var numRezzedIce = 0;
@@ -532,18 +629,42 @@ cardSet[30008] = {
       if (card.rezzed || card.knownToRunner) {
         //don't cheat
         if (CheckCardType(card, ["ice"])) {
-          if (!runner.AI._matchingBreakerIsInstalled(card)) return -1; //don't install
+          if (!runner.AI._matchingBreakerInstalled(card)) return -1; //don't install
         }
         numRezzedIce++;
       }
     }
     if (numRezzedIce == 0) return -1; //don't install
     return 0; //do install
+	*/
   },
   //install before run if the server is central
   AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
 	  if (typeof server.cards !== "undefined") return 1; //yes
 	  return 0; //no
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if a fixed strength card is installed, there is spare mu, and max leeches not met
+	  if (spareMU > 0 && this.AIPermitMoreLeeches(installedRunnerCards)) {
+		  for (var i=0; i<installedRunnerCards.length; i++) {
+			if (installedRunnerCards[i].AIFixedStrength) return true;
+		  }
+	  }
+	  return false;
+  },
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+      var str_mod_by_this = 0;
+      for (var i = 0; i < point.card_str_mods.length; i++) {
+        if (point.card_str_mods[i].use == this) str_mod_by_this++;
+      }
+      if (str_mod_by_this < Counters(this, "virus")) {
+        //number of str_mod by this card cannot exceed hosted virus counters
+        var modifyresult = runner.AI.rc.StrModify(this, iceAI.ice, point, -1, true); //-1 strength, the true stores this past the encounter
+        modifyresult.virus_counters_spent += 1;
+        result = result.concat(modifyresult);
+      }
+	return result;
   },
 };
 cardSet[30009] = {
@@ -581,6 +702,16 @@ cardSet[30009] = {
 		  }
 	  }
 	  return 0; //no
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if any virus cards in hand
+	  for (var j = 0; j < runner.grip.length; j++) {
+		if (CheckSubType(runner.grip[j], "Virus")) {
+		  return true;
+		  break;
+		}
+	  }
+	  return false;
   },
 };
 cardSet[30010] = {
@@ -753,6 +884,38 @@ cardSet[30011] = {
       this
     );
   },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if have a spare mu and a breaker type in deck thats not in hand or play
+	  if (spareMU > 0) {
+		var worthBreaker =
+		  runner.AI._icebreakerInPileNotInHandOrArray(runner.stack,installedRunnerCards);
+		if (worthBreaker) {
+		  //if a successful run has already been made this turn and can afford the install, then Mutual Favor is efficient
+		  if (
+			this.madeSuccessfulRunThisTurn &&
+			CheckCredits(InstallCost(worthBreaker), runner, "installing")
+		  )
+			return true;
+		  //otherwise don't Mutual Favor if there's already a breaker in hand worth playing...
+		  else {
+			var essentials =
+			  runner.AI._essentialBreakerTypesNotInArray(installedRunnerCards);
+			var worthBreakersInHand = false;
+			for (var j = 0; j < runner.grip.length; j++) {
+			  for (var k = 0; k < essentials.length; k++) {
+				if (CheckSubType(runner.grip[j], essentials[k])) {
+				  worthBreakersInHand = true;
+				  break;
+				}
+			  }
+			  if (worthBreakersInHand) break;
+			}
+			if (!worthBreakersInHand) return true;
+		  }
+		}
+	  }
+	  return false;
+  },
 };
 cardSet[30012] = {
   title: "Tread Lightly",
@@ -813,6 +976,17 @@ cardSet[30013] = {
 	}
 	return 0; //no
   },	  		  
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if run into HQ is possible and HQ hasn't been breached this turn
+	  var keep = false;
+	  if (!this.breachedHQThisTurn && runner.clickTracker > 1) {
+		var storedCWK = runner.AI.cardsWorthKeeping; //oversimplified workaround for the fact that docklands will consider HQ unrunnable if it is in hand and might be lost...
+		runner.AI.cardsWorthKeeping = [];
+		if (runner.AI._getCachedCost(corp.HQ) != Infinity) keep = true;
+		runner.AI.cardsWorthKeeping = storedCWK;
+	  }
+	  return keep;
+  },
 };
 cardSet[30014] = {
   title: "Pennyshaver",
@@ -963,6 +1137,25 @@ cardSet[30015] = {
     },
     automatic: true,
   },
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    result = result.concat(
+        runner.AI.rc.ImplementIcebreaker(
+          point,
+          this,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Sentry"],
+          2,
+          3,
+          1,
+          1,
+          creditsLeft
+        )
+    ); //cost to str, amt to str, cost to brk, amt to brk
+	return result;
+  },
 };
 cardSet[30016] = {
   title: "Marjanah",
@@ -1059,6 +1252,27 @@ cardSet[30016] = {
     },
     automatic: true,
   },
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    var marcost = 2;
+    if (this.madeSuccessfulRunThisTurn) marcost = 1;
+    result = result.concat(
+        runner.AI.rc.ImplementIcebreaker(
+          point,
+          this,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Barrier"],
+          1,
+          1,
+          marcost,
+          1,
+          creditsLeft
+        )
+    ); //cost to str, amt to str, cost to brk, amt to brk
+	return result;
+  },
 };
 cardSet[30017] = {
   title: "Tranquilizer",
@@ -1119,6 +1333,7 @@ cardSet[30017] = {
     }
     return bestIndex;
   },
+  AISpecialBreaker:true,
 };
 cardSet[30018] = {
   title: "Red Team",
@@ -1337,6 +1552,11 @@ cardSet[30020] = {
     GainCredits(runner, 5);
     LoseClicks(runner, 1);
   },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if need money
+	  if (Credits(runner) < 5) return true;
+	  return false;
+  },
 };
 cardSet[30021] = {
   title: "VRcation",
@@ -1351,6 +1571,17 @@ cardSet[30021] = {
     Draw(runner, 4);
     LoseClicks(runner, 1);
   },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+      //keep if need card draw
+      if (runner.grip.length < 3) return true;
+	  return false;
+  },
+  AIWouldPlay: function() {
+	//prevent wild overdraw (and try to take into account the one this will burn)
+    if (runner.AI._currentOverDraw() + 2 < runner.AI._maxOverDraw()) return true;
+	return false;
+  },
+  AIPlayToDraw: 3, //priority 3 (can't get much better draw than this)
 };
 cardSet[30022] = {
   title: "DZMZ Optimizer",
@@ -1393,6 +1624,11 @@ cardSet[30022] = {
     },
     automatic: true,
     availableWhenInactive: true,
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if available mu is 1 or less
+	  if (spareMU < 2) return true;
+	  return false;
   },
 };
 cardSet[30023] = {
@@ -1566,6 +1802,20 @@ cardSet[30024] = {
 	}
 	return 0; //no
   },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if there is not already a Conduit installed and a run into R&D is possible
+	  var alreadyConduit = false;
+	  for (var j = 0; j < runner.rig.programs.length; j++) {
+		if (runner.rig.programs[j].title == "Conduit") {
+		  alreadyConduit = true;
+		  break;
+		}
+	  }
+	  if (!alreadyConduit) {
+		if (runner.AI._getCachedCost(corp.RnD) != Infinity) return true;
+	  }
+	  return false;
+  },
 };
 cardSet[30025] = {
   title: "Echelon",
@@ -1649,6 +1899,25 @@ cardSet[30025] = {
     },
     automatic: true,
   },
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    result = result.concat(
+        runner.AI.rc.ImplementIcebreaker(
+          point,
+          this,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Sentry"],
+          3,
+          2,
+          1,
+          1,
+          creditsLeft
+        )
+    ); //cost to str, amt to str, cost to brk, amt to brk
+	return result;
+  },
 };
 cardSet[30026] = {
   title: "Unity",
@@ -1731,6 +2000,26 @@ cardSet[30026] = {
     },
     automatic: true,
   },
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    var strup = runner.AI.rc.precalculated.runnerInstalledIcebreakersLength;
+    result = result.concat(
+        runner.AI.rc.ImplementIcebreaker(
+          point,
+          this,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Code Gate"],
+          1,
+          strup,
+          1,
+          1,
+          creditsLeft
+        )
+    ); //cost to str, amt to str, cost to brk, amt to brk
+	return result;
+  },
 };
 cardSet[30027] = {
   title: "Telework Contract",
@@ -1780,6 +2069,11 @@ cardSet[30027] = {
       },
     },
   ],
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if need money
+	  if (Credits(runner) < 5) return true;
+	  return false;
+  },
 };
 cardSet[30028] = {
   title: "Jailbreak",
@@ -1844,6 +2138,10 @@ cardSet[30030] = {
   Resolve: function (params) {
     GainCredits(runner, 9);
   },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //we love Sure Gamble, always keep it
+	  return true;
+  },
 };
 cardSet[30031] = {
   title: "T400 Memory Diamond",
@@ -1861,6 +2159,11 @@ cardSet[30031] = {
       if (player == runner) return 1; //+1
       return 0; //no modification to maximum hand size
     },
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if available mu is 1 or less
+	  if (spareMU < 2) return true;
+	  return false;
   },
 };
 cardSet[30032] = {
@@ -1944,6 +2247,35 @@ cardSet[30032] = {
     Resolve: function (params) {
       Trash(this, true);
     },
+  },
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    //unless have a spare, only use Mayfly for worthwhile targets (the 1.5 is arbitrary, and the false prevents infinite loop)
+    var mayflyInGrip = false;
+    for (var i = 0; i < runner.grip.length; i++) {
+        if (runner.grip[i].title == "Mayfly") {
+          mayflyInGrip = true;
+          break;
+        }
+    }
+    if (runner.AI._getCachedPotential(server, false) > 1.5 || mayflyInGrip) {
+        result = result.concat(
+          runner.AI.rc.ImplementIcebreaker(
+            point,
+            this,
+            cardStrength,
+            iceAI,
+            iceStrength,
+            [],
+            1,
+            1,
+            1,
+            1,
+            creditsLeft
+          )
+        ); //cost to str, amt to str, cost to brk, amt to brk
+	}
+	return result;
   },
 };
 cardSet[30033] = {
@@ -2327,6 +2659,37 @@ cardSet[30038] = {
     availableWhenInactive: true,
     automatic: true,
   },
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+	if (runner.AI.rc.precalculated.runnerInstalledCardsLength > 0) {
+	  //programs are run-critical. other things still not good but maybe ok
+	  var installedPrograms = ChoicesInstalledCards(
+		runner,
+		function (card) {
+		  return CheckCardType(card, ["program"]);
+		}
+	  );
+	  if (installedPrograms.length > 0) result.sr.push([["misc_serious"]]);
+	  else result.sr.push([["misc_moderate"]]);
+	} else result.sr.push([[]]); //push a blank sr so that indices match
+	if ((corp.HQ.cards.length == 0)&&(corp.archives.cards.length == 0)) result.sr.push([[]]); //push a blank sr so that indices match
+	else result.sr.push([["misc_moderate"]]);
+	if (incomplete) result.sr.push([[]]); //push a blank sr so that indices match
+	else result.sr.push([["misc_serious"]]); //cannot steal or trash cards
+	return result;
+  },
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    if (this == iceAI.ice) {
+        if (clicksLeft > 0) {
+          var breakresult = runner.AI.rc.SrBreak(this, iceAI, point, 1);
+          for (var j = 0; j < breakresult.length; j++) {
+            breakresult[j].runner_clicks_spent += 1;
+          }
+          result = result.concat(breakresult);
+        }
+    }
+	return result;
+  },
 };
 cardSet[30039] = {
   title: "Brân 1.0",
@@ -2456,6 +2819,23 @@ cardSet[30039] = {
     },
   ],
   activeForOpponent: true,
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+    result.sr = [[["misc_serious"]], [["endTheRun"]], [["endTheRun"]]];
+	return result;
+  },
+  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    if (this == iceAI.ice) {
+        if (clicksLeft > 0) {
+          var breakresult = runner.AI.rc.SrBreak(this, iceAI, point, 1);
+          for (var j = 0; j < breakresult.length; j++) {
+            breakresult[j].runner_clicks_spent += 1;
+          }
+          result = result.concat(breakresult);
+        }
+    }
+	return result;
+  },
 };
 cardSet[30040] = {
   title: "Seamless Launch",
@@ -2863,6 +3243,24 @@ cardSet[30046] = {
       visual: { y: 79, h: 66 },
     },
   ],
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+	var secondEffect = "endTheRun";
+	var evenCardsInHand = 0;
+	for (var i = 0; i < runner.grip.length; i++) {
+	  var printedCost = 0;
+	  if (typeof runner.grip[i].installCost !== "undefined")
+		printedCost = runner.grip[i].installCost;
+	  else if (typeof runner.grip[i].playCost !== "undefined")
+		printedCost = runner.grip[i].playCost;
+	  if (printedCost % 2 != 1) evenCardsInHand++;
+	}
+	result.sr = [[["netDamage"]]];
+	//if all cards in hand are even then there is no second effect
+	if (evenCardsInHand == 0) result.sr[0][0].push("endTheRun");
+	else if (evenCardsInHand < runner.grip.length)
+	  result.sr[0][0].push("misc_moderate"); //maybe will end, maybe not
+	return result;
+  },
 };
 cardSet[30047] = {
   title: "Karunā",
@@ -2904,6 +3302,16 @@ cardSet[30047] = {
       visual: { y: 87, h: 16 },
     },
   ],
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+	result.sr = [
+	  [
+		["netDamage", "netDamage", "endTheRun"],
+		["netDamage", "netDamage"],
+	  ],
+	  [["netDamage", "netDamage"]],
+	];
+	return result;
+  },
 };
 cardSet[30048] = {
   title: "Hansei Review",
@@ -3406,6 +3814,13 @@ cardSet[30054] = {
       visual: { y: 110, h: 31 },
     },
   ],
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+	result.encounterEffects = [["endTheRun"], ["tag"]];
+	result.sr = [
+	  [["payCredits", "payCredits", "payCredits", "payCredits"], ["tag"]], //pay 4 credits
+	];
+	return result;
+  },
 };
 cardSet[30055] = {
   title: "Ping",
@@ -3438,6 +3853,10 @@ cardSet[30055] = {
       visual: { y: 102, h: 16 },
     },
   ],
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+    result.sr = [[["endTheRun"]]];
+	return result;
+  },
 };
 cardSet[30056] = {
   title: "Predictive Planogram",
@@ -3805,6 +4224,12 @@ cardSet[30062] = {
       },
     },
   ],
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+	result.sr = [
+	  [["endTheRun"]], //oversimplifies it but may be sufficient
+	];
+	return result;
+  },
 };
 cardSet[30063] = {
   title: "Pharos",
@@ -3864,6 +4289,10 @@ cardSet[30063] = {
       visual: { y: 134, h: 16 },
     },
   ],
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+    result.sr = [[["tag"]], [["endTheRun"]], [["endTheRun"]]];
+	return result;
+  },
 };
 cardSet[30064] = {
   title: "Government Subsidy",
@@ -4263,6 +4692,10 @@ cardSet[30072] = {
       visual: { y: 88, h: 16 },
     },
   ],
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+	result.sr = [[["endTheRun"]]];
+	return result;
+  },
 };
 cardSet[30073] = {
   title: "Tithe",
@@ -4293,6 +4726,15 @@ cardSet[30073] = {
       visual: { y: 73, h: 16 },
     },
   ],
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+	if (maxCorpCred > 4) {
+	  //i.e. corp has lots of credits (this threshold is arbitrary)
+	  result.sr = [[["netDamage"]], [["misc_minor"]]];
+	} else {
+	  result.sr = [[["netDamage"]], [["misc_moderate"]]];
+	}
+	return result;
+  },
 };
 cardSet[30074] = {
   title: "Whitespace",
@@ -4323,6 +4765,30 @@ cardSet[30074] = {
       visual: { y: 80, h: 31 },
     },
   ],
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+	result.sr = [
+	  [["loseCredits", "loseCredits", "loseCredits"]], //lose 3 credits
+	  [
+		[
+		  "payCredits",
+		  "payCredits",
+		  "payCredits",
+		  "payCredits",
+		  "payCredits",
+		  "payCredits",
+		  "payCredits",
+		  "runnerGainCredits",
+		  "runnerGainCredits",
+		  "runnerGainCredits",
+		  "runnerGainCredits",
+		  "runnerGainCredits",
+		  "runnerGainCredits",
+		  "runnerGainCredits",
+		],
+	  ], //this works out to 'if the runner has less than 7c, this isn't a valid path'
+	];
+	return result;
+  },
 };
 cardSet[30075] = {
   title: "Hedge Fund",

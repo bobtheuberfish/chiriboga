@@ -736,7 +736,8 @@ phases.corpActionMain = {
       return ChoicesTriggerableAbilities(corp, "click"); //click abilities only
     },
     purge: function () {
-      if (CheckActionClicks(corp, 3)) {
+      //the agenda point check is so purge isn't available for the tutorial decks
+      if (CheckActionClicks(corp, 3) && globalProperties.agendaPointsToWin == 7) {
         if (CheckPurge()) return [{}];
       }
       return [];
