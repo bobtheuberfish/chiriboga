@@ -222,7 +222,7 @@ class RunCalculator {
 
     //apply icebreaker specific details
 	if (typeof card.AIImplementBreaker == "function") {
-		result = card.AIImplementBreaker.call(card,result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft);
+		result = card.AIImplementBreaker.call(card,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft);
 	}
 	
     return result;

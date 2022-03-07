@@ -187,21 +187,6 @@ class RunnerAI {
 
     //teach the AI about cards (in order of priority, best first or better order of play)
     this.economyPlay = ["Sure Gamble", "Creative Commission", "Wildcat Strike"]; //cards which can be played to gain credits
-    this.economyInstall = [
-      "Pennyshaver",
-      "Telework Contract",
-      "Smartware Distributor",
-      "DZMZ Optimizer",
-      "Fermenter",
-      "Red Team",
-      "Pantograph",
-    ]; //cards which can be installed to gain credits
-    this.economyTrigger = [
-      "Telework Contract",
-      "Fermenter",
-      "Smartware Distributor",
-      "Pennyshaver",
-    ]; //cards which can be triggered to gain credits
     this.drawInstall = ["Verbal Plasticity"]; //cards which can be installed to draw cards
 	//cards which can be installed to increase maximum hand size
 	this.maxHandIncreasers = ["T400 Memory Diamond"];
@@ -814,6 +799,20 @@ console.log(this.preferred);
 
     //consider cards-worth-keeping list (to play or to install)
     this.cardsWorthKeeping = this._cardsInHandWorthKeeping();
+
+	//check for priority econ cards (useful for making decisions)
+	var priorityEcon = null;
+	var priorityPriority = 0;
+	for (var i=0; i<this.cardsWorthKeeping.length; i++) {
+		if (this.cardsWorthKeeping[i].AIEconomyInstall > priorityPriority) {
+			priorityEcon = this.cardsWorthKeeping[i];
+			priorityPriority = this.cardsWorthKeeping[i].AIEconomyInstall;
+		}
+		else if (this.cardsWorthKeeping[i].AIEconomyPlay > priorityPriority) {
+			priorityEcon = this.cardsWorthKeeping[i];
+			priorityPriority = this.cardsWorthKeeping[i].AIEconomyPlay;
+		}
+	}
 
     //Possibly useful variables include: currentPhase.title, currentPhase.identifier, executingCommand, optionList
 
@@ -1442,6 +1441,14 @@ console.log(this.preferred);
               }
             }
           }
+		} else if (
+		  priorityEcon &&
+		  this.serverList[0].potential < 1.5 &&
+		  runner.clickTracker > 1
+		) {
+          //the values are arbitrary but basically potential is low and might ruin economy 
+          this._log("Favouring econ");
+          this.serverList = [];
         } else if (
           this.serverList[0].potential < 1.1 &&
           this.serverList[0].bestcost > 1.0 &&
@@ -1655,86 +1662,91 @@ console.log(this.preferred);
       }
     }
 
-    //if not running...then maybe need to draw?
-    this._log("Don't want to run right now");
-	var maxOverDraw = this._maxOverDraw();
-	var currentOverDraw = this._currentOverDraw();
-    if (currentOverDraw < maxOverDraw) {
-      //a card that could be installed?
-      if (optionList.includes("install")) {
-        for (var i = 0; i < this.drawInstall.length; i++) {
-          //if this.drawInstall[i] is found in hand, and can be installed, install it
-          cardToInstall = this._copyOfCardExistsIn(
-            this.drawInstall[i],
-            runner.grip
-          );
-          if (cardToInstall) {
-            if (!this._wastefulToInstall(cardToInstall)) {
-              this._log("there is a card I'd like to install");
-              var canBeInstalled = true;
-              if (!CheckInstall(cardToInstall)) canBeInstalled = false;
-              //this doesn't check costs
-              else if (ChoicesCardInstall(cardToInstall).length < 1)
-                canBeInstalled = false; //this checks credits, mu, available hosts, etc.
-              if (canBeInstalled) {
-                this._log("and I could install it");
-                return this._returnPreference(optionList, "install", {
-                  cardToInstall: cardToInstall,
-                  hostToInstallTo: null,
-                }); //assumes unhosted cards for now
-              }
-            }
-          }
-        }
-      }
+	//if not running...
+	this._log("Don't want to run right now");
 
-      //or maybe an event card?
-      if (optionList.includes("play")) {
-		//find highest priority draw card
-        var cardToPlay=null;
-		var cardPriority=0;
-        for (var i = 0; i < runner.grip.length; i++) {
-		    if (runner.grip[i].AIPlayToDraw) {
-			  if (runner.grip[i].AIPlayToDraw > cardPriority) {
-				if (FullCheckPlay(runner.grip[i])) {
-				  var playThis = true; //if no specific rules have been defined then just play it whenever you can
-				  if (typeof(runner.grip[i].AIWouldPlay) == 'function') playThis = runner.grip[i].AIWouldPlay.call(runner.grip[i]);
-				  if (playThis) {					
-					cardToPlay=runner.grip[i];
-					cardPriority=runner.grip[i].AIPlayToDraw;
+	//is there priority economy to consider?
+	if (!priorityEcon) {
+		//maybe need to draw?
+		var maxOverDraw = this._maxOverDraw();
+		var currentOverDraw = this._currentOverDraw();
+		if (currentOverDraw < maxOverDraw) {
+		  //a card that could be installed?
+		  if (optionList.includes("install")) {
+			for (var i = 0; i < this.drawInstall.length; i++) {
+			  //if this.drawInstall[i] is found in hand, and can be installed, install it
+			  cardToInstall = this._copyOfCardExistsIn(
+				this.drawInstall[i],
+				runner.grip
+			  );
+			  if (cardToInstall) {
+				if (!this._wastefulToInstall(cardToInstall)) {
+				  this._log("there is a card I'd like to install");
+				  var canBeInstalled = true;
+				  if (!CheckInstall(cardToInstall)) canBeInstalled = false;
+				  //this doesn't check costs
+				  else if (ChoicesCardInstall(cardToInstall).length < 1)
+					canBeInstalled = false; //this checks credits, mu, available hosts, etc.
+				  if (canBeInstalled) {
+					this._log("and I could install it");
+					return this._returnPreference(optionList, "install", {
+					  cardToInstall: cardToInstall,
+					  hostToInstallTo: null,
+					}); //assumes unhosted cards for now
 				  }
 				}
 			  }
-		    }
-		}
-        if (cardToPlay) {
-          this._log("there is an event card I would play to draw");
-		  return this._returnPreference(optionList, "play", {
-			cardToPlay: cardToPlay,
-		  });
-        }
-      }
+			}
+		  }
 
-      //just an ordinary draw action, then
-      if (optionList.includes("draw")) return optionList.indexOf("draw");
-    }
-	else if (currentOverDraw > maxOverDraw) {
-		this._log("Maybe the excess grip situation could be improved");
-		//maybe install something that could increase maximum hand size?
-		if (optionList.includes("install")) {
-			for (var i = 0; i < this.maxHandIncreasers.length; i++) {
-			  //if this.maxHandIncreasers[i] is found in hand, and can be installed, install it
-			  cardToInstall = this._copyOfCardExistsIn(
-				this.maxHandIncreasers[i],
-				runner.grip
-			  );
-			  if (this._commonCardToInstallChecks(cardToInstall)) {
-				  this._log("there's one I could install");
-				  return this._returnPreference(optionList, "install", {
-					cardToInstall: cardToInstall,
-					hostToInstallTo: null,
-				  }); //assumes unhosted cards for now
-			  }
+		  //or maybe an event card?
+		  if (optionList.includes("play")) {
+			//find highest priority draw card
+			var cardToPlay=null;
+			var cardPriority=0;
+			for (var i = 0; i < runner.grip.length; i++) {
+				if (runner.grip[i].AIPlayToDraw) {
+				  if (runner.grip[i].AIPlayToDraw > cardPriority) {
+					if (FullCheckPlay(runner.grip[i])) {
+					  var playThis = true; //if no specific rules have been defined then just play it whenever you can
+					  if (typeof(runner.grip[i].AIWouldPlay) == 'function') playThis = runner.grip[i].AIWouldPlay.call(runner.grip[i]);
+					  if (playThis) {					
+						cardToPlay=runner.grip[i];
+						cardPriority=runner.grip[i].AIPlayToDraw;
+					  }
+					}
+				  }
+				}
+			}
+			if (cardToPlay) {
+			  this._log("there is an event card I would play to draw");
+			  return this._returnPreference(optionList, "play", {
+				cardToPlay: cardToPlay,
+			  });
+			}
+		  }
+
+		  //just an ordinary draw action, then
+		  if (optionList.includes("draw")) return optionList.indexOf("draw");
+		}
+		else if (currentOverDraw > maxOverDraw) {
+			this._log("Maybe the excess grip situation could be improved");
+			//maybe install something that could increase maximum hand size?
+			if (optionList.includes("install")) {
+				for (var i = 0; i < this.maxHandIncreasers.length; i++) {
+				  //if this.maxHandIncreasers[i] is found in hand, and can be installed, install it
+				  cardToInstall = this._copyOfCardExistsIn(
+					this.maxHandIncreasers[i],
+					runner.grip
+				  );
+				  if (this._commonCardToInstallChecks(cardToInstall)) {
+					  this._log("there's one I could install");
+					  return this._returnPreference(optionList, "install", {
+						cardToInstall: cardToInstall,
+						hostToInstallTo: null,
+					  }); //assumes unhosted cards for now
+				  }
+				}
 			}
 		}
 	}
@@ -1775,60 +1787,66 @@ console.log(this.preferred);
           }
         }
       }
+	  
       //or trigger?
       if (optionList.includes("trigger")) {
+		//find highest priority econ trigger card
         var activeCards = ActiveCards(runner);
         var limitTo = "";
         if (currentPhase.identifier == "Runner 1.3") limitTo = "click";
-        for (var i = 0; i < this.economyTrigger.length; i++) {
-          var exclude = []; //use this to loop through options rather than stopping at one
-          var title = this.economyTrigger[i];
-          //if a copy of this card is active and can be triggered, trigger it
-          cardToTrigger = this._copyOfCardExistsIn(title, activeCards);
-          //some triggers would be better not to use right now
-          while (cardToTrigger) {
-            exclude.push(cardToTrigger); //in case we need to look for other copies
-            if (typeof cardToTrigger.AIWouldTriggerThis == "function") {
-              if (!cardToTrigger.AIWouldTriggerThis()) cardToTrigger = null;
-            }
-            if (cardToTrigger) {
-              this._log("maybe by triggering an ability?");
-              if (ChoicesAbility(cardToTrigger, limitTo).length > 0) {
-                //i.e. it can be triggered
-                this._log("there's one I could trigger");
-                return this._returnPreference(optionList, "trigger", {
-                  cardToTrigger: cardToTrigger,
-                }); //assume no parameters for now
-              }
-            }
-            //if we didn't trigger that copy, maybe another copy?
-            cardToTrigger = this._copyOfCardExistsIn(
-              title,
-              activeCards,
-              exclude
-            );
-          }
+        cardToTrigger=null;
+		var cardPriority=0;
+        for (var i = 0; i < activeCards.length; i++) {
+		    if (activeCards[i].AIEconomyTrigger) {
+			  if (activeCards[i].AIEconomyTrigger > cardPriority) {
+				if (ChoicesAbility(activeCards[i], limitTo).length > 0) {
+				  //i.e. it can be triggered
+				  var triggerThis = true; //if no specific rules have been defined then just trigger it whenever you can
+				  if (typeof(activeCards[i].AIWouldTrigger) == 'function') triggerThis = activeCards[i].AIWouldTrigger.call(activeCards[i]);
+				  if (triggerThis) {					
+					cardToTrigger=activeCards[i];
+					cardPriority=activeCards[i].AIEconomyTrigger;
+				  }
+				}
+			  }
+		    }
+		}
+        if (cardToTrigger) {
+          this._log("there is a card I would trigger for economy");
+		  return this._returnPreference(optionList, "trigger", {
+			cardToTrigger: cardToTrigger,
+          }); //assumes no parameters for now
         }
       }
+	  
       //or maybe install?
       if (optionList.includes("install")) {
-        for (var i = 0; i < this.economyInstall.length; i++) {
-          //if this.economyInstall[i] is found in hand, and can be installed, install it
-          cardToInstall = this._copyOfCardExistsIn(
-            this.economyInstall[i],
-            runner.grip
-          );
-		  if (this._commonCardToInstallChecks(cardToInstall)) {
-              this._log("there's one I could install");
-              return this._returnPreference(optionList, "install", {
-                cardToInstall: cardToInstall,
-                hostToInstallTo: null,
-              }); //assumes unhosted cards for now
-		  }
+		//find highest priority econ install card
+        cardToInstall=null;
+		var cardPriority=0;
+        for (var i = 0; i < runner.grip.length; i++) {
+		    if (runner.grip[i].AIEconomyInstall) {
+			  if (runner.grip[i].AIEconomyInstall > cardPriority) {
+				if (this._commonCardToInstallChecks(runner.grip[i])) {
+				  var installThis = true; //if no specific rules have been defined then just install it whenever you can
+				  if (typeof(runner.grip[i].AIWouldInstall) == 'function') installThis = runner.grip[i].AIWouldInstall.call(runner.grip[i]);
+				  if (installThis) {					
+					cardToInstall=runner.grip[i];
+					cardPriority=runner.grip[i].AIEconomyInstall;
+				  }
+				}
+			  }
+		    }
+		}
+        if (cardToInstall) {
+          this._log("there is a card I would install for economy");
+		  return this._returnPreference(optionList, "install", {
+			cardToInstall: cardToInstall,
+            hostToInstallTo: null,
+          }); //assumes unhosted cards for now
         }
       }
-    }
-
+	}
     //other cards that may or may not be economy but were considered to be worthwhile
 	this._log("Ok not economy, something else?");
     for (var i = 0; i < this.cardsWorthKeeping.length; i++) {

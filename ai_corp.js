@@ -1312,8 +1312,8 @@ class CorpAI {
       for (var i = 0; i < attackedServer.root.length; i++) {
         var card = attackedServer.root[i];
         var wouldTriggerThis = false;
-        if (typeof card.AIWouldTriggerThis == "function")
-          wouldTriggerThis = card.AIWouldTriggerThis.call(card);
+        if (typeof card.AIWouldTrigger == "function")
+          wouldTriggerThis = card.AIWouldTrigger.call(card);
         if (GetTitle(card) == "Manegarm Skunkworks" || wouldTriggerThis) {
           //make sure we can do it
           if (CheckRez(card, ["upgrade"])) {
@@ -1375,8 +1375,8 @@ class CorpAI {
         );
         if (copyOfCard) {
           var wouldUse = true;
-          if (typeof copyOfCard.AIWouldTriggerThis == "function") {
-            if (!copyOfCard.AIWouldTriggerThis.call(copyOfCard))
+          if (typeof copyOfCard.AIWouldTrigger == "function") {
+            if (!copyOfCard.AIWouldTrigger.call(copyOfCard))
               wouldUse = false;
           }
           if (wouldUse)

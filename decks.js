@@ -440,23 +440,24 @@ function RunnerTestField(
   glowTextures,
   strengthTextures
 ) {
-	if (runner.identityCard.title != "Tutorial") {
+  if (runner.identityCard.title != "Tutorial") {
 		runner.identityCard = InstanceCard(
 		  identity,
 		  cardBackTexturesRunner,
 		  glowTextures,
 		  strengthTextures
 		);
-	}
-	for (var i = 0; i < heapCards.length; i++) {
-    InstanceCardsPush(
+  }
+  for (var i = 0; i < heapCards.length; i++) {
+    var newCard = InstanceCardsPush(
       heapCards[i],
       runner.heap,
       1,
       cardBackTexturesRunner,
       glowTextures,
       strengthTextures
-    );
+    )[0];
+	newCard.faceUp = true;
   }
   if (stackCards.length > 0) {
     while (runner.stack.length > 0) {
@@ -712,7 +713,7 @@ function LoadDecks() {
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-  debugging = false; //set true to pause execution on error
+  debugging = true; //set true to pause execution on error
   //mainLoopDelay = 10; //for speedy AI vs AI testing
 
   /*

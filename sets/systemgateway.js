@@ -233,7 +233,7 @@ cardSet[30004] = {
     return bestIndex;
   },
   AISpecialBreaker:true,
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     if (this.host == iceAI.ice) {
         var sr_broken_by_this = 0;
@@ -349,7 +349,7 @@ cardSet[30005] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
         runner.AI.rc.ImplementIcebreaker(
@@ -468,7 +468,7 @@ cardSet[30006] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
         runner.AI.rc.ImplementIcebreaker(
@@ -527,7 +527,7 @@ cardSet[30007] = {
       },
     },
   ],
-  AIWouldTriggerThis: function () {
+  AIWouldTrigger: function () {
     //don't trigger if less than 3 virus counters
     if (!CheckCounters(this, "virus", 3)) return false;
     return true;
@@ -537,6 +537,8 @@ cardSet[30007] = {
 	  if (Credits(runner) < 5) return true;
 	  return false;
   },
+  AIEconomyInstall: 1, //priority 1 (yes install but there are better options)
+  AIEconomyTrigger: 2, //priority 2 (moderate)
 };
 cardSet[30008] = {
   title: "Leech",
@@ -652,7 +654,7 @@ cardSet[30008] = {
 	  }
 	  return false;
   },
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
       var str_mod_by_this = 0;
       for (var i = 0; i < point.card_str_mods.length; i++) {
@@ -1022,13 +1024,15 @@ cardSet[30014] = {
       },
     },
   ],
-  AIWouldTriggerThis: function () {
+  AIWouldTrigger: function () {
     //don't trigger as just a click-for-credit during overdraw
     if (runner.grip.length > MaxHandSize(runner)) {
       if (!CheckCounters(this, "credits", 1)) return false;
     }
     return true;
   },
+  AIEconomyInstall: 2, //priority 2 (moderate)
+  AIEconomyTrigger: 1, //priority 1 (yes trigger but there are better options)
 };
 cardSet[30015] = {
   title: "Carmen",
@@ -1137,7 +1141,7 @@ cardSet[30015] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
         runner.AI.rc.ImplementIcebreaker(
@@ -1252,7 +1256,7 @@ cardSet[30016] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     var marcost = 2;
     if (this.madeSuccessfulRunThisTurn) marcost = 1;
@@ -1416,6 +1420,7 @@ cardSet[30018] = {
 	  }
 	  return 0; //no
   },
+  AIEconomyInstall: 1, //priority 1 (yes install but there are better options)
 };
 cardSet[30019] = {
   title: "Tāo Salonga: Telepresence Magician",
@@ -1630,6 +1635,7 @@ cardSet[30022] = {
 	  if (spareMU < 2) return true;
 	  return false;
   },
+  AIEconomyInstall: 1, //priority 1 (yes install but there are better options)
 };
 cardSet[30023] = {
   title: "Pantograph",
@@ -1718,6 +1724,7 @@ cardSet[30023] = {
     },
     text: "Pantograph: Gain 1[c], you may install 1 card",
   },
+  AIEconomyInstall: 1, //priority 1 (yes install but there are better options)
 };
 cardSet[30024] = {
   title: "Conduit",
@@ -1899,7 +1906,7 @@ cardSet[30025] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
         runner.AI.rc.ImplementIcebreaker(
@@ -2000,7 +2007,7 @@ cardSet[30026] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     var strup = runner.AI.rc.precalculated.runnerInstalledIcebreakersLength;
     result = result.concat(
@@ -2074,6 +2081,8 @@ cardSet[30027] = {
 	  if (Credits(runner) < 5) return true;
 	  return false;
   },
+  AIEconomyInstall: 2, //priority 2 (moderate)
+  AIEconomyTrigger: 2, //priority 2 (moderate)
 };
 cardSet[30028] = {
   title: "Jailbreak",
@@ -2248,7 +2257,7 @@ cardSet[30032] = {
       Trash(this, true);
     },
   },
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     //unless have a spare, only use Mayfly for worthwhile targets (the 1.5 is arbitrary, and the false prevents infinite loop)
     var mayflyInGrip = false;
@@ -2314,7 +2323,7 @@ cardSet[30033] = {
     },
     automatic: true, //for usability, this is not strict implementation (if you make it non-automatic then move the check out of Resolve and uncomment Enumerate)
   },
-  AIWouldTriggerThis: function () {
+  AIWouldTrigger: function () {
     var counters = Counters(this, "credits");
     //don't trigger if there are already 3 or more credits
     if (counters > 2) return false;
@@ -2329,6 +2338,8 @@ cardSet[30033] = {
     }
     return true;
   },
+  AIEconomyInstall: 1, //priority 1 (yes install but there are better options)
+  AIEconomyTrigger: 1, //priority 1 (yes trigger but there are better options)
 };
 cardSet[30034] = {
   title: "Verbal Plasticity",
@@ -2677,7 +2688,7 @@ cardSet[30038] = {
 	else result.sr.push([["misc_serious"]]); //cannot steal or trash cards
 	return result;
   },
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     if (this == iceAI.ice) {
         if (clicksLeft > 0) {
@@ -2823,7 +2834,7 @@ cardSet[30039] = {
     result.sr = [[["misc_serious"]], [["endTheRun"]], [["endTheRun"]]];
 	return result;
   },
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     if (this == iceAI.ice) {
         if (clicksLeft > 0) {
@@ -3387,7 +3398,7 @@ cardSet[30050] = {
   //Whenever the Runner approaches this server, you may pay 2[c] and trash 2 cards from HQ.
   //If you do, end the run.
   //"The Runner approaches the server at step 4 of a run, and it is the final deciding factor for determining the success of a run." (see also run timing in FAQ)
-  AIWouldTriggerThis: function () {
+  AIWouldTrigger: function () {
     //don't trigger if there are no other cards in this server
     var thisServer = GetServer(this);
     var cardsInServer = 0;
@@ -3474,7 +3485,7 @@ cardSet[30050] = {
       if (corp.AI != null) {
         corp.AI._log("I know this one");
         var choice = binaryChoices[0]; //activate by default
-        if (!this.AIWouldTriggerThis()) choice = binaryChoices[1]; //don't activate
+        if (!this.AIWouldTrigger()) choice = binaryChoices[1]; //don't activate
         corp.AI.preferred = { title: "Anoetic Void", option: choice }; //title must match currentPhase.title for AI to fire
       }
     },
@@ -4000,7 +4011,7 @@ cardSet[30058] = {
       this.runEnds.availableWhenInactive = false; //Persistence ends after the run ends
     },
   },
-  AIWouldTriggerThis: function () {
+  AIWouldTrigger: function () {
     //don't trigger if there are no known agendas in this server
     var thisServer = GetServer(this);
     if (typeof thisServer.cards !== "undefined") {
@@ -4100,7 +4111,7 @@ cardSet[30061] = {
   trashCost: 3,
   canBeAdvanced: true,
   //When your turn begins, you may trash this asset to do 1 meat damage for each hosted advancement counter.
-  AIWouldTriggerThis: function () {
+  AIWouldTrigger: function () {
     var damageToDo = Counters(this, "advancement");
     if (PlayerHand(runner).length >= damageToDo) return false; //don't activate if the runner has lots of cards in hand (TODO consider further damage that could be dealt this turn)
     return true; //activate by default
@@ -4138,7 +4149,7 @@ cardSet[30061] = {
       if (corp.AI != null) {
         corp.AI._log("I know this one");
         var choice = binaryChoices[0]; //activate by default
-        if (!this.AIWouldTriggerThis()) choice = binaryChoices[1];
+        if (!this.AIWouldTrigger()) choice = binaryChoices[1];
         corp.AI.preferred = { title: "Clearinghouse", option: choice }; //title must match currentPhase.title for AI to fire
       }
     },
@@ -4159,7 +4170,7 @@ cardSet[30062] = {
   subTypes: ["Sentry", "Destroyer"],
   rezCost: 5,
   strength: 4,
-  AIWouldTriggerThis: function () {
+  AIWouldTrigger: function () {
     //in this case 'trigger' means trash a program instead of ending the run
     //which we'll do if there is no agenda or at random
     var thisServer = GetServer(this);
@@ -4213,7 +4224,7 @@ cardSet[30062] = {
         if (corp.AI != null && choicesA.length > 1) {
           corp.AI._log("I know this one");
           var choice = choicesA[0]; //activate (trash a program) by default
-          if (!this.AIWouldTriggerThis()) choice = choicesA[1]; //end the run
+          if (!this.AIWouldTrigger()) choice = choicesA[1]; //end the run
           corp.AI.preferred = { title: "Ballista", option: choice }; //title must match currentPhase.title for AI to fire
         }
       },

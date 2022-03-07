@@ -44,7 +44,7 @@ cardSet[31001] = {
       },
     },
   ],
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
 	if (!this.usedThisTurn) {
 		//can only use once
@@ -393,7 +393,7 @@ cardSet[31006] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
         runner.AI.rc.ImplementIcebreaker(
@@ -537,7 +537,7 @@ cardSet[31008] = {
     automatic: true,
   },
   AIFixedStrength: true,
-  AIImplementBreaker: function(result,point,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
         runner.AI.rc.ImplementIcebreaker(
@@ -584,6 +584,46 @@ cardSet[31009] = {
 	  }
 	  return false;
   },
+};
+
+cardSet[31010] = {
+  title: "Liberated Account",
+  imageFile: "31010.png",
+  player: runner,
+  faction: "Anarch",
+  influence: 2,
+  cardType: "resource",
+  installCost: 6,
+  cardInstalled: {
+    Resolve: function (card) {
+      if (card == this) LoadCredits(this, 16);
+    },
+  },
+  //[click]: Take 4[c] from this resource.
+  abilities: [
+    {
+      text: "Take 4[c] from this resource.",
+      Enumerate: function () {
+        if (!CheckActionClicks(runner, 1)) return [];
+        if (!CheckCounters(this, "credits", 4)) return []; //because it doesn't say 'take *up to* ...'
+        return [{}];
+      },
+      Resolve: function (params) {
+        SpendClicks(runner, 1);
+        TakeCredits(runner, this, 4); //removes from card, adds to credit pool
+        if (!CheckCounters(this, "credits", 1)) {
+          Trash(this, true);
+        }
+      },
+    },
+  ],
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if need money (but not if so poor that this is out of range)
+	  if (Credits(runner) < 7 && Credits(runner) > 2) return true;
+	  return false;
+  },
+  AIEconomyInstall: 3, //priority 3 (can't get much better econ than this)
+  AIEconomyTrigger: 3, //priority 3 (can't get much better econ than this)
 };
 
 /*
