@@ -485,6 +485,11 @@ cardSet[31007] = {
 	  //otherwise don't use this at all
 	  return 0;
   },
+  AIReducesTrashCost: function(card) {
+    if (this.usedThisTurn) return 0; //no reduction to trash cost
+    if (!CheckCounters(this, "virus", 1)) return 0; //no reduction to trash cost
+	return TrashCost(card); //reduction by its full trash cost
+  },
 };
 
 cardSet[31008] = {
@@ -624,6 +629,31 @@ cardSet[31010] = {
   },
   AIEconomyInstall: 3, //priority 3 (can't get much better econ than this)
   AIEconomyTrigger: 3, //priority 3 (can't get much better econ than this)
+};
+
+cardSet[31011] = {
+  title: "Scrubber",
+  imageFile: "31011.png",
+  player: runner,
+  faction: "Anarch",
+  influence: 2,
+  cardType: "resource",
+  subTypes: ["Connection","Seedy"],
+  installCost: 2,
+  recurringCredits: 2,
+  canUseCredits: function (doing, card) {
+    if (doing == "paying trash costs") return true;
+    return false;
+  },
+  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+	  //extra costs of install have already been considered, so yes install it
+	  return 1; //yes
+  },
+  AIReducesTrashCost: function(card) {
+	var cardTC = TrashCost(card);
+    if (cardTC < this.credits) return cardTC; //reduction by full trash cost
+	return this.credits; //reduction by however many credits remain
+  },
 };
 
 /*

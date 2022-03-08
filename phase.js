@@ -65,7 +65,13 @@ phaseTemplates.standardResponse = {
     if (!currentPhase.lessOpportunities) opportunitiesGiven = false;
     else opportunitiesGiven = true;
     actedThisPhase = false;
-    if (currentPhase.identifier == "Run 2.1") {
+	if (currentPhase.identifier == "Corp 1.1") {
+		ResetClicks(corp);
+	}
+	else if (currentPhase.identifier == "Runner 1.1") {
+		ResetClicks(runner);
+	}
+    else if (currentPhase.identifier == "Run 2.1") {
       //Run: Approach Ice (Nisei 2021 2.1)
       if (attackedServer.ice[approachIce].rezzed)
         SetHistoryThumbnail(attackedServer.ice[approachIce].imageFile, "");
@@ -347,6 +353,8 @@ phaseTemplates.globalTriggers = {
     activePlayer = currentPhase.player = playerTurn;
 
     //if start of turn, replenish recurring credits
+	//as far as I can tell, this is correctly implemented as per Nisei CR 1.5
+	//(recurring credits are replenished after gaining allotted clicks and paid ability window, but before turn begins triggers fire)
     if (
       currentPhase.identifier == "Corp 1.2" ||
       currentPhase.identifier == "Runner 1.2"
@@ -655,9 +663,6 @@ phases.corpActionStart = CreatePhaseFromTemplate(
   "Corp 2.1",
   null
 );
-phases.corpActionStart.Init = function () {
-  ResetClicks();
-};
 
 //Take action (should only ever be here if there is at least one click remaining, but CheckActionClicks(corp,1) just in case)
 phases.corpActionMain = {
@@ -902,9 +907,6 @@ phases.runnerStartResponse = CreatePhaseFromTemplate(
   "Runner 1.1",
   null
 );
-phases.runnerStartResponse.Init = function () {
-  ResetClicks();
-};
 phases.runnerStartResponse.historyBreak = {
   title: "Runner's Turn Begins",
   style: "small",
@@ -1303,7 +1305,7 @@ phases.runAccessingCard = {
             CheckCredits(
               TrashCost(accessingCard),
               runner,
-              "trashing",
+              "paying trash costs",
               accessingCard
             )
           )
@@ -1329,7 +1331,7 @@ phases.runAccessingCard = {
       SpendCredits(
         runner,
         TrashCost(accessingCard),
-        "trashing",
+        "paying trash costs",
         accessingCard,
         function () {
           TrashAccessedCard(true); //true means it can be prevented (it is not a cost)

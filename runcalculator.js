@@ -631,6 +631,8 @@ class RunCalculator {
     //console.log("Calculating "+(incomplete ? "incomplete" : "complete")+" run");
     if (typeof startIceIdx == "undefined") startIceIdx = server.ice.length - 1;
 
+    var installedRunnerCards = InstalledCards(runner);
+
     this.clickOffset = clicks - runner.clickTracker;
     this.creditOffset = credits - AvailableCredits(runner);
     this.paths = []; //completed paths
@@ -682,25 +684,28 @@ class RunCalculator {
           }
         }
       }
-      //known trash costs
-      var carnivoreAvailable = runnerAI._copyOfCardExistsIn(
-        "Carnivore",
-        runner.rig.hardware
-      );
-      if (carnivoreAvailable) {
-        if (
-          carnivoreAvailable.usedThisTurn ||
-          runner.grip.length - runnerAI.cardsWorthKeeping.length < 2
-        )
-          carnivoreAvailable = false;
-      }
-      for (var i = 0; i < knownCardsInServer.length; i++) {
+	  //calculate any required trash payment, taking into account potential discount (just considering max for one known card trash cost with just one discounting ability atm)
+	  var highestTrashCost = 0;
+	  var htcCard = null;
+	  for (var i = 0; i < knownCardsInServer.length; i++) {
         if (typeof knownCardsInServer[i].trashCost !== "undefined") {
-          if (carnivoreAvailable) carnivoreAvailable = false;
-          //assume Carnivore could be used for trash cost (this just assumes the first card cost so it's too simple)
-          else approachCredits += TrashCost(knownCardsInServer[i]);
+          var kctc = TrashCost(knownCardsInServer[i]);
+		  if (kctc > highestTrashCost) {
+			  highestTrashCost = kctc;
+			  htcCard = knownCardsInServer[i];
+		  }
         }
       }
+	  var highestTrashDiscount = 0;
+	  if (htcCard) {
+		  for (var i=0; i<installedRunnerCards.length; i++) {
+			if (typeof installedRunnerCards[i].AIReducesTrashCost == "function") {
+				var ictd = installedRunnerCards[i].AIReducesTrashCost.call(installedRunnerCards[i],htcCard);
+				if (ictd > highestTrashDiscount) highestTrashDiscount = ictd;
+			}
+		  }
+	  }
+	  approachCredits += highestTrashCost - highestTrashDiscount;
 
       //combine approach costs
       approachOptions = [
@@ -734,7 +739,6 @@ class RunCalculator {
       var timeInMS = Date.now();
 
       //precalculate the precalculatables
-      var installedRunnerCards = InstalledCards(runner);
       this.precalculated.runnerInstalledCardsLength =
         installedRunnerCards.length;
       this.precalculated.runnerInstalledIcebreakersLength = 0;

@@ -13,7 +13,7 @@
 .installOnlyOn //a function(card) that returns true for cards that can host this
 .canHost //a function(card) that returns true for cards that can be hosted on this
 .recurringCredits //automatically replenished when installed and at start of your turn
-.canUseCredits //function(doing,card) which returns true if .credits can be spent (doing is "using","installing","removing tags","trace","rezzing","playing","advancing","trashing")
+.canUseCredits //function(doing,card) which returns true if .credits can be spent (doing is "using","installing","removing tags","trace","rezzing","playing","advancing","trashing","paying trash costs")
 .activeForOpponent //has an ability the opponent can use
 */
 
@@ -713,7 +713,7 @@ function LoadDecks() {
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-  debugging = true; //set true to pause execution on error
+  debugging = false; //set true to pause execution on error
   //mainLoopDelay = 10; //for speedy AI vs AI testing
 
   /*

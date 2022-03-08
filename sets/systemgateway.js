@@ -163,6 +163,11 @@ cardSet[30003] = {
       },
     },
   ],
+  AIReducesTrashCost: function(card) {
+    if (this.usedThisTurn) return 0; //no reduction to trash cost
+	if (runner.grip.length - runner.AI.cardsWorthKeeping.length < 2) return 0; //no reduction to trash cost
+	return TrashCost(card); //reduction by its full trash cost
+  },
 };
 cardSet[30004] = {
   title: "Botulus",

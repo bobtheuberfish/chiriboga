@@ -883,10 +883,11 @@ function IsFaceUp(card) {
  * Provides the clicks for the active player to spend in their action phase.<br/>No message is logged.
  *
  * @method ResetClicks
+ * @param {Player} player corp or runner
  */
-function ResetClicks() {
-  if (activePlayer == corp) corp.clickTracker = 3;
-  else if (activePlayer == runner) runner.clickTracker = 4;
+function ResetClicks(player) {
+  if (player == corp) corp.clickTracker = 3;
+  else if (player == runner) runner.clickTracker = 4;
 }
 
 /**
@@ -2635,7 +2636,7 @@ function DeckBuild(
 	  //economy
 	  var economyCards = []; //only includes cards that would fairly certainly provide credits
 	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30007, 30018, 30020, 30027, 30029, 30030, 30033]);
-	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31010]);
+	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31010, 31011]);
 	  var influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
