@@ -1756,6 +1756,9 @@ class CorpAI {
           ) {
             //don't advance past 5 (thats the largest agenda in this deck) or some other limit if specified
             var advancementLimit = 5;
+			if (CheckCardType(card,["agenda"])) {
+				advancementLimit = card.advancementRequirement;
+			}
             if (
               typeof card.AIAdvancementLimit ==
               "function"

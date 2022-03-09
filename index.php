@@ -1,7 +1,7 @@
 <html>
 	<head>
 		<meta charset="utf-8">
-		<title>Chiriboga Menu</title>
+		<title>Chiriboga</title>
 		<link href="images/favicon.ico" rel="icon">
 		<link rel="manifest" href="manifest.json">
 		<?php

@@ -99,6 +99,7 @@ cardSet[31002] = {
     Resolve: function (card) {
 	  //The first piece of ice the Corp rezzes each turn costs 1 credit more to rez
 	  if (!this.usedThisTurn) {
+		if (card.rezzed) return 0; //it only costs 1 more to rez, the actual rez cost isn't modified
 		if (CheckCardType(card, ["ice"])) return 1;
 	  }
       return 0; //no modification to cost
@@ -653,6 +654,37 @@ cardSet[31011] = {
 	var cardTC = TrashCost(card);
     if (cardTC < this.credits) return cardTC; //reduction by full trash cost
 	return this.credits; //reduction by however many credits remain
+  },
+};
+
+cardSet[31012] = {
+  title: "Xanadu",
+  imageFile: "31012.png",
+  player: runner,
+  faction: "Anarch",
+  influence: 2,
+  cardType: "resource",
+  subTypes: ["Virtual"],
+  installCost:3,
+  unique: true,
+  modifyRezCost: {
+	//The rez cost of each piece of ice is increased by 1
+    Resolve: function (card) {
+	  return 1; //increase cost by 1
+    },
+  },
+  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+	  if (!server) return 0; //no server, no need
+	  //install before run if server has unrezzed ice
+	  var serverHasUnrezzedIce = false;
+	  for (var i=0; i<server.ice.length; i++) {
+		  if (!server.ice[i].rezzed) {
+			  serverHasUnrezzedIce = true;
+			  break;
+		  }
+	  }
+	  if (serverHasUnrezzedIce) return 1; //yes
+	  return 0; //this run wouldn't benefit, don't install yet
   },
 };
 

@@ -855,14 +855,33 @@ console.log(this.preferred);
 			}
 		}
   	  }
-	  //then cards that are not worth keeping
+	  var alreadyHaveRunnerCards = InstalledCards(runner).concat(runner.grip);
+	  //check for duplicate non-worthkeeping
       for (var i = 0; i < optionList.length; i++) {
         if (!this.cardsWorthKeeping.includes(optionList[i].card)) {
-          this._log("I guess I didn't really need this");
-          return i;
+			if ( this._copyOfCardExistsIn(optionList[i].card.title, alreadyHaveRunnerCards, [optionList[i].card]) ) {
+			  this._log("I don't need another one of these");
+			  return i;
+			}
         }
       }
-      return 0; //wish could keep all, but no choice
+	  //check for non-worthkeeping
+      for (var i = 0; i < optionList.length; i++) {
+        if (!this.cardsWorthKeeping.includes(optionList[i].card)) {
+		  this._log("I didn't really need this anyway");
+		  return i;
+        }
+      }
+	  //check for duplicate worthkeeping
+      for (var i = 0; i < optionList.length; i++) {
+		if ( this._copyOfCardExistsIn(optionList[i].card.title, alreadyHaveRunnerCards, [optionList[i].card]) ) {
+		  this._log("I guess I could go without an extra one of these");
+		  return i;
+		}
+      }
+	  //just discard the oldest card
+	  this._log("I guess something has to go");
+      return 0;
     }
 
     if (optionList.includes("remove")) {
