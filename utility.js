@@ -2669,7 +2669,7 @@ function DeckBuild(
 		otherCards,
 		destination,
 		identityCard.deckSize,
-		15 - influenceUsed,
+		identityCard.influenceLimit - influenceUsed,
 		identityCard.deckSize,
 		true,
 		cardBack,
