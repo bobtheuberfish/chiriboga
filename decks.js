@@ -90,6 +90,7 @@
  .cardEncountered //called with input (card) when a card is encountered (currently treats all as automatic)
  .cardTrashed //called with input (card) when a card is trashed (currently treats all as automatic)
  .cardAdvanced //called with input (card) when a card is advanced (currently treats all as automatic)
+ .cardPlayed //called with input (card) after a card is played (currently treats all as automatic)
  .purged //called with input (number of virus counters removed) when virus counters are purged (currently treats all as automatic)
  .cannot //called with input (string, card) where the string is a phase option (e.g. "score"), if true is returned, Check<String> will return false (all automatic)
 */
@@ -613,7 +614,7 @@ function LoadDecks() {
   if (runner.stack.length == 0) {
     var runnerIdentities = [];
 	if (setsToUse.includes('sg')) runnerIdentities = runnerIdentities.concat([30001, 30010, 30019]);
-	if (setsToUse.includes('su21')) runnerIdentities = runnerIdentities.concat([31001, 31002]);
+	if (setsToUse.includes('su21')) runnerIdentities = runnerIdentities.concat([31001, 31002, 31013]);  //also in utility.js (TODO move to shared function)
     deckJson.identity =
       runnerIdentities[RandomRange(0, runnerIdentities.length - 1)];
     runner.identityCard = InstanceCard(
@@ -713,7 +714,7 @@ function LoadDecks() {
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-  debugging = false; //set true to pause execution on error
+  debugging = true; //set true to pause execution on error
   //mainLoopDelay = 10; //for speedy AI vs AI testing
 
   /*

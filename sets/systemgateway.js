@@ -6,6 +6,7 @@ cardSet[30001] = {
   faction: "Anarch",
   cardType: "identity",
   deckSize: 40,
+  influenceLimit: 15,
   usedThisTurn: false,
   runnerTurnBegin: {
     Resolve: function () {
@@ -728,6 +729,7 @@ cardSet[30010] = {
   faction: "Criminal",
   cardType: "identity",
   deckSize: 40,
+  influenceLimit: 15,
   subTypes: ["Cyborg"],
   usedThisTurn: false,
   cardsAccessedThisRun: 0,
@@ -1435,6 +1437,7 @@ cardSet[30019] = {
   link: 0,
   cardType: "identity",
   deckSize: 40,
+  influenceLimit: 15,
   subTypes: ["Natural"],
   SharedEnumerate: function () {
     var choices = ChoicesInstalledCards(corp, function (card) {
@@ -2140,6 +2143,11 @@ cardSet[30029] = {
   canUseCredits: function (doing, card) {
     return true;
   },
+  AIWouldRunWithThis: function(server, potential) {
+	  if (potential > 1.5) return true;
+	  return false;
+  },
+  AIRunEventExtraCredits: 5, //the runner AI code will subtract the 1 play cost so effectively 4 net bonus
 };
 cardSet[30030] = {
   title: "Sure Gamble",
@@ -2384,6 +2392,7 @@ cardSet[30035] = {
   faction: "Haas-Bioroid",
   cardType: "identity",
   deckSize: 40,
+  influenceLimit: 15,
   subTypes: ["Megacorp"],
   //You get +1 maximum hand size.
   modifyMaxHandSize: {
@@ -3053,6 +3062,7 @@ cardSet[30042] = {
         if (!runner.AI._calculateBestCompleteRun(
             attackedServer,
             0,
+			0,
             0,
             0,
             approachIce
@@ -3083,6 +3093,7 @@ cardSet[30043] = {
   faction: "Jinteki",
   cardType: "identity",
   deckSize: 40,
+  influenceLimit: 15,
   subTypes: ["Megacorp"],
   //When your discard phase ends, if there is a facedown card in Archives, gain 1[c].
   corpDiscardEnds: {
@@ -3272,7 +3283,15 @@ cardSet[30046] = {
 	}
 	result.sr = [[["netDamage"]]];
 	//if all cards in hand are even then there is no second effect
-	if (evenCardsInHand == 0) result.sr[0][0].push("endTheRun");
+	//but don't rely on luck if you're also spending to get past other ice first
+	var theServer = GetServer(this);
+	var rezzedIceBeforeThis = 0;
+	var examiningIdx = theServer.ice.length-1;
+	while (theServer.ice[examiningIdx] != this && examiningIdx > -1) {
+		if (theServer.ice[examiningIdx].rezzed) rezzedIceBeforeThis++;
+		examiningIdx --;
+	}
+	if (evenCardsInHand == 0 || (evenCardsInHand < runner.grip.length && rezzedIceBeforeThis > 0) ) result.sr[0][0].push("endTheRun");
 	else if (evenCardsInHand < runner.grip.length)
 	  result.sr[0][0].push("misc_moderate"); //maybe will end, maybe not
 	return result;
@@ -3510,6 +3529,7 @@ cardSet[30051] = {
   faction: "NBN",
   cardType: "identity",
   deckSize: 40,
+  influenceLimit: 15,
   subTypes: ["Megacorp"],
   usedThisTurn: false,
   runnerTurnBegin: {
@@ -4047,6 +4067,7 @@ cardSet[30059] = {
   faction: "Weyland Consortium",
   cardType: "identity",
   deckSize: 40,
+  influenceLimit: 15,
   subTypes: ["Megacorp"],
   //Whenever you advance a card, gain 2(c) if it had no advancement counters
   cardAdvanced: {
@@ -4784,26 +4805,16 @@ cardSet[30074] = {
   AIImplementIce: function(result, maxCorpCred, incomplete) {
 	result.sr = [
 	  [["loseCredits", "loseCredits", "loseCredits"]], //lose 3 credits
-	  [
-		[
-		  "payCredits",
-		  "payCredits",
-		  "payCredits",
-		  "payCredits",
-		  "payCredits",
-		  "payCredits",
-		  "payCredits",
-		  "runnerGainCredits",
-		  "runnerGainCredits",
-		  "runnerGainCredits",
-		  "runnerGainCredits",
-		  "runnerGainCredits",
-		  "runnerGainCredits",
-		  "runnerGainCredits",
-		],
-	  ], //this works out to 'if the runner has less than 7c, this isn't a valid path'
+	  [["iceSpecificEffect"],
+	  ],
+	  //The Runner only “has” credits in their credit pool. (Rulings)
 	];
 	return result;
+  },
+  AIIceSpecificEffect: function(poolCreditsLeft) {
+	//if the runner has 6c or less, etr
+	if (poolCreditsLeft <= 6) return ["endTheRun"];
+	else return [];
   },
 };
 cardSet[30075] = {

@@ -133,7 +133,7 @@ class RunnerAI {
   //get cached complete run cost or Infinity
   _getCachedCost(server) {
     if (!this.runsEverCalculated.includes[server])
-      this._calculateBestCompleteRun(server, 0, 0, 0);
+      this._calculateBestCompleteRun(server, 0, 0, 0, 0);
     var result = Infinity;
     for (var i = 0; i < this.cachedCosts.length; i++) {
       if (this.cachedCosts[i].server == server) return this.cachedCosts[i].cost;
@@ -365,10 +365,10 @@ class RunnerAI {
   _cachedOrBestRun(server, startIceIdx) {
 	  if (!this.cachedBestPath || this.cachedPathServer !== server) { //need to recalculate
 		//ideally complete runs
-		this._calculateBestCompleteRun(server, 0, 0, 0, startIceIdx);  //0 means no credit/click/damage offset
+		this._calculateBestCompleteRun(server, 0, 0, 0, 0, startIceIdx);  //0 means no credit/click/damage offset
 		//but if not, use an exit strategy (incomplete run)
 		if (!this.cachedBestPath)
-		  this._calculateBestExitStrategy(server, 0, 0, 0, startIceIdx);  //0 means no credit/click/damage offset
+		  this._calculateBestExitStrategy(server, 0, 0, 0, 0, startIceIdx);  //0 means no credit/click/damage offset
 	  } else {
 		  //remove ice before this one
 		  for (var i=this.cachedBestPath.length-1; i>-1; i--) {
@@ -380,14 +380,16 @@ class RunnerAI {
 
   _calculateBestCompleteRun(
     server,
-    creditOffset,
+    poolCreditOffset,
+	otherCreditOffset,
     clickOffset,
     damageOffset,
     startIceIdx
   ) {
     return this._calculateRunPath(
       server,
-      creditOffset,
+      poolCreditOffset,
+	  otherCreditOffset,
       clickOffset,
       damageOffset,
       false,
@@ -396,14 +398,16 @@ class RunnerAI {
   }
   _calculateBestExitStrategy(
     server,
-    creditOffset,
+    poolCreditOffset,
+	otherCreditOffset,
     clickOffset,
     damageOffset,
     startIceIdx
   ) {
     return this._calculateRunPath(
       server,
-      creditOffset,
+      poolCreditOffset,
+	  otherCreditOffset,
       clickOffset,
       damageOffset,
       true,
@@ -414,30 +418,31 @@ class RunnerAI {
   //wrapper for run calculator (returns null if no path found)
   _calculateRunPath(
     server,
-    creditOffset,
+    poolCreditOffset,
+	otherCreditOffset,
     clickOffset,
     damageOffset,
     incomplete,
     startIceIdx
   ) {
 	//console.error("crp "+ServerName(server)+(incomplete?" incomplete":" complete"));
-    var clickLimit = runner.clickTracker + clickOffset;
-    var creditLimit = AvailableCredits(runner) + creditOffset;
-    var damageLimit = runner.grip.length + damageOffset; //(this gets updated during the run calculation if clickLimit is used up)
+    var clicks = runner.clickTracker + clickOffset;
+	var poolCredits = runner.creditPool + poolCreditOffset; //just credit pool
+	var otherCredits = AvailableCredits(runner) - runner.creditPool + otherCreditOffset; //sources other than credit pool
+    var damageLimit = runner.grip.length + damageOffset; //(this gets updated during the run calculation if clicks is used up)
     //this works because potentials are calculated before costs in (optionList.includes("run")). Note the false here prevents an infinite loop
     if (this._getCachedPotential(server, false) < 2.0)
       damageLimit -= this.cardsWorthKeeping.length; //the 2.0 is arbitrary but basically don't risk stuff for lowish potential
     if (damageLimit < 0) damageLimit = 0;
 	var tagLimit =
-      Math.min(clickLimit, Math.floor(creditLimit * 0.5)) - runner.tags; //allow 1 tag for each click+2[c] remaining but less if tagged (this gets updated during the run calculation)
+      Math.min(clicks, Math.floor(poolCredits * 0.5)) - runner.tags; //allow 1 tag for each click+2[c] remaining (pool only atm) but less if tagged (this gets updated during the run calculation)
     if (tagLimit < 0) tagLimit = 0;
     var paths = this.rc.Calculate(
       server,
-      clickLimit,
-      creditLimit,
+      clicks,
+      poolCredits,
+	  otherCredits,
       damageLimit,
-      clickLimit,
-      creditLimit,
       tagLimit,
       incomplete,
       startIceIdx
@@ -658,6 +663,38 @@ class RunnerAI {
     }
     this.cardsWorthKeeping = high.concat(neither).concat(low);
     //console.log("Result: " + JSON.stringify(this.cardsWorthKeeping));
+  }
+  
+  //planning check for complete run. Returns bestpath
+  //if foresight is true, the run calculation will exchange clicks for credits/cards
+  _commonRunCalculationChecks(server,runEventCardToUse,foresight) {
+	var poolCreditOffset = 0;
+	var extraCredits = 0;
+	var clickOffset = -1; //assume 1 click will be used to initiate the run
+	var damageOffset = 0;
+	if (foresight) { //i.e. run a click later, do prep first
+		//just some arbitrary numbers now, basically numbers that might be possible
+        poolCreditOffset += 3; //could look at more options depending on what's in hand etc...
+        clickOffset += -1; //use an extra click for prep
+        damageOffset += 3; //...but for now this at least allows a bit of planning
+	}
+	//triggered card abilities that modify the bonus credits (e.g. Ken Tenma)
+	var activeCards = ActiveCards(runner);
+    for (var i = 0; i < activeCards.length; i++) {
+	    if (typeof activeCards[i].AIRunPoolCreditOffset == 'function') {
+			poolCreditOffset += activeCards[i].AIRunPoolCreditOffset.call(activeCards[i],server,runEventCardToUse);
+		}
+	}
+	//if a run event is being used, a click is needed to play it, and a card slot (reduce max damage by 1)	
+    if (runEventCardToUse) {
+		//playCost probably should be PlayCost (here and everywhere) but it is not implemented yet
+		if (typeof runEventCardToUse.AIRunEventExtraCredits != 'undefined') {
+			extraCredits += runEventCardToUse.AIRunEventExtraCredits;
+			poolCreditOffset -= runEventCardToUse.playCost; //for now we assume pool credit is used to play the card
+		}
+		damageOffset -= 1;
+	}
+    return this._calculateBestCompleteRun(server, poolCreditOffset, extraCredits, clickOffset, damageOffset);
   }
 
   _commonCardToInstallChecks(cardToInstall) {
@@ -1300,23 +1337,24 @@ console.log(this.preferred);
         }); //store potential for other use (costs are cached in _calculateRunPath)
         //console.log(this.cachedPotentials[this.cachedPotentials.length-1].server.serverName+": "+this.cachedPotentials[this.cachedPotentials.length-1].potential);
         //and calculate best path
-        var bestpath = null;
+		//TODO generalise to other run event cards too
         this.serverList[i].useOverclock = null; //the overclock card to use. If null, don't or can't use.
         if (optionList.includes("play")) {
-          if (this.serverList[i].potential > 1.5) {
             //save Overclock for high value targets
-            this.serverList[i].useOverclock = this._copyOfCardExistsIn("Overclock", runner.grip);
-            if (this.serverList[i].useOverclock) {
-              if (!FullCheckPlay(this.serverList[i].useOverclock)) this.serverList[i].useOverclock = null;
+            var thisRunEventCard = this._copyOfCardExistsIn("Overclock", runner.grip);
+            if (thisRunEventCard) {
+		      var wouldRunWithThis = true;
+			  if (typeof thisRunEventCard.AIWouldRunWithThis == 'function') {
+				wouldRunWithThis = thisRunEventCard.AIWouldRunWithThis.call(thisRunEventCard, this.serverList[i].server, this.serverList[i].potential);
+			  }
+			  if (wouldRunWithThis) {
+				if (FullCheckPlay(thisRunEventCard)) this.serverList[i].useOverclock = thisRunEventCard;
+			  }
             }
-          }
         }
-        if (this.serverList[i].useOverclock)
-          bestpath = this._calculateBestCompleteRun(server, 4, -1, -1);
-        //Overclock effectively gives 4 extra credits, a click is needed to play it, and a card slot (reduce max damage by 1)
-        else bestpath = this._calculateBestCompleteRun(server, 0, -1, 0); //assume 1 click will be used to initiate the run
+		var bestpath = this._commonRunCalculationChecks(this.serverList[i].server,this.serverList[i].useOverclock,false); //the false is for foresight, i.e. run now not later
         this.serverList[i].bestpath = bestpath;
-        this.serverList[i].bestcost = Infinity;
+		this.serverList[i].bestcost = Infinity;
         if (bestpath && bestpath.length > 0) {
           if (typeof bestpath[bestpath.length - 1].cost !== "undefined") //end point of path has total cost
             this.serverList[i].bestcost = bestpath[bestpath.length - 1].cost;
@@ -1329,33 +1367,14 @@ console.log(this.preferred);
         //add a bit of jitter to make the runner less predictable
         this.serverList[i].potential += 0.2 * Math.random() - 0.1;
 
-        //now check
+        //now check (the 2 is arbitrary but basically 'high potential')
         if (
           this.serverList[i].potential > 2 &&
           this.serverList[i].bestcost == Infinity
         ) {
-          //the 2 is arbitrary
           var server = this.serverList[i].server;
-          var clickOffset = -1; //prep
-          var creditOffset = 3; //could look at more options depending on what's in hand etc
-          var damageOffset = 3; //but for now this at least allows a bit of planning
           //recalculate paths
-          var bestpath = null;
-          if (this.serverList[i].useOverclock)
-            bestpath = this._calculateBestCompleteRun(
-              server,
-              4 + creditOffset,
-              -1 + clickOffset,
-              -1 + damageOffset
-            );
-          //Overclock effectively gives 4 extra credits, a click is needed to play it, and a card slot (reduce max damage by 1)
-          else
-            bestpath = this._calculateBestCompleteRun(
-              server,
-              0 + creditOffset,
-              -1 + clickOffset,
-              0 + damageOffset
-            ); //assume 1 click will be used to initiate the run
+          var bestpath = this._commonRunCalculationChecks(server,this.serverList[i].useOverclock,true); //the true is for foresight, i.e. prep first
           if (bestpath) {
             this.serverList = []; //don't run this click
             this._log("Gotta do some prep");
@@ -1497,7 +1516,7 @@ console.log(this.preferred);
 
         var endPoint =
           this.serverList[0].bestpath[this.serverList[0].bestpath.length - 1];
-        var runCreditCost = endPoint.runner_credits_spent;
+        var runCreditCost = endPoint.runner_credits_spent + endPoint.runner_credits_lost;
         var runClickCost = endPoint.runner_clicks_spent;
 
         //maybe install something first? (as long as can still complete the run after using the click to install)
@@ -1545,7 +1564,7 @@ console.log(this.preferred);
 
         //maybe run by playing a run event?
         if (optionList.includes("play")) {
-          //if Overclock has been suggested, decompensate to see if it's necessary (just check the path cost credits, don't recalculate)
+          //if Overclock has been suggested, decompensate to see if it's necessary by checking the path cost spent (not lost) credits, no recalculation
           if (this.serverList[0].useOverclock) {
             if (
               AvailableCredits(runner) <

@@ -1,7 +1,10 @@
 class RunCalculator {
   constructor() {
-    this.clickOffset = 0;
-    this.creditOffset = 0;
+	//Calculate will set these base value when it starts (they are inputs)
+    this.baseClicks = 0; 
+    this.basePoolCredits = 0;
+	this.baseOtherCredits = 0;
+	
     this.paths = [];
     this.precalculated = {
       runnerInstalledCardsLength: 0,
@@ -12,14 +15,6 @@ class RunCalculator {
     this.reason = "error"; //for reporting
   }
 
-  _clicksLeft() {
-    return runner.clickTracker + this.clickOffset;
-  }
-
-  _creditsLeft() {
-    return AvailableCredits(runner) + this.creditOffset;
-  }
-
   //known ice list
   //creates a version of the ice that can be understood and modified by the AI
   //sr effects are arrays of arrays of effect strings (each sr contains the 'or' options)
@@ -27,9 +22,9 @@ class RunCalculator {
   // netDamage
   // tag
   // endTheRun
-  // loseCredits (runner) will not reduce credits remaining to below zero
-  // payCredits will be an ignored path if cannot be afforded (i.e. only use it for sr that has an option or for special calculations like Whitespace)
-  // runnerGainCredits
+  // loseCredits (runner) from main credit pool, not from extra credits. Will not reduce credits remaining to below zero
+  // payCredits will be an ignored path if cannot be afforded (i.e. only use it for sr that has an option e.g. Funhouse)
+  // checkCreditPoolOrETR-x (if runner credit pool is less than x, etr)
   // misc_minor e.g. corp gains credit
   // misc_moderate e.g. trash 1 program
   // misc_serious e.g. install another ice inward (like endTheRun, paths that fire these will be avoided)
@@ -109,6 +104,7 @@ class RunCalculator {
       result.push({
         iceIdx: point.iceIdx,
         runner_credits_spent: point.runner_credits_spent,
+        runner_credits_lost: point.runner_credits_lost,
         runner_clicks_spent: point.runner_clicks_spent,
         virus_counters_spent: point.virus_counters_spent,
         card_str_mods: point.card_str_mods,
@@ -131,6 +127,7 @@ class RunCalculator {
     return {
       iceIdx: point.iceIdx,
       runner_credits_spent: point.runner_credits_spent,
+      runner_credits_lost: point.runner_credits_lost,
       runner_clicks_spent: point.runner_clicks_spent,
       virus_counters_spent: point.virus_counters_spent,
       //for strength modification, iceIdx is included so that we know when persistent changes were initially made
@@ -151,6 +148,7 @@ class RunCalculator {
 
   //helper for IceAct (return array for concatenation)
   //empty iceSubTypes will just break any subtypes for now
+  //credits are spent, not lost
   ImplementIcebreaker(
     point,
     card,
@@ -217,8 +215,9 @@ class RunCalculator {
       if (point.card_str_mods[i].card == card)
         cardStrength += point.card_str_mods[i].amt;
     }
-    var clicksLeft = this._clicksLeft() - point.runner_clicks_spent;
-    var creditsLeft = this._creditsLeft() - point.runner_credits_spent;
+    var clicksLeft = this.baseClicks - point.runner_clicks_spent;
+	//assume both pool and extra credits can be used for breakers
+    var creditsLeft = this.basePoolCredits + this.baseOtherCredits - point.runner_credits_spent - point.runner_credits_lost;
 
     //apply icebreaker specific details
 	if (typeof card.AIImplementBreaker == "function") {
@@ -259,7 +258,8 @@ class RunCalculator {
     max_cost,
     damageLimit,
     clickLimit,
-    creditLimit,
+    poolCreditLimit,
+	otherCredits,
     tagLimit,
     incomplete
   ) {
@@ -304,7 +304,8 @@ class RunCalculator {
             potential_result[i],
             damageLimit,
             clickLimit,
-            creditLimit,
+			poolCreditLimit,
+			otherCredits,
             tagLimit
           )
         )
@@ -429,51 +430,72 @@ class RunCalculator {
           //some pathways will not be followed e.g. unbroken ETR, misc_serious, or unaffordable payment
           var exclude_path = false;
           var creditPayment = 0;
-          if (
-            encounter_effects.includes("endTheRun") ||
-            encounter_effects.includes("misc_serious")
-          )
-            exclude_path = true;
-          if (incomplete) exclude_path = false;
+		  var creditLoss = 0;
+		  
+		  //loop through effects in order
+		  for (var j=0; j<encounter_effects.length; j++) {
+			  var eff = encounter_effects[j];
+			  
+			  //recalculate current financial situation (ice specific effects may rely on it)
+			  var poolCreditsLeft = this.basePoolCredits - point.runner_credits_lost - creditLoss;
+			  var otherCreditsLeft = this.baseOtherCredits - point.runner_credits_spent - creditPayment;
+			  var overallCreditsLeft = poolCreditsLeft + otherCreditsLeft;
+			  //take into account pool being affected by excess other spend
+			  if (otherCreditsLeft < 0) poolCreditsLeft += otherCreditsLeft;
+			  
+			  //apply special per-ice unique conditional effects
+			  if (eff == "iceSpecificEffect") {
+				  var new_effs = iceAI.ice.AIIceSpecificEffect.call(iceAI.ice, poolCreditsLeft);
+				  //remove from encounter_effects and insert instead any effects that are returned
+                  encounter_effects.splice(j, 1, ...new_effs); //remove 1 item at position j and insert all returned items (not compatible with older browsers)
+                  j--; //step back so next item isn't skipped
+			  }
+			  
+			  else if (eff == "endTheRun") {
+				//this path will not lead to a complete run
+				if (!incomplete) exclude_path = true;
+				//the effect applies right away, so no need to process other effects
+				break;
+			  }
 
-          if (!exclude_path) {
-            if (
-              encounter_effects.includes("payCredits") ||
-              encounter_effects.includes("loseCredits") ||
-              encounter_effects.includes("runnerGainCredits")
-            ) {
-              //loops through to remove credit payment out of effects (will be added into runner_credits_spent instead)
-              var creditsAvailable =
-                this._creditsLeft() - point.runner_credits_spent;
-
-              for (var j = 0; j < encounter_effects.length; j++) {
-                if (
-                  encounter_effects[j] == "payCredits" ||
-                  encounter_effects[j] == "loseCredits"
-                ) {
-                  var is_payment = encounter_effects[j] == "payCredits";
+			  else if (eff == "misc_serious") {
+				//don't follow this path for a complete run, it's too dangerous
+				//but for incomplete runs, check it because it might be the less dangerous overall path
+				if (!incomplete) exclude_path = true;
+			  }
+			  
+		      //apply payments (exclude path if not affordable)
+			  else if (eff == "payCredits") {
+				  //remove from encounter_effects (will be included in total costs instead)
                   encounter_effects.splice(j, 1); //remove 1 item at position j
-                  j--;
-                  if (creditPayment < creditsAvailable) creditPayment++;
-                  else if (is_payment) {
-                    //i.e. creditPayment >= creditsAvailable so can't afford this payment
+                  j--; //step back so next item isn't skipped
+				  //Nisei CR 1.5 1.10.3 "spend" and "pay" are synonymous
+				  //i.e. can be spent from credit pool or from other sources
+                  if (overallCreditsLeft > 0) creditPayment++;
+                  else {
+                    //i.e. creditPayment >= overallCreditsLeft so can't afford this payment
                     exclude_path = true; //cannot afford this payment, not a possible option
                     break;
                   }
-                } else if (encounter_effects[j] == "runnerGainCredits") {
+			  }
+			  
+			  //apply credit loss
+			  else if (eff == "loseCredits") {
+				  //remove from encounter_effects (will be included in total costs instead)
                   encounter_effects.splice(j, 1); //remove 1 item at position j
-                  j--;
-                  creditPayment--; //gaining credits is just negative payment
-                }
-              }
-            }
-          }
-
+                  j--; //step back so next item isn't skipped
+				  //credits are lost directly from the credit pool
+                  if (poolCreditsLeft > 0) creditLoss++;
+			  }			  
+		  }
+		  
+		  //now put it all together to create a path branch (if not excluded)
           if (!exclude_path) {
-            //checked again because exclude may have been set checking a payment
+            //checked again because exclude may have been set checking a payment or credit pool
             var next_encounter_point = {
               iceIdx: point.iceIdx - 1,
               runner_credits_spent: point.runner_credits_spent + creditPayment,
+			  runner_credits_lost: point.runner_credits_lost + creditLoss,
               runner_clicks_spent: point.runner_clicks_spent,
               virus_counters_spent: point.virus_counters_spent,
               card_str_mods: card_str_mods,
@@ -492,7 +514,8 @@ class RunCalculator {
                   next_encounter_point,
                   damageLimit,
                   clickLimit,
-                  creditLimit,
+				  poolCreditLimit,
+				  otherCredits,
                   tagLimit
                 )
               )
@@ -540,6 +563,7 @@ class RunCalculator {
 
       //tweak this algorithm
       result += 0.6 * p.runner_credits_spent;
+      result += 0.7 * p.runner_credits_lost;
       result += 0.8 * p.runner_clicks_spent;
       result += 0.3 * p.virus_counters_spent;
       var totalEffect = this.TotalEffect(p);
@@ -568,14 +592,26 @@ class RunCalculator {
   }
 
   //since values are cumulative, the point at the end of the path represents total
-  ValidPoint(p, damageLimit, clickLimit, creditLimit, tagLimit) {
+  ValidPoint(p, damageLimit, clickLimit, poolCreditLimit, otherCredits, tagLimit) {
     if (typeof p.valid == "undefined") {
       //check for already calculated and stored value
-      p.valid = false; //by default, then set to true if check succeed
+      p.valid = false; //by default, then set to true if check succeeds
+	  
 	  var clicksLeft = clickLimit - p.runner_clicks_spent;
-	  var creditsLeft = creditLimit - p.runner_credits_spent;
+	  
+	  //runner credits are 'spent' from other credits first until it is depleted, then from pool
+	  var otherCreditsLeft = otherCredits - p.runner_credits_spent;
+	  //whereas they are 'lost' from pool only
+	  var poolCreditsLeft = poolCreditLimit - p.runner_credits_lost;
+	  if (otherCreditsLeft < 0) {
+		  poolCreditsLeft += otherCreditsLeft;
+		  otherCreditsLeft = 0;
+	  }
+	  //path is invalid if attempting to reduce pool below zero
+	  
+	  //check and apply effects
       if (clicksLeft >= 0) {
-        if (creditsLeft >= 0) {
+        if (poolCreditsLeft >= 0) {
           var totalEffect = this.TotalEffect(p);
           var totalDamage = 0;
           if (totalEffect.netDamage) totalDamage += totalEffect.netDamage;
@@ -590,7 +626,7 @@ class RunCalculator {
             if (totalEffect.tag) totalTag += totalEffect.tag;
 			//update tag limit based on clicks and credits spent
 			var tagLimit =
-			  Math.min(clicksLeft, Math.floor(creditsLeft * 0.5)) - runner.tags; //allow 1 tag for each click+2[c] remaining but less if tagged
+			  Math.min(clicksLeft, Math.floor(poolCreditsLeft * 0.5)) - runner.tags; //allow 1 tag for each click+2[c] (pool only for now) remaining but less if tagged
 			if (tagLimit < 0) tagLimit = 0;
 			//now check tags against limit
             if (totalTag <= tagLimit) p.valid = true;
@@ -602,13 +638,14 @@ class RunCalculator {
   }
 
   //Check whether path p is within limits
-  ValidPath(p, damageLimit, clickLimit, creditLimit, tagLimit) {
+  ValidPath(p, damageLimit, clickLimit, poolCreditLimit, otherCredits, tagLimit) {
     var back = p[p.length - 1];
     return this.ValidPoint(
       back,
       damageLimit,
       clickLimit,
-      creditLimit,
+      poolCreditLimit, 
+	  otherCredits,
       tagLimit
     );
   }
@@ -620,21 +657,24 @@ class RunCalculator {
   Calculate(
     server,
     clicks,
-    credits,
+    poolCredits,
+	otherCredits,
     damageLimit,
-    clickLimit,
-    creditLimit,
     tagLimit,
     incomplete,
-    startIceIdx //the limits are spend limits (the former clicks/credits is how many available and yes it matters that they can be different)
+    startIceIdx
   ) {
     //console.log("Calculating "+(incomplete ? "incomplete" : "complete")+" run");
     if (typeof startIceIdx == "undefined") startIceIdx = server.ice.length - 1;
 
     var installedRunnerCards = InstalledCards(runner);
 
-    this.clickOffset = clicks - runner.clickTracker;
-    this.creditOffset = credits - AvailableCredits(runner);
+	var clickLimit = clicks; //this is maybe not ideal (e.g. Enigma might break things)
+	var poolCreditLimit = poolCredits; //same as above, maybe
+    this.baseClicks = clicks;
+    this.basePoolCredits = poolCredits;
+	this.baseOtherCredits = otherCredits;
+	
     this.paths = []; //completed paths
 
     //default approach cost is none (but not an empty approachOptions array - that would mean no path ever and this process would fail)
@@ -788,6 +828,7 @@ class RunCalculator {
               {
                 iceIdx: startIceIdx,
                 runner_credits_spent: approachOptions[j].credits,
+				runner_credits_lost: 0, //assumes no 'lose credits' for now
                 runner_clicks_spent: approachOptions[j].clicks,
                 virus_counters_spent: 0,
                 card_str_mods: [],
@@ -823,7 +864,8 @@ class RunCalculator {
             current,
             damageLimit,
             clickLimit,
-            creditLimit,
+			poolCreditLimit,
+			otherCredits,
             tagLimit
           )
         ) {
@@ -846,7 +888,8 @@ class RunCalculator {
               min_cost,
               damageLimit,
               clickLimit,
-              creditLimit,
+			  poolCreditLimit,
+			  otherCredits,
               tagLimit,
               incomplete
             );
@@ -901,6 +944,7 @@ class RunCalculator {
           {
             iceIdx: -1,
             runner_credits_spent: approachOptions[j].credits,
+			runner_credits_lost: 0, //assumes no 'lose credits' for now
             runner_clicks_spent: approachOptions[j].clicks,
             virus_counters_spent: 0,
             card_str_mods: [],
@@ -909,13 +953,10 @@ class RunCalculator {
             effects: [].concat(approachOptions[j].effects),
           },
         ];
-        if (this.ValidPath(p, damageLimit, clickLimit, creditLimit, tagLimit))
+        if (this.ValidPath(p, damageLimit, clickLimit, poolCreditLimit,	otherCredits, tagLimit))
           this.paths.push(p);
       }
     }
-
-    this.clickOffset = 0;
-    this.creditOffset = 0;
 
     return this.paths;
   }

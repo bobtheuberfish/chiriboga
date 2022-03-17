@@ -6,6 +6,7 @@ cardSet[31001] = {
   faction: "Anarch",
   cardType: "identity",
   deckSize: 45,
+  influenceLimit: 15,
   usedThisTurn: false,
   runnerTurnBegin: {
     Resolve: function () {
@@ -82,6 +83,7 @@ cardSet[31002] = {
   faction: "Anarch",
   cardType: "identity",
   deckSize: 45,
+  influenceLimit: 15,
   usedThisTurn: false,
   runnerTurnBegin: {
     Resolve: function () {
@@ -687,6 +689,49 @@ cardSet[31012] = {
 	  return 0; //this run wouldn't benefit, don't install yet
   },
 };
+
+cardSet[31013] = {
+  title: 'Ken "Express" Tenma: Disappeared Clone',
+  imageFile: "31013.png",
+  player: runner,
+  faction: "Criminal",
+  cardType: "identity",
+  deckSize: 45,
+  influenceLimit: 17,
+  playedRunEventThisTurn: false,
+  runnerTurnBegin: {
+    Resolve: function () {
+      this.playedRunEventThisTurn = false;
+    },
+    automatic: true,
+  },
+  corpTurnBegin: {
+    Resolve: function () {
+      this.playedRunEventThisTurn = false;
+    },
+    automatic: true,
+  },
+  //The first time each turn you play a run event, gain 1 credit
+  //(note that the "first time" would be proc'd even in Ken isn't active
+  cardPlayed: {
+    Resolve: function (card) {
+		if (!this.playedRunEventThisTurn) {
+			if (CheckSubType(card, "Run")) {
+				this.playedRunEventThisTurn=true;
+				if (CheckActive(this)) GainCredits(runner,1);
+			}
+		}
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  AIRunPoolCreditOffset: function(server,runEventCardToUse) {
+	  if (runEventCardToUse && !this.playedRunEventThisTurn) return 1; //1 bonus credit
+	  return 0; //no bonus credit
+  },
+};
+
+//TODO link (e.g. Reina)
 
 /*
 cardSet[31071] = {

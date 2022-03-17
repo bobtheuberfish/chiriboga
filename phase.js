@@ -73,14 +73,23 @@ phaseTemplates.standardResponse = {
 	}
     else if (currentPhase.identifier == "Run 2.1") {
       //Run: Approach Ice (Nisei 2021 2.1)
-      if (attackedServer.ice[approachIce].rezzed)
-        SetHistoryThumbnail(attackedServer.ice[approachIce].imageFile, "");
-      else
-        SetHistoryThumbnail(
-          "Corp_back.png",
-          "Approach",
-          "transform: rotate(90deg);"
-        );
+	  //if outermost ice, do not show thumbnail (there will already be one for run events, triggers, etc)
+	  var needsThumbnail = true;
+	  if (approachIce == attackedServer.ice.length - 1) {
+		needsThumbnail = false;
+		//alternative rule: only show if there is not already a thumbnail
+		//if ($("#history").children().first().children().first().children().length > 1) needsThumbnail = false;
+	  }
+	  if (needsThumbnail) {
+		  if (attackedServer.ice[approachIce].rezzed)
+			SetHistoryThumbnail(attackedServer.ice[approachIce].imageFile, "");
+		  else
+			SetHistoryThumbnail(
+			  "Corp_back.png",
+			  "Approach",
+			  "transform: rotate(90deg);"
+			);
+	  }
       UnbreakAll(attackedServer.ice[approachIce]); //subroutines start unbroken
       if (approachIce == attackedServer.ice.length - 1)
         Log(

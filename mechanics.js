@@ -66,10 +66,11 @@ function Rez(card) {
     if (GetApproachEncounterIce() == card) {
       //update run calculation now that the ice is known
       //ideally complete run
-      if (!runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, approachIce))
+      if (!runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, 0, approachIce))
       //but if not, use an exit strategy (incomplete run)
       runner.AI._calculateBestExitStrategy(
         attackedServer,
+		0,
         0,
         0,
         0,
@@ -424,6 +425,7 @@ function Play(card, onPlayResolve, context) {
     if (typeof onPlayResolve === "function") onPlayResolve.call(context);
     if (runner.AI != null) runner.AI.LoseInfoAboutHQCards(card);
     Log('Played "' + GetTitle(card, true) + '"');
+	AutomaticTriggers("cardPlayed", card);
     card.Resolve.call(card, params);
   };
   var command = "continue";
@@ -770,7 +772,7 @@ function SpendCredits(
                   " spent one credit from " +
                   GetTitle(activeCards[i], true)
               );
-            else
+            else if (spendCred_card > 0)
               Log(
                 PlayerName(player) +
                   " spent " +
