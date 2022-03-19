@@ -785,8 +785,24 @@ cardSet[31014] = {
 					  }
 					  //if two share a subtype, return those
 					  for (var i=0; i<ctcf.length-1; i++) {
+						  if (typeof ctcf[i].subTypes != 'undefined') {
+							  for (var j=i+1; j<ctcf.length; j++) {
+								  if (typeof ctcf[j].subTypes != 'undefined') {
+									if (ctcf[i].subTypes.some(item => ctcf[j].subTypes.includes(item))) return [{ cards: [ ctcf[i], ctcf[j]] }];
+								  }
+							  }
+						  }
+					  }
+					  //if two cards share a cost (install/play), return those
+					  for (var i=0; i<ctcf.length-1; i++) {
+						  var costA = 0;
+						  if (typeof ctcf[i].installCost != 'undefined') costA = InstallCost(ctcf[i]);
+						  else if (typeof ctcf[i].playCost != 'undefined') costA = ctcf[i].playCost; //should probably use PlayCost but not implemented yet
 						  for (var j=i+1; j<ctcf.length; j++) {
-							  if (ctcf[i].subTypes.some(item => ctcf[j].subTypes.includes(item))) return [{ cards: [ ctcf[i], ctcf[j]] }];
+							  var costB = 0;
+							  if (typeof ctcf[j].installCost != 'undefined') costB = InstallCost(ctcf[j]);
+							  else if (typeof ctcf[j].playCost != 'undefined') costB = ctcf[j].playCost; //should probably use PlayCost but not implemented yet
+							  if (costA == costB) return [{ cards: [ ctcf[i], ctcf[j]] }];
 						  }
 					  }
 					  //random from ctcf
