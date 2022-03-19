@@ -30,7 +30,7 @@ class RunnerAI {
     var choices = ChoicesCardInstall(card, true); //true ignores credit cost);
     for (var i = 0; i < choices.length; i++) {
       var destination = null;
-      if (typeof card.host !== "undefined") destination = host;
+      if (typeof choices[i].host !== "undefined") destination = choices[i].host;
       if (card.memoryCost <= this._spareMemoryUnits(installedRunnerCards,destination)) return false;
     }
     return true;
