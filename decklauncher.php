@@ -36,7 +36,7 @@
 			else dC = "r"; //deckchar is r for runner
 
 			var playerIdentities = [];
-			if (deckPlayer == runner) playerIdentities = [30001, 30010, 30019, 31001, 31002, 31013]; //also in decks.js (TODO move to shared function)
+			if (deckPlayer == runner) playerIdentities = [30001, 30010, 30019, 31001, 31002, 31013, 31014]; //also in decks.js (TODO move to shared function)
 			else playerIdentities = [30035, 30043, 30051, 30059];
 
 			function UpdateLaunchStrings() {

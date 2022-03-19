@@ -557,7 +557,8 @@ class RunnerAI {
     return null;
   }
 
-  _cardsInHandWorthKeeping() {
+  //check an array for cards worth keeping
+  _cardsWorthKeeping(cards) {
     //subtypes to ideally have at least one of each installed:
     var atLeastOne = ["Console", "Fracter", "Decoder", "Killer"]; //list of subtypes desired
     //loop through installed runner cards - if any have this subtype then it can be removed from the list
@@ -571,11 +572,11 @@ class RunnerAI {
     }
 	//precalculate spareMU here for efficiency
     var spareMU = this._spareMemoryUnits(installedRunnerCards);
-    //loop through hand to find cards worth keeping
+    //loop through array to find cards worth keeping
     var ret = [];
-    for (var i = 0; i < runner.grip.length; i++) {
+    for (var i = 0; i < cards.length; i++) {
       var keep = false;
-      var card = runner.grip[i];
+      var card = cards[i];
       if (!this._wastefulToInstall(card)) {
         //_wastefulToInstall makes sure we don't overwrite existing unique or exceed mu
 		
@@ -601,6 +602,10 @@ class RunnerAI {
       if (keep) ret.push(card);
     }
     return ret;
+  }
+
+  _cardsInHandWorthKeeping() {
+	return this._cardsWorthKeeping(runner.grip);
   }
 
   //returns -1 (low), 0 (neither) or 1 (high) priority

@@ -614,7 +614,7 @@ function LoadDecks() {
   if (runner.stack.length == 0) {
     var runnerIdentities = [];
 	if (setsToUse.includes('sg')) runnerIdentities = runnerIdentities.concat([30001, 30010, 30019]);
-	if (setsToUse.includes('su21')) runnerIdentities = runnerIdentities.concat([31001, 31002, 31013]);  //also in utility.js (TODO move to shared function)
+	if (setsToUse.includes('su21')) runnerIdentities = runnerIdentities.concat([31001, 31002, 31013, 31014]);  //also in utility.js (TODO move to shared function)
     deckJson.identity =
       runnerIdentities[RandomRange(0, runnerIdentities.length - 1)];
     runner.identityCard = InstanceCard(
@@ -714,7 +714,7 @@ function LoadDecks() {
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-  debugging = true; //set true to pause execution on error
+  debugging = false; //set true to pause execution on error
   //mainLoopDelay = 10; //for speedy AI vs AI testing
 
   /*

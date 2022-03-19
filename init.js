@@ -867,6 +867,7 @@ function Render() {
     var gridRowStart = 0;
     var cardsPerGridRow = Math.floor(w / gridViewXStep);
     while (gridRowStart < uniqueGrid.length) {
+	  var gridPlayer = null; //the player whose cards are in the grid
       var gridViewRowCards = [];
       for (
         var i = gridRowStart;
@@ -874,17 +875,21 @@ function Render() {
         i++
       ) {
         gridViewRowCards.push(uniqueGrid[i]);
+		gridPlayer = uniqueGrid[i].player;
       }
 	  var gridViewModifier = FaceUpNoTint;
-	  if ( (viewingPile == corp.archives.cards) && (viewingPlayer == runner) ) gridViewModifier = ZeroRotationNoTint;
-	  else if ( (viewingPile == runner.heap) && (viewingPlayer == corp) ) gridViewModifier = PiRotationNoTint;
+	  if ( gridPlayer == corp && viewingPlayer == runner ) {
+		  gridViewModifier = ZeroRotationNoTint;
+	  } else if ( gridPlayer == runner && viewingPlayer == corp ) {
+		  gridViewModifier = PiRotationNoTint;
+	  }
       var gridViewCascade = new CardRenderer.Cascade(
         RenderCards(gridViewRowCards, gridViewModifier),
         gridViewXStep,
         0,
         0
       );
-      if (viewingPile == runner.heap)
+      if (viewingPile == runner.heap) {
         gridViewCascade.Apply(
           cardRenderer.app,
           w - gridViewCascade.width,
@@ -893,7 +898,8 @@ function Render() {
           0,
           0
         );
-      else if (viewingPlayer == corp)
+	  }
+      else if (viewingPlayer == corp) {
         gridViewCascade.Apply(
           cardRenderer.app,
           5 + arbitraryHistorySpacer,
@@ -902,7 +908,10 @@ function Render() {
           0,
           0
         );
-      else gridViewCascade.Apply(cardRenderer.app, 20, gridViewY, 0, 0, 0);
+	  }
+      else {
+		  gridViewCascade.Apply(cardRenderer.app, 20, gridViewY, 0, 0, 0);
+	  }
       gridRowStart += cardsPerGridRow;
       gridViewY += gridViewYStep;
     }

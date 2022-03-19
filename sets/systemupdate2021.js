@@ -712,7 +712,7 @@ cardSet[31013] = {
     automatic: true,
   },
   //The first time each turn you play a run event, gain 1 credit
-  //(note that the "first time" would be proc'd even in Ken isn't active
+  //(note that the "first time" would be proc'd even if Ken isn't active
   cardPlayed: {
     Resolve: function (card) {
 		if (!this.playedRunEventThisTurn) {
@@ -728,6 +728,126 @@ cardSet[31013] = {
   AIRunPoolCreditOffset: function(server,runEventCardToUse) {
 	  if (runEventCardToUse && !this.playedRunEventThisTurn) return 1; //1 bonus credit
 	  return 0; //no bonus credit
+  },
+};
+
+cardSet[31014] = {
+  title: 'Steve Cambridge: Master Grifter',
+  imageFile: "31014.png",
+  player: runner,
+  faction: "Criminal",
+  cardType: "identity",
+  deckSize: 45,
+  influenceLimit: 15,
+  madesSuccessfulRunOnHQThisTurn: false,
+  runnerTurnBegin: {
+    Resolve: function () {
+      this.madesSuccessfulRunOnHQThisTurn = false;
+    },
+    automatic: true,
+  },
+  corpTurnBegin: {
+    Resolve: function () {
+      this.madesSuccessfulRunOnHQThisTurn = false;
+    },
+    automatic: true,
+  },
+  //The first time each turn you make a successful run on HQ, you may choose 2 cards in your heap. If you do, the Corp removes 1 of those cards from the game, then you add the other card to your grip.
+  //(note that the "first time" would be proc'd even if Steve isn't active
+  runSuccessful: {
+    Enumerate() {
+		if (!this.madesSuccessfulRunOnHQThisTurn) {
+			if (attackedServer==corp.HQ) {
+				if (CheckActive(this)) {
+					var choices = ChoicesArrayCards(runner.heap);
+					if (choices.length < 2) return [];
+					var continueChoice = {
+					  id: choices.length,
+					  label: "Continue without choosing",
+					  button: "Continue without choosing",
+					};
+					//**AI code (in this case, implemented by setting and returning the preferred option)
+					if (runner.AI != null) {
+					  //first, check for cards in heap worth keeping
+					  var ctcf = runner.AI._cardsWorthKeeping(runner.heap); //cards to choose from
+					  //not enough important cards? (ignore single cwk because corp chooses)
+					  if (ctcf.length < 2) {
+						  ctcf = [];
+						  for (var i=0; i<choices.length; i++) {
+							  ctcf.push(choices[i].card);
+						  }
+					  }
+					  //if two have the same name, return those
+					  for (var i=0; i<ctcf.length-1; i++) {
+						  for (var j=i+1; j<ctcf.length; j++) {
+							  if (ctcf[i].title == ctcf[j].title) return [{ cards: [ ctcf[i], ctcf[j]] }];
+						  }
+					  }
+					  //if two share a subtype, return those
+					  for (var i=0; i<ctcf.length-1; i++) {
+						  for (var j=i+1; j<ctcf.length; j++) {
+							  if (ctcf[i].subTypes.some(item => ctcf[j].subTypes.includes(item))) return [{ cards: [ ctcf[i], ctcf[j]] }];
+						  }
+					  }
+					  //random from ctcf
+					  var cardAIdx = RandomRange(0, ctcf.length - 1);
+					  var cardA = ctcf.splice(cardAIdx,1)[0];
+					  var cardB = ctcf[RandomRange(0, ctcf.length - 1)];
+					  return [{ cards: [ cardA, cardB] }];
+					  //is there any reason not to proc Steve?
+					  return continueChoice;
+					}
+					//not AI? set up for human choice (multi-choice)
+					for (var i = 0; i < choices.length; i++) {
+					  choices[i].cards = [null, null];
+					}
+					choices.push(continueChoice); // include a button to continue without swapping
+					return choices;
+				}
+			}
+		}
+      return []; //no valid options to use this ability
+    },
+    Resolve: function (params) {
+		//if it is the first successful run on HQ then update the variable regardless of whether there were valid options to use the ability
+		if (!this.madesSuccessfulRunOnHQThisTurn) {
+			if (attackedServer==corp.HQ) {
+				this.madesSuccessfulRunOnHQThisTurn=true;
+				if (CheckActive(this)) {
+					if (typeof params.cards != 'undefined') {
+						//two were chosen, pseudophase for corp to choose one to RFG
+						var choices = ChoicesArrayCards(params.cards);
+						choices[0].otherCard = choices[1].card;
+						choices[1].otherCard = choices[0].card;
+						function decisionCallback(corpParams) {
+							RemoveFromGame(corpParams.card);
+							MoveCard(corpParams.otherCard, runner.grip);
+							Log(GetTitle(corpParams.otherCard) + " added to grip");
+						}
+						var pseudophaseTitle = "Steve Cambridge: Remove from game";
+						DecisionPhase(
+						  corp,
+						  choices,
+						  decisionCallback,
+						  pseudophaseTitle,
+						  pseudophaseTitle,
+						  this
+						);
+						//**AI code
+						if (corp.AI != null) {
+						  corp.AI._log("I know this one");
+						  //for now, just random. In theory could use corp.AI._rankedThreats or something like it
+						  //but we don't totally know what the Runner's motivations are, so random is less manipulatable
+						  var choice = choices[RandomRange(0,1)];
+						  corp.AI.preferred = { title: pseudophaseTitle, option: choice };
+						}
+					}
+				}
+			}
+		}
+    },
+    availableWhenInactive: true,
+	text: "Steve Cambridge: Choose 2 cards in heap",
   },
 };
 

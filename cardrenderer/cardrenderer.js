@@ -1158,12 +1158,17 @@ var CardRenderer = {
       }
       //if (this.card.availability != 2) this.card.ToggleZoom(); //click no longer toggles zoom, we're using hover instead
 
-      //click-to-view pile
-      if (viewingPile == null) {
+      //click-to-view pile (unless the card is in previousViewingGrid i.e. it is not currently rendered in that pile)
+	  var cardIsInViewingGrid = false;
+	  if (previousViewingGrid !== null) {
+		  if (previousViewingGrid.includes(this.card.card)) cardIsInViewingGrid = true;
+	  }
+      if ( viewingPile == null && !cardIsInViewingGrid ) {
         if (
           (this.card.card.cardLocation == corp.archives.cards) ||
           (this.card.card.cardLocation == runner.heap)
         ) {
+		  cardRenderer.storedView = previousViewingGrid; //so any existing view can restored when this is closed
           viewingPile = this.card.card.cardLocation;
           Render(); //force the visual change
         }
@@ -1649,6 +1654,7 @@ var CardRenderer = {
 
       //global click callbacks
       this.closingView = false;
+	  this.storedView = null;
       this.globalMouseIsDown = false;
       this.app.renderer.plugins.interaction.on("pointerdown", function (event) {
         this.globalMouseIsDown = true;
@@ -1662,10 +1668,14 @@ var CardRenderer = {
         pixi_mousePosition = event.data.getLocalPosition(
           cardRenderer.app.stage
         );
-        //close any viewing pile
+        //close any viewing pile and restore any viewing grid
         if (this.closingView) {
           this.closingView = false;
           viewingPile = null;
+		  if (cardRenderer.storedView) {
+			  viewingGrid = cardRenderer.storedView;
+			  cardRenderer.storedView = null; 
+		  }
           Render(); //force the visual change
         }
 
