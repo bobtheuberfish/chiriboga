@@ -867,6 +867,65 @@ cardSet[31014] = {
   },
 };
 
+cardSet[31015] = {
+  title: "Career Fair",
+  imageFile: "31015.png",
+  player: runner,
+  faction: "Criminal",
+  influence: 1,
+  cardType: "event",
+  playCost: 0,
+  //Install 1 resource from your grip, paying 3c less.
+  usingThisToInstallCard:null, //the gymnastics here are a bit strange. It's a discount, rather than changing the install cost directly.
+  Enumerate: function () {
+	//pre-simulate the discount
+	this.modifyInstallCost.availableWhenInactive=true;
+	var allInstallChoices = ChoicesHandInstall(runner);
+	this.modifyInstallCost.availableWhenInactive=false;
+	//but we want resources only
+	var choices = [];
+	for (var i=0; i<allInstallChoices.length; i++) {
+		if (CheckCardType(allInstallChoices[i].card,["resource"])) choices.push(allInstallChoices[i]);
+	}
+    return choices;
+  },
+  Resolve: function (params) {
+	this.modifyInstallCost.availableWhenInactive=true;
+	this.usingThisToInstallCard=params.card;
+	Install(params.card, params.host, false, null, true, null, this, null, function() {
+		this.modifyInstallCost.availableWhenInactive=false;
+		this.usingThisToInstallCard=null;
+	});
+  },
+  modifyInstallCost: {
+    Resolve: function (card) {
+      if (!this.usingThisToInstallCard) {
+	    //**AI code (in this case, only consider the discount for some cards)
+	    if (runner.AI != null) {
+		  //calculate cost modification from any other effects (blank this temporarily to prevent infinite recursion)
+		  var storedMICR = this.modifyInstallCost.Resolve;
+		  this.modifyInstallCost.Resolve = function(card) { return 0; };
+		  var preModifiedCost = InstallCost(card);
+		  this.modifyInstallCost.Resolve = storedMICR;
+		  //if the card would be cheap, don't bother using this to discount it
+		  if (preModifiedCost < 3) return 0; //no modification to cost
+	    }
+		if (CheckCardType(card, ["resource"]) && runner.grip.includes(card)) return -3; //3 less to install
+	  }
+	  else if (card == this.usingThisToInstallCard) {
+		  return -3; //3 less to install
+	  }
+      return 0; //no modification to cost
+    },
+    automatic: true,
+  },
+  AIPlayForInstall: function(card) {
+	  //only use it if it would provide a discount
+	  if (this.modifyInstallCost.Resolve.call(this,card) < 0) return true;
+	  return false;
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*

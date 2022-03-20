@@ -190,6 +190,8 @@ class RunnerAI {
     this.drawInstall = ["Verbal Plasticity"]; //cards which can be installed to draw cards
 	//cards which can be installed to increase maximum hand size
 	this.maxHandIncreasers = ["T400 Memory Diamond"];
+
+    this._temporaryValueModifications = []; //set during choice-making to consider hypotheticals (normal conditions restored after choosing)
   }
 
   //functions to use/gain/lose info about cards in HQ
@@ -731,13 +733,39 @@ class RunnerAI {
   _currentOverDraw() {
     return runner.grip.length - MaxHandSize(runner);
   }
+ 
+  //NEVER do this outside of _internalChoiceDetermination
+  //because the caller of that function restores the values afterwards
+  _SetTemporaryValueModification(obj,prop,val) {
+	  //store original value
+	  this._temporaryValueModifications.push({
+		obj:obj,
+		prop:prop,
+		val:obj[prop]
+	  });
+	  //make change
+	  obj[prop]=val;
+  }
+  
+  _RestoreTemporaryValueModifications() {
+	for (var i=0; i<this._temporaryValueModifications.length; i++) {
+		var obj = this._temporaryValueModifications[i].obj;
+		var prop = this._temporaryValueModifications[i].prop;
+		var val = this._temporaryValueModifications[i].val;
+		obj[prop]=val;
+	}
+	this._temporaryValueModifications = []; //clear it
+  }
 
   //returns index of choice
-  Choice(optionList, choiceType) {
+  //DO NOT call this anywhere (except the one time is called, from _computeChoice)
+  //otherwise temporarily modified values may not be restored
+  _internalChoiceDetermination(optionList, choiceType) {
     if (optionList.length < 1) {
       LogError("No valid commands available");
       return;
     }
+	
     //temporary detailed log for troublesome bugs
     /*
 console.log("AI making choice from:");
@@ -745,6 +773,7 @@ console.log(optionList);
 console.log("With identifier="+currentPhase.identifier+" and title="+currentPhase.title+" and preferred=");
 console.log(this.preferred);
 */
+	
     //some callbacks fire regardless of whether a decision needs to be made (so AI can keep track of phases)
     this._phaseCallback(optionList, choiceType);
 
@@ -782,6 +811,7 @@ console.log(this.preferred);
       if (typeof this.preferred.command !== "undefined") {
         var cmd = this.preferred.command;
         if (executingCommand == cmd) {
+		  if (typeof this.preferred.useAsCommand != 'undefined') cmd = this.preferred.useAsCommand;
           var data = [];
           if (cmd == "run") data = [{ prop: "server", key: "serverToRun" }];
           else if (cmd == "trigger")
@@ -838,6 +868,23 @@ console.log(this.preferred);
     var cardToPlay = null;
     var cardToInstall = null;
     var cardToTrigger = null;
+
+    //make hypothetical temporary modifications (these are restored after this function returns)
+	
+	//cards that could be played to install (e.g. with discount)
+	//(this is just pre-planning, does not return anything)
+	if (optionList.includes("play")) {	
+		for (var i=0; i<runner.grip.length; i++) {
+			cardToPlay = runner.grip[i];
+			if (typeof cardToPlay.AIPlayForInstall == 'function') {
+                  if (FullCheckPlay(cardToPlay)) {
+                    this._SetTemporaryValueModification(cardToPlay.modifyInstallCost,'availableWhenInactive',true);
+					if (!optionList.includes("install")) optionList.push("install");
+					break; //this means we might not be using the best card for the job but prevents crazy incorrect stacking
+                  }
+			}
+		}
+	}
 
     //consider cards-worth-keeping list (to play or to install)
     this.cardsWorthKeeping = this._cardsInHandWorthKeeping();
@@ -1724,7 +1771,7 @@ console.log(this.preferred);
 			  );
 			  if (cardToInstall) {
 				if (!this._wastefulToInstall(cardToInstall)) {
-				  this._log("there is a card I'd like to install");
+				  this._log("I'd like to install "+cardToInstall.title);
 				  var canBeInstalled = true;
 				  if (!CheckInstall(cardToInstall)) canBeInstalled = false;
 				  //this doesn't check costs
@@ -1993,12 +2040,60 @@ this._log("maybe play this...");
     return RandomRange(0, optionList.length - 1);
   }
 
-  CommandChoice(optionList) {
-    return this.Choice(optionList, "command");
+  _computeChoice(optionList, choiceType) {
+	var ret = this._internalChoiceDetermination(optionList, choiceType);
+	
+	//restore temporary set values
+	this._RestoreTemporaryValueModifications();
+	
+	return ret;
+  }
+
+  CommandChoice(inputOptionList) {
+	//make a local copy so we can add pretend options if we want
+	//note the elements are not new copies, just the container
+	var optionList = [];
+	for (var i=0; i<inputOptionList.length; i++) {
+		optionList.push(inputOptionList[i]);
+	}
+
+	var ret = this._computeChoice(optionList, "command");
+
+	//some return values we may want to replace
+
+	//cards that could be played to install (e.g. with discount)
+	if (ret == optionList.indexOf("install")) {
+		var nextPrefs = this.preferred;
+		nextPrefs.command = "continue";
+		nextPrefs.useAsCommand = "install";
+		for (var i=0; i<runner.grip.length; i++) {
+			var cardToPlay = runner.grip[i];
+			if (typeof cardToPlay.AIPlayForInstall == 'function') {
+                  if (FullCheckPlay(cardToPlay)) {
+                    if (cardToPlay.AIPlayForInstall.call(cardToPlay, this.preferred.cardToInstall)) {
+						ret = this._returnPreference(inputOptionList, "play", {
+						  cardToPlay: cardToPlay,
+						  nextPrefs: this.preferred
+						});	
+						break; //this means we might not be using the best card for the job but prevents crazy incorrect stacking
+					}
+                  }
+			}
+		}
+	}
+	
+	//if option is not in list, choose 0 and give error
+	if (ret < 0 || ret > inputOptionList.length - 1) {
+		console.log(inputOptionList);
+		console.error("Error in CommandChoice: choice "+ret+" returned for inputOptionList above");
+		ret = 0;
+	}
+		
+    return ret;
   }
 
   SelectChoice(optionList) {
-    return this.Choice(optionList, "select");
+    return this._computeChoice(optionList, "select");
   }
 
   GameEnded(winner) {}

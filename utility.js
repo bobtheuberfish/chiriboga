@@ -2636,7 +2636,7 @@ function DeckBuild(
 	  //economy
 	  var economyCards = []; //only includes cards that would fairly certainly provide credits
 	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30007, 30018, 30020, 30027, 30029, 30030, 30033]);
-	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31010, 31011]);
+	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31010, 31011, 31015]);
 	  var influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded

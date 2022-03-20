@@ -179,6 +179,7 @@ function TrashAccessedCard(canBePrevented) {
  * @param {function} [onInstallResolve] fires if the install is not cancelled
  * @param {Object} [context] for onInstallResolve (and onCancelResolve, if relevant)
  * @param {function} [onCancelResolve] fires if the install is cancelled
+ * @param {function} [onPaymentComplete] fires once the credits (if any) are paid
  * @returns {Phase} the phase object created and changed to
  */
 function Install(
@@ -189,7 +190,8 @@ function Install(
   returnToPhase = true,
   onInstallResolve,
   context,
-  onCancelResolve
+  onCancelResolve,
+  onPaymentComplete
 ) {
   var oldLocation = installingCard.cardLocation; //in case of cancel
   var oldPhase = currentPhase; //in case of cancel
@@ -321,6 +323,10 @@ function Install(
           "installing",
           installingCard,
           function () {
+			//payment done, callback fires
+			if (typeof onPaymentComplete === "function")
+			  onPaymentComplete.call(context);
+		    //move the card, write to the logs, etc
             if (installingCard.player == corp) {
               //corp cards are installed facedown
               if (installingCard.rezzed) {
