@@ -2062,10 +2062,16 @@ this._log("maybe play this...");
 	//some return values we may want to replace
 
 	//cards that could be played to install (e.g. with discount)
-	if (ret == optionList.indexOf("install")) {
-		var nextPrefs = this.preferred;
-		nextPrefs.command = "continue";
-		nextPrefs.useAsCommand = "install";
+	if (ret == optionList.indexOf("install") && this.preferred && typeof this.preferred.cardToInstall != 'undefined') {
+		//use install pref after play preference resolves
+		var nextPrefs = {
+			cardToInstall: this.preferred.cardToInstall,
+			hostToInstallTo: null,
+			command: "continue",
+			useAsCommand: "install",
+		};
+		if (typeof this.preferred.hostToInstallTo != 'undefined') nextPrefs.hostToInstallTo = this.preferred.hostToInstallTo;
+		//but only if a valid card play exists
 		for (var i=0; i<runner.grip.length; i++) {
 			var cardToPlay = runner.grip[i];
 			if (typeof cardToPlay.AIPlayForInstall == 'function') {
@@ -2073,7 +2079,7 @@ this._log("maybe play this...");
                     if (cardToPlay.AIPlayForInstall.call(cardToPlay, this.preferred.cardToInstall)) {
 						ret = this._returnPreference(inputOptionList, "play", {
 						  cardToPlay: cardToPlay,
-						  nextPrefs: this.preferred
+						  nextPrefs: nextPrefs,
 						});	
 						break; //this means we might not be using the best card for the job but prevents crazy incorrect stacking
 					}
