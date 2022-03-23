@@ -328,8 +328,6 @@ var CardRenderer = {
       this.knownSprite = new PIXI.Sprite(back.known);
       this.sprite.addChild(this.knownSprite);
       this.knownSprite.scale.x = this.knownSprite.scale.y = 2.0;
-      //this.knownSprite.anchor.set(-1.3,2);
-      this.knownSprite.anchor.set(-0.35, 1.2);
 
       //icon and text for strength, if relevant:
       this.strengthSprite = null;
@@ -933,6 +931,10 @@ var CardRenderer = {
           }
         }
         this.knownSprite.visible = showKnownSprite;
+		this.knownSprite.rotation = -this.sprite.rotation;
+        //this.knownSprite.anchor.set(-1.3,2);
+        this.knownSprite.anchor.set(-0.35, 1.2);
+	    if (Math.round(Math.abs(2*this.knownSprite.rotation/Math.PI)) == 1) this.knownSprite.anchor.set(-1, 0.6);
         //change scale as required
         var scalingratio = 0.5;
         if (this.zoomed && (this.faceUp || this.canView))
