@@ -120,7 +120,6 @@ cardSet[31003] = {
 	player: runner,
 	faction: "Anarch",
     influence: 2,
-	cardType: "event",
     subTypes: ["Sabotage"],
     cardType: "event",
     playCost: 0,
@@ -474,7 +473,7 @@ cardSet[31007] = {
 	}
     return 0; //do install
   },
-  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
 	  //extra costs of install have already been considered, so yes install it
 	  return 1; //yes
   },
@@ -648,7 +647,7 @@ cardSet[31011] = {
     if (doing == "paying trash costs") return true;
     return false;
   },
-  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
 	  //extra costs of install have already been considered, so yes install it
 	  return 1; //yes
   },
@@ -675,7 +674,7 @@ cardSet[31012] = {
 	  return 1; //increase cost by 1
     },
   },
-  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
 	  if (!server) return 0; //no server, no need
 	  //install before run if server has unrezzed ice
 	  var serverHasUnrezzedIce = false;
@@ -924,6 +923,110 @@ cardSet[31015] = {
 	  if (this.modifyInstallCost.Resolve.call(this,card) < 0) return true;
 	  return false;
   },
+};
+
+cardSet[31016] = {
+	title: 'Emergency Shutdown',
+	imageFile: "31016.png",
+	player: runner,
+	faction: "Criminal",
+    influence: 2,
+	cardType: "event",
+    subTypes: ["Sabotage"],
+    playCost: 0,
+	//Play only if you made a successful run on HQ this turn.
+	madeSuccessfulRunOnHQThisTurn: false,
+	runnerTurnBegin: {
+		Resolve: function () {
+		  this.madeSuccessfulRunOnHQThisTurn = false;
+		},
+		automatic: true,
+		availableWhenInactive: true,
+	},
+	corpTurnBegin: {
+		Resolve: function () {
+		  this.madeSuccessfulRunOnHQThisTurn = false;
+		},
+		automatic: true,
+		availableWhenInactive: true,
+	},
+	runSuccessful: {
+		Resolve: function () {
+		  if (attackedServer == corp.HQ) this.madeSuccessfulRunOnHQThisTurn = true;
+		},
+		automatic: true,
+		availableWhenInactive: true,
+	},
+	//Derez 1 installed piece of ice.
+	//Enumerate doesn't normally have parameters but AI is using this to filter
+	Enumerate: function (server) {
+		if (!this.madeSuccessfulRunOnHQThisTurn) return [];
+        var choices = ChoicesInstalledCards(corp, function (card) {
+          //rezzed ice only
+          if (card.rezzed && CheckCardType(card, ["ice"])) {
+		    //AI might want to filter a particular server
+		    if (typeof server != 'undefined') {
+			  if (GetServer(card) !== server) return false;
+		    }
+			return true;
+		  }
+          return false;
+        });
+		//**AI code (in this case, implemented by setting and returning the preferred option)
+		if (choices.length > 1 && runner.AI != null) {
+			//choose best ice to derez, based on rez cost (exclude ice with botulus, tranq, etc)
+			var bestScore = 0;
+			var bestIndex = -1;
+			for (var i = 0; i < choices.length; i++) {
+			  var iceCard = choices[i].card;
+			  var thisScore = RezCost(iceCard);
+			  if (typeof iceCard.hostedCards !== "undefined") {
+				if (iceCard.hostedCards.length > 0) continue;
+			  }
+			  //don't derez cheap ice (3 is arbitrary)
+			  if (thisScore > 3) {
+				  if (thisScore > bestScore) {
+					bestScore = thisScore;
+					bestIndex = i;
+				  }
+			  }
+			}
+			if (bestIndex > -1) return [choices[bestIndex]];
+			return [];
+		}
+	    return choices;	  
+	},
+	Resolve: function (params) {
+		Derez(params.card);
+	},	
+	//play before run if server has worthwhile targets in it
+    AIPlayBeforeRun: function(server,priority,runCreditCost,runClickCost) {
+	  if (!server) return 0; //no server, no need
+	  var choices = this.Enumerate(server); //since there is an AI, this will return [best] or []
+	  if (choices.length > 0) return 1; //yes
+	  return 0; //this run wouldn't benefit, don't install yet
+    },
+	//if not planning to run, play if there is a high enough rez cost ice
+	AIWouldPlay: function() {
+	  var choices = this.Enumerate(); //since there is an AI, this will return [best] or []
+	  if (choices.length > 0) {
+		if (RezCost(choices[0].card) > 4) return true; //arbitrary, basically just decent credit differential
+	  }
+	  return false;
+    },
+	AIGripRunPotential: function(server) {
+		if (this.madeSuccessfulRunOnHQThisTurn) return 0; //no need, already ready to use
+		if (server == corp.HQ) {
+			//temporarily pretend for enumerate purposes
+			this.madeSuccessfulRunOnHQThisTurn=true;
+			//check for targets
+			var choices = this.Enumerate();
+			//unpretend
+			this.madeSuccessfulRunOnHQThisTurn=false;
+			if (choices.length > 0) return 0.5; //arbitrary but basically there's a bonus
+		}
+		return 0; //no change to potential
+	},
 };
 
 //TODO link (e.g. Reina)

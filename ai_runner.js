@@ -92,12 +92,16 @@ class RunnerAI {
         this._installedCardExistsWithSubType("AI"))
     )
       return true;
+	if (typeof card.AIWastefulToInstall == 'function') {
+		if (card.AIWastefulToInstall.call(card)) return true;
+	}
     return false;
   }
 
   _wastefulToPlay(card) {
-    if (card.title == "Creative Commission" && runner.clickTracker == 2)
-      return true;
+	if (typeof card.AIWastefulToPlay == 'function') {
+		if (card.AIWastefulToPlay.call(card)) return true;
+	}
     return false;
   }
 
@@ -1383,6 +1387,7 @@ console.log(this.preferred);
             }
           }
         }
+		//cache server potential
         this.cachedPotentials.push({
           server: this.serverList[i].server,
           potential: this.serverList[i].potential,
@@ -1411,6 +1416,21 @@ console.log(this.preferred);
           if (typeof bestpath[bestpath.length - 1].cost !== "undefined") //end point of path has total cost
             this.serverList[i].bestcost = bestpath[bestpath.length - 1].cost;
           else this.serverList[i].bestcost = this.rc.PathCost(bestpath);
+		  
+		  //use this first run calculation for the purpose of some initial card checks
+          var endPoint =
+            this.serverList[i].bestpath[this.serverList[i].bestpath.length - 1];
+          var runCreditCost = endPoint.runner_credits_spent + endPoint.runner_credits_lost;
+          var runClickCost = endPoint.runner_clicks_spent;
+		  
+		  //some cards have code to modify potential (if there will be a click left after the run)
+		  if (runClickCost < runner.clickTracker - 1) {
+			for (var j=0; j<runner.grip.length; j++) {
+				if (typeof runner.grip[j].AIGripRunPotential == 'function') {
+					this.serverList[i].potential += runner.grip[j].AIGripRunPotential.call(runner.grip[j], server);
+				}
+			}
+		  }
         }
       }
 
@@ -1571,48 +1591,80 @@ console.log(this.preferred);
         var runCreditCost = endPoint.runner_credits_spent + endPoint.runner_credits_lost;
         var runClickCost = endPoint.runner_clicks_spent;
 
-        //maybe install something first? (as long as can still complete the run after using the click to install)
+        //maybe install or play something first? (as long as can still complete the run after using the click)
 		//we are ignoring the lost card (i.e. lower max damage) for now
-		//the potential check is balance that short term gains may be more worth it than setup
-        if (this.serverList[0].potential < 2 && optionList.includes("install") && runClickCost < runner.clickTracker - 1) {
-		  cardToInstall = null;
-		  var ibrHighestPriority = 0;
-		  //loop through cards in hand and check installables that have AIInstallBeforeRun defined and high enough priority returned
-		  //AIInstallBeforeRun returns 0 for "don't", > 0 for "do" with higher return value meaning higher priority
-		  for (var i=0; i<runner.grip.length; i++) {
-			var ibrCard = runner.grip[i];
-			if (typeof ibrCard.AIInstallBeforeRun == "function") {
-			  if (CheckInstall(ibrCard)) {
-				var ibrPriority = ibrCard.AIInstallBeforeRun.call(ibrCard,this.serverList[0].server,runCreditCost,runClickCost);
-				if (ibrPriority > ibrHighestPriority) {
-				  if (!this._wastefulToInstall(ibrCard)) {
-					  if (runCreditCost < AvailableCredits(runner) - InstallCost(ibrCard)) {
-						  var ibrChoices = ChoicesCardInstall(ibrCard);
-						  if (ibrChoices.length > 0) {
-							  var ibrIsValidPlay = false;
-							  if (typeof ibrCard.AIPreferredInstallChoice == "undefined") ibrIsValidPlay = true;
-							  else if (ibrCard.AIPreferredInstallChoice.call(ibrCard,ibrChoices) > -1) ibrIsValidPlay = true;
-							  if (ibrIsValidPlay) {
-								cardToInstall = ibrCard;
-								ibrHighestPriority = ibrPriority;
+        if (runClickCost < runner.clickTracker - 1) {
+			
+			var brHighestPriority = 0;
+			if (optionList.includes("install")) {
+			  cardToInstall = null;
+			  //loop through cards in hand and check installables that have AIInstallBeforeRun defined and high enough priority returned
+			  //AIInstallBeforeRun returns 0 for "don't", > 0 for "do" with higher return value meaning higher priority
+			  for (var i=0; i<runner.grip.length; i++) {
+				var ibrCard = runner.grip[i];
+				if (typeof ibrCard.AIInstallBeforeRun == "function") {
+				  if (CheckInstall(ibrCard)) {
+					var ibrPriority = ibrCard.AIInstallBeforeRun.call(ibrCard,this.serverList[0].server,this.serverList[0].potential,runCreditCost,runClickCost);
+					if (ibrPriority > brHighestPriority) {
+					  if (!this._wastefulToInstall(ibrCard)) {
+						  if (runCreditCost < AvailableCredits(runner) - InstallCost(ibrCard)) {
+							  var ibrChoices = ChoicesCardInstall(ibrCard);
+							  if (ibrChoices.length > 0) {
+								  var ibrIsValidInstall = false;
+								  if (typeof ibrCard.AIPreferredInstallChoice == "undefined") ibrIsValidInstall = true;
+								  else if (ibrCard.AIPreferredInstallChoice.call(ibrCard,ibrChoices) > -1) ibrIsValidInstall = true;
+								  if (ibrIsValidInstall) {
+									cardToInstall = ibrCard;
+									brHighestPriority = ibrPriority;
+								  }
 							  }
+							  
 						  }
-						  
 					  }
+					}
 				  }
 				}
 			  }
+			  //card found to install before run (and all checks passed above), install it
+			  if (cardToInstall) {
+				this._log("I should install "+cardToInstall.title+" before running");
+				return this._returnPreference(optionList, "install", {
+				  cardToInstall: cardToInstall,
+				  hostToInstallTo: null,
+				}); //assumes unhosted cards for now
+			  }
 			}
-		  }
-		  //card found to install before run (and all checks passed above), install it
-		  if (cardToInstall) {
-			this._log("I should install "+cardToInstall.title+" before running");
-			return this._returnPreference(optionList, "install", {
-			  cardToInstall: cardToInstall,
-			  hostToInstallTo: null,
-			}); //assumes unhosted cards for now
-		  }
-        }
+			
+			if (optionList.includes("play")) {
+			  cardToPlay = null;
+			  //loop through cards in hand and check playables that have AIPlayBeforeRun defined and high enough priority returned
+			  //AIPlayBeforeRun returns 0 for "don't", > 0 for "do" with higher return value meaning higher priority
+			  for (var i=0; i<runner.grip.length; i++) {
+				var pbrCard = runner.grip[i];
+				if (typeof pbrCard.AIPlayBeforeRun == "function") {
+                  if (FullCheckPlay(pbrCard)) {
+					var pbrPriority = pbrCard.AIPlayBeforeRun.call(pbrCard,this.serverList[0].server,this.serverList[0].potential,runCreditCost,runClickCost);
+					if (pbrPriority > brHighestPriority) {
+					  if (!this._wastefulToPlay(pbrCard)) {
+						  //should probably use PlayCost here but it isn't implemented yet
+						  if (runCreditCost < AvailableCredits(runner) - pbrCard.playCost) {
+							cardToPlay = pbrCard;
+							brHighestPriority = pbrPriority;
+						  }
+					  }
+					}
+				  }
+				}
+			  }
+			  //card found to play before run (and all checks passed above), play it
+			  if (cardToPlay) {
+				this._log("I should play "+cardToPlay.title+" before running");
+                return this._returnPreference(optionList, "play", {
+                    cardToPlay: cardToPlay,
+                });
+			  }
+			}
+		}
 
         //maybe run by playing a run event?
         if (optionList.includes("play")) {
@@ -1978,22 +2030,8 @@ console.log(this.preferred);
     if (this.cardsWorthKeeping.length < 1) {
       for (var i = 0; i < runner.grip.length; i++) {
         var card = runner.grip[i];
-        if (card.cardType == "event") {
-          //i.e. play
-          /* commented out - don't just play random events
-				if (optionList.includes("play"))
-				{
-					var playThis = true; //if no specific rules have been defined then just play it whenever you can
-					if (typeof(card.AIWouldPlay) == 'function') playThis = card.AIWouldPlay.call(card);
-					if (playThis&&FullCheckPlay(card)&&(!this._wastefulToPlay(card)))
-					{
-this._log("maybe play this...");
-						return this._returnPreference(optionList, "play", { cardToPlay:card });
-					}
-				}
-				*/
-        } //non-event (i.e. install)
-        else {
+        if (card.cardType !== "event") {
+		  //non-event (i.e. install)
           if (
             optionList.includes("install") &&
             !this._wastefulToInstall(card)
@@ -2013,6 +2051,21 @@ this._log("maybe play this...");
               }
             }
           }
+        } 
+        else {
+            //event (i.e. play)
+			if (optionList.includes("play"))
+			{
+				//don't just play things randomly, only if there is a specifically defined reason
+				if (typeof(card.AIWouldPlay) == 'function') {
+					var playThis = card.AIWouldPlay.call(card);
+					if (playThis&&FullCheckPlay(card)&&(!this._wastefulToPlay(card)))
+					{
+						this._log("maybe play "+card.title);
+						return this._returnPreference(optionList, "play", { cardToPlay:card });
+					}
+				}
+			}
         }
       }
     }

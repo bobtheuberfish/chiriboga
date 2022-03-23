@@ -647,7 +647,7 @@ cardSet[30008] = {
 	*/
   },
   //install before run if the server is central
-  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
 	  if (typeof server.cards !== "undefined") return 1; //yes
 	  return 0; //no
   },
@@ -694,12 +694,12 @@ cardSet[30009] = {
     },
   },
   //require two clicks spare for run, require virus card in hand with AIInstallBeforeRun > 0, and enough spare credits to still run after installing both
-  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
 	  if (runClickCost < runner.clickTracker - 2) {
 		  for (var i=0; i<runner.grip.length; i++) {
 			  if (CheckSubType(runner.grip[i],"Virus")) {
 				if (typeof runner.grip[i].AIInstallBeforeRun == "function") {
-					var virusIBRPriority = runner.grip[i].AIInstallBeforeRun.call(runner.grip[i],server,runCreditCost,runClickCost);
+					var virusIBRPriority = runner.grip[i].AIInstallBeforeRun.call(runner.grip[i],server,priority,runCreditCost,runClickCost);
 					if (virusIBRPriority > 0) {
 						if ( runCreditCost < AvailableCredits(runner) - InstallCost(this) - InstallCost(runner.grip[i]) ) {
 							return virusIBRPriority + 1; //yes, at higher priority than that virus card
@@ -979,7 +979,7 @@ cardSet[30013] = {
     availableWhenInactive: true,
   },
   //install before run if the server is HQ and Docklands is in worthkeeping
-  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
 	if (server == corp.HQ) {
 		if (runner.AI.cardsWorthKeeping.includes(this)) return 1; //yes
 	}
@@ -1414,7 +1414,7 @@ cardSet[30018] = {
     },
   ],
   //install before run if this server is central and hasn't been run this turn
-  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
 	  if (typeof server.cards !== "undefined") {
 		var alreadyRunThisTurn = false;
 		if (server == corp.HQ)
@@ -1566,9 +1566,15 @@ cardSet[30020] = {
     LoseClicks(runner, 1);
   },
   AIWorthKeeping: function (installedRunnerCards, spareMU) {
-	  //keep if need money
-	  if (Credits(runner) < 5) return true;
-	  return false;
+	//keep if need money
+	if (Credits(runner) < 5) return true;
+	return false;
+  },
+  AIWastefulToPlay: function () {
+    if (runner.clickTracker == 2) {
+		return true;
+	}
+	return false;  
   },
 };
 cardSet[30021] = {
@@ -1811,23 +1817,24 @@ cardSet[30024] = {
     },
   ],
   //install before run if the server is R&D and Conduit is in worthkeeping
-  AIInstallBeforeRun: function(server,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
 	if (server == corp.RnD) {
 		if (runner.AI.cardsWorthKeeping.includes(this)) return 1; //yes
 	}
 	return 0; //no
   },
   AIWorthKeeping: function (installedRunnerCards, spareMU) {
-	  //keep if there is not already a Conduit installed and a run into R&D is possible
-	  var alreadyConduit = false;
+	  //keep if not wasteful (i.e. there is not already a Conduit installed) and a run into R&D is possible
+	  if (!this.AIWastefulToInstall()) {
+		if (runner.AI._getCachedCost(corp.RnD) != Infinity) return true;
+	  }
+	  return false;
+  },
+  AIWastefulToInstall: function() {
 	  for (var j = 0; j < runner.rig.programs.length; j++) {
 		if (runner.rig.programs[j].title == "Conduit") {
-		  alreadyConduit = true;
-		  break;
+		  return true; //already a Conduit installed
 		}
-	  }
-	  if (!alreadyConduit) {
-		if (runner.AI._getCachedCost(corp.RnD) != Infinity) return true;
 	  }
 	  return false;
   },
