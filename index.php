@@ -8,7 +8,7 @@
 		include 'cardrenderer/webfont.php';
 		$dev = true; //set false for release
 		if ($dev) {
-			echo '<script>var runner={}; var corp={}; var cardSet=[];</script>';
+			echo '<script>var runner={}; var corp={}; var cardSet=[]; var setIdentifiers = [];</script>';
 			echo '<script src="sets/systemupdate2021.js?' . filemtime('sets/systemupdate2021.js') . '"></script>';
 		}
 		?>

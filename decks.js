@@ -575,7 +575,12 @@ function LoadDecks() {
   }
 
   var deckJson = {};
-  var setsToUse = ["sg","su21"]; //for random deckbuilding
+  var setStr = "";
+  if (URIParameter("sets") !== "") setStr = "sets="+URIParameter("sets")+"&";
+  $("#randomdeck").attr(
+    "onclick",
+    "window.location.href='decklauncher.php?"+setStr+(viewingPlayer==runner?"r":"c")+"=random';"
+  );
 
   //*RUNNER*
   //LOAD Runner deck, if specified (as an LZ compressed JSON object containing .identity= and .cards=[], with cards specified by number in the set)
@@ -613,8 +618,13 @@ function LoadDecks() {
   //RUNNER RANDOM System Gateway Deck
   if (runner.stack.length == 0) {
     var runnerIdentities = [];
-	if (setsToUse.includes('sg')) runnerIdentities = runnerIdentities.concat([30001, 30010, 30019]);
-	if (setsToUse.includes('su21')) runnerIdentities = runnerIdentities.concat([31001, 31002, 31013, 31014]);  //also in utility.js (TODO move to shared function)
+	for (var i=0; i<cardSet.length; i++) {
+		if (typeof cardSet[i] != 'undefined' &&  typeof cardSet[i].faction != 'undefined') {
+			if (cardSet[i].cardType == 'identity') {
+				if (cardSet[i].player == runner) runnerIdentities.push(i);
+			}
+		}
+	}
     deckJson.identity =
       runnerIdentities[RandomRange(0, runnerIdentities.length - 1)];
     runner.identityCard = InstanceCard(
@@ -625,7 +635,6 @@ function LoadDecks() {
     ); //note that card.location is not set for identity cards
     deckJson.cards = DeckBuild(
 	  runner.identityCard,
-	  setsToUse,
 	  runner.stack,
       cardBackTexturesRunner,
       glowTextures,
@@ -639,7 +648,7 @@ function LoadDecks() {
     );
     $("#editdeck").attr(
       "onclick",
-      "window.location.href='decklauncher.php?r=" + compressedDeckString + "';"
+      "window.location.href='decklauncher.php?"+setStr+"r=" + compressedDeckString + "';"
     );
   }
   PrintDeck(runner.identityCard, runner.stack);
@@ -681,8 +690,13 @@ function LoadDecks() {
   //CORP RANDOM System Gateway Deck
   if (corp.RnD.cards.length == 0) {
     var corpIdentities = [];
-	if (setsToUse.includes('sg')) corpIdentities = corpIdentities.concat([30035, 30043, 30051, 30059]);
-	if (setsToUse.includes('su21')) corpIdentities = corpIdentities.concat([]);
+	for (var i=0; i<cardSet.length; i++) {
+		if (typeof cardSet[i] != 'undefined' &&  typeof cardSet[i].faction != 'undefined') {
+			if (cardSet[i].cardType == 'identity') {
+				if (cardSet[i].player == corp) corpIdentities.push(i);
+			}
+		}
+	}
     deckJson.identity =
       corpIdentities[RandomRange(0, corpIdentities.length - 1)];
     corp.identityCard = InstanceCard(
@@ -693,7 +707,6 @@ function LoadDecks() {
     ); //note that card.location is not set for identity cards
     deckJson.cards = DeckBuild(
 	  corp.identityCard,
-	  setsToUse,
 	  corp.RnD.cards,
       cardBackTexturesCorp,
       glowTextures,
@@ -707,7 +720,7 @@ function LoadDecks() {
     );
     $("#editdeck").attr(
       "onclick",
-      "window.location.href='decklauncher.php?c=" + compressedDeckString + "';"
+      "window.location.href='decklauncher.php?"+setStr+"c=" + compressedDeckString + "';"
     );
   }
   PrintDeck(corp.identityCard, corp.RnD.cards);

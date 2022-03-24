@@ -1,4 +1,5 @@
 //CARD DEFINITIONS FOR SYSTEM GATEWAY
+setIdentifiers.push('sg');
 cardSet[30001] = {
   title: 'René "Loup" Arcemont: Party Animal',
   imageFile: "30001.png",

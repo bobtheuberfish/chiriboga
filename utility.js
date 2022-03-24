@@ -2550,13 +2550,11 @@ function DeckBuildRandomAgendas(
  *
  * @method DeckBuild
  * @param {Card} identityCard identity card to base deckbuilding around
- * @param {string[]} setIdentifiers array of sets to use cards from e.g. sg, su21
  * @param {Card[]} destination array to push the Card instances into
  * @returns {int[]} set id of each card instanced
  */
 function DeckBuild(
   identityCard,
-  setIdentifiers,
   destination,
   cardBack,
   glowTextures,

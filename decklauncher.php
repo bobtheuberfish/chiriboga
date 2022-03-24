@@ -18,11 +18,19 @@
 			var runner = {};
 			var corp = {};
 			var cardSet = []; //prepare to receive card definitions
+			var setIdentifiers = []; //set identifiers
 		</script>
 		<?php
 		echo '<script src="utility.js?' . filemtime('utility.js') . '"></script>';
-		echo '<script src="sets/systemgateway.js?' . filemtime('sets/systemgateway.js') . '"></script>';
-		echo '<script src="sets/systemupdate2021.js?' . filemtime('sets/systemupdate2021.js') . '"></script>';
+		
+		$sets = ["systemgateway","systemupdate2021"];
+		if (isset($_GET['sets'])) {
+			$sets = explode("-",preg_replace( "/[^a-zA-Z0-9-]/", "", $_GET['sets'] )); 
+		}
+		foreach ($sets as $set) {
+			echo '<script src="sets/'.$set.'.js?' . filemtime('sets/'.$set.'.js') . '"></script>';
+		}
+		
 		?>
 		<script>
 			var json = {};
@@ -34,21 +42,28 @@
 			if (deckPlayer == corp) dC = "c";
 			//deckchar is c for corp
 			else dC = "r"; //deckchar is r for runner
+			var setStr = "";
+			if (URIParameter("sets") !== "") setStr = "sets="+URIParameter("sets")+"&";
 
 			var playerIdentities = [];
-			if (deckPlayer == runner) playerIdentities = [30001, 30010, 30019, 31001, 31002, 31013, 31014]; //also in decks.js (TODO move to shared function)
-			else playerIdentities = [30035, 30043, 30051, 30059];
+			for (var i=0; i<cardSet.length; i++) {
+				if (typeof cardSet[i] != 'undefined' &&  typeof cardSet[i].faction != 'undefined') {
+					if (cardSet[i].cardType == 'identity') {
+						if (deckPlayer == cardSet[i].player) playerIdentities.push(i);
+					}
+				}
+			}
 
 			function UpdateLaunchStrings() {
 			  //console.log(json);
 			  var string = JSON.stringify(json);
 			  var compressed = LZString.compressToEncodedURIComponent(string);
-			  var launchAddress = "engine.php?" + dC + "=" + compressed;
+			  var launchAddress = "engine.php?" + setStr + dC + "=" + compressed;
 			  $("#launch").prop("href", launchAddress);
 			  history.replaceState(
 				null,
 				"Chiriboga",
-				"decklauncher.php?" + dC + "=" + compressed
+				"decklauncher.php?" + setStr + dC + "=" + compressed
 			  );
 			}
 
@@ -137,7 +152,7 @@
 				}
 			  } //create a random deck for this identity
 			  else {
-				var cardsChosen = DeckBuild(cardSet[json.identity],["sg","su21"]);
+				var cardsChosen = DeckBuild(cardSet[json.identity]);
 				//convert generated deck into counts
 				for (var i = 0; i < cardsChosen.length; i++) {
 				  var pci = playerCards.indexOf(cardsChosen[i]);

@@ -1,4 +1,5 @@
 //CARD DEFINITIONS FOR SYSTEM UPDATE 2021
+setIdentifiers.push('su21');
 cardSet[31001] = {
   title: 'Quetzal: Free Spirit',
   imageFile: "31001.png",
