@@ -1594,7 +1594,6 @@ console.log(this.preferred);
         //maybe install or play something first? (as long as can still complete the run after using the click)
 		//we are ignoring the lost card (i.e. lower max damage) for now
         if (runClickCost < runner.clickTracker - 1) {
-			
 			var brHighestPriority = 0;
 			if (optionList.includes("install")) {
 			  cardToInstall = null;
@@ -1634,7 +1633,6 @@ console.log(this.preferred);
 				}); //assumes unhosted cards for now
 			  }
 			}
-			
 			if (optionList.includes("play")) {
 			  cardToPlay = null;
 			  //loop through cards in hand and check playables that have AIPlayBeforeRun defined and high enough priority returned
@@ -1798,8 +1796,10 @@ console.log(this.preferred);
             });
         }
 
+		var serverToRun = this.serverList[0].server;
+		this.serverList = []; //clear the list (no server is best to run mid-run)
         return this._returnPreference(optionList, "run", {
-          serverToRun: this.serverList[0].server,
+          serverToRun: serverToRun,
         });
       }
     }

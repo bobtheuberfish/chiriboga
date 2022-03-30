@@ -1030,6 +1030,107 @@ cardSet[31016] = {
 	},
 };
 
+cardSet[31017] = {
+	title: 'Forged Activation Orders',
+	imageFile: "31017.png",
+	player: runner,
+	faction: "Criminal",
+    influence: 2,
+	cardType: "event",
+    subTypes: ["Sabotage"],
+    playCost: 1,
+	//Choose 1 unrezzed piece of ice.
+	//Enumerate doesn't normally have parameters but AI is using this to filter
+	Enumerate: function (server) {
+        var choices = ChoicesInstalledCards(corp, function (card) {
+          //unrezzed ice only
+          if (!card.rezzed && CheckCardType(card, ["ice"])) {
+		    //AI might want to filter a particular server
+		    if (typeof server != 'undefined') {
+			  if (GetServer(card) !== server) return false;
+		    }
+			else if (runner.AI != null && runner.AI.serverList.length > 0) {
+			  if (GetServer(card) !== runner.AI.serverList[0].server) return false;
+			}
+			return true;
+		  }
+          return false;
+        });
+	    return choices;	  
+	},
+	Resolve: function (params) {
+		var thatice = params.card;
+		var thatrezcost = RezCost(thatice);
+		//The Corp may rez that ice. If they do not, they trash it.
+		var choices = [];
+		//don't include rez option if can't afford
+        if (CheckCredits(thatrezcost, corp, "rezzing", thatice)) {
+			choices.push({
+			  id: 0,
+			  label: "Rez "+thatice.title,
+			  card: thatice
+			});
+		}
+		choices.push({
+		  id: 1,
+		  label: "Continue (trash "+thatice.title+")",
+		  button: "Continue (trash "+thatice.title+")",
+		});
+		function decisionCallback(params) {
+		  if (params.id == 0) {
+			  SpendCredits(
+				corp,
+				thatrezcost,
+				"rezzing",
+				thatice,
+				function () {
+				  Rez(thatice);
+				},
+				this
+			  );
+		  } else {
+			Trash(thatice);
+		  }
+		}
+		DecisionPhase(
+		  corp,
+		  choices,
+		  decisionCallback,
+		  "Forged Activation Orders",
+		  "Forged Activation Orders",
+		  this
+		);
+		//**AI code
+		if (corp.AI != null) {
+		  corp.AI._log("I know this one");
+		  var choice = choices[0];
+		  if (choices.length > 0) {
+			  //current code doesn't really consider the cost of it being trashed (rather than just staying unrezzed), test and tweak
+			  if (!corp.AI._iceWorthRezzing(thatice)) {
+				choice = choices[1]; //could rez but won't
+			  }
+		  }
+		  corp.AI.preferred = { title: "Forged Activation Orders", option: choice };
+		}
+	},	
+	//play before run if server has worthwhile targets in it
+    AIPlayBeforeRun: function(server,priority,runCreditCost,runClickCost) {
+	  if (!server) return 0; //no server, no need
+	  var choices = this.Enumerate(server); //since there is an AI, this will return only worthwhile choices
+	  if (choices.length > 0) return 1; //yes
+	  return 0; //this run wouldn't benefit, don't play
+    },
+	AIWouldPlay: function() {
+		//play if the corp probably can't afford it i.e. RezCost - rezCost > corp.creditPool - 1 (this isn't cheating because we only check the bonus cost, assumes cost is 1)
+		//will be sad if it turns out to be Pop=up Window though!
+		var choices = this.Enumerate();
+		if (choices.length > 0) {
+			if (RezCost(choices[0].card) - choices[0].card.rezCost > corp.creditPool - 1) return true;
+		}
+		return false;
+	},
+};
+
 //TODO link (e.g. Reina)
 
 /*

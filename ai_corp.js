@@ -1191,6 +1191,97 @@ class CorpAI {
 	  return false;
   }
 
+  //returns true to rez, false not to
+  //passing the rez cost is an optimisation
+  _iceWorthRezzing(card, currentRezCost) {
+	  var rezIce = true;
+	  var server = GetServer(card);
+	  if (typeof currentRezCost == 'undefined') {
+		  currentRezCost = RezCost(card);
+	  }
+	  //make sure there isn't better ice this will prevent us from rezzing
+	  var thisServerValue = this._serverValue(server);
+	  var thisIceProtectionValue = this._cardProtectionValue(card);
+	  var serversToCompare = [];
+	  if (corp.archives !== server) serversToCompare.push(corp.archives);
+	  if (corp.RnD !== server) serversToCompare.push(corp.RnD);
+	  if (corp.HQ !== server) serversToCompare.push(corp.HQ);
+	  for (var i=0; i<corp.remoteServers.length; i++) {
+		if (corp.remoteServers[i] !== server) {
+			serversToCompare.push(corp.remoteServers[i]);
+		}
+	  }
+	  for (var i=0; i<serversToCompare.length; i++) {
+		  var serverToCompare = serversToCompare[i];
+		  var comparisonValue = this._serverValue(serverToCompare);
+		  for (var j=0; j<serverToCompare.ice.length; j++) {
+			if (!serverToCompare.ice[j].rezzed) {
+				if (!CheckCredits(currentRezCost+RezCost(serverToCompare.ice[j]), corp, "rezzing")) {
+					if ( (comparisonValue > thisServerValue) ||
+						 ((comparisonValue == thisServerValue) && (this._cardProtectionValue(serverToCompare.ice[j]) > thisIceProtectionValue)) ) {
+					  this._log("Rez cost not worth it, need to save it for "+serverToCompare.ice[j].title+" in "+ServerName(serverToCompare));
+					  rezIce = false;
+					}
+					else this._log("Rez this is better than "+serverToCompare.ice[j].title+" in "+ServerName(serverToCompare));
+				}
+			}
+		  }
+	  }
+	  //also consider if there is a defensive upgrade worth rezzing in this server instead
+	  for (var i=0; i<server.root.length; i++) {
+		if (typeof(server.root[i].AIDefensiveValue) !== 'undefined') {
+		  if (!server.root[i].rezzed) {
+			if (!CheckCredits(currentRezCost+RezCost(server.root[i]), corp, "rezzing")) {
+			  if (this._cardProtectionValue(server.root[i]) > thisIceProtectionValue) {
+				this._log("Rez cost not worth it, need to save it for "+server.root[i].title+" in this server");
+				rezIce = false;
+			  }
+			  else this._log("Rez this is better than "+server.root[i].title+" in this server");
+			}
+		  }
+		}
+	  }	  
+	  //if a card is hosted (e.g. Tranquilizer) only rez if super rich (the *5 is arbitrary, observe and tweak)
+	  //unless breaching could mean game loss
+	  if (!this._runnerMayWinIfServerBreached(server)) {
+		  if ( (typeof(card.hostedCards) !== 'undefined') && (card.hostedCards.length > 0) && (Credits(corp) < currentRezCost*5) ) {
+			  rezIce = false;
+		  }
+	  }	  
+	  //there may be other reasons to leave this ice unrezzed (e.g. allow into an ambush)
+	  if (this._iceToLeaveUnrezzed(server) == card) {
+		  rezIce = false;
+	  }
+	  //special exceptions:
+	  if (GetTitle(card) == "Cell Portal") {
+		//only rez cell portal if it is behind at least one rezzed ice
+		rezIce = false;
+		for (var i = approachIce + 1; i < server.ice.length; i++) {
+		  if (server.ice[i].rezzed)
+			rezIce = true;
+		}
+	  }
+	  if (GetTitle(card, true) == "Chum") {
+		//only rez chum if it is in front of at least one ice (either rezzed or we can afford its rez cost as well as chum)
+		//(in general the chum AI isn't well done...for example might play this ice as the first in the server...)
+		rezIce = false;
+		for (var i = approachIce - 1; i > -1; i--) {
+		  var iceBehind = server.ice[i];
+		  if (
+			iceBehind.rezzed ||
+			CheckCredits(
+			  currentRezCost + RezCost(iceBehind),
+			  corp,
+			  "rezzing",
+			  iceBehind
+			)
+		  )
+			rezIce = true;
+		}
+	  }
+	  return rezIce;
+  }
+
   Phase_Approaching(optionList) {
     //if there is something that can be rezzed...only bother if the server isn't empty
     if (
@@ -1204,91 +1295,7 @@ class CorpAI {
         var currentRezCost = RezCost(card); //...so we check that here
         if (CheckCredits(currentRezCost, corp, "rezzing", card)) {
           //so we've checked and the ice can be rezzed. but should we?
-          var rezIce = true;
-		  //make sure there isn't better ice this will prevent us from rezzing
-		  var thisServerValue = this._serverValue(attackedServer);
-		  var thisIceProtectionValue = this._cardProtectionValue(card);
-		  var serversToCompare = [];
-		  if (corp.archives !== attackedServer) serversToCompare.push(corp.archives);
-		  if (corp.RnD !== attackedServer) serversToCompare.push(corp.RnD);
-		  if (corp.HQ !== attackedServer) serversToCompare.push(corp.HQ);
-		  for (var i=0; i<corp.remoteServers.length; i++) {
-			if (corp.remoteServers[i] !== attackedServer) {
-				serversToCompare.push(corp.remoteServers[i]);
-			}
-		  }
-		  for (var i=0; i<serversToCompare.length; i++) {
-			  var serverToCompare = serversToCompare[i];
-			  var comparisonValue = this._serverValue(serverToCompare);
-			  for (var j=0; j<serverToCompare.ice.length; j++) {
-				if (!serverToCompare.ice[j].rezzed) {
-					if (!CheckCredits(currentRezCost+RezCost(serverToCompare.ice[j]), corp, "rezzing")) {
-						if ( (comparisonValue > thisServerValue) ||
-						     ((comparisonValue == thisServerValue) && (this._cardProtectionValue(serverToCompare.ice[j]) > thisIceProtectionValue)) ) {
-						  this._log("Rez cost not worth it, need to save it for "+serverToCompare.ice[j].title+" in "+ServerName(serverToCompare));
-						  rezIce = false;
-						}
-						else this._log("Rez this is better than "+serverToCompare.ice[j].title+" in "+ServerName(serverToCompare));
-					}
-				}
-			  }
-		  }
-		  //also consider if there is a defensive upgrade worth rezzing in this server instead
-		  for (var i=0; i<attackedServer.root.length; i++) {
-			if (typeof(attackedServer.root[i].AIDefensiveValue) !== 'undefined') {
-  			  if (!attackedServer.root[i].rezzed) {
-				if (!CheckCredits(currentRezCost+RezCost(attackedServer.root[i]), corp, "rezzing")) {
-			      if (this._cardProtectionValue(attackedServer.root[i]) > thisIceProtectionValue) {
-				    this._log("Rez cost not worth it, need to save it for "+attackedServer.root[i].title+" in this server");
-				    rezIce = false;
-			      }
-			      else this._log("Rez this is better than "+attackedServer.root[i].title+" in this server");
-				}
-			  }
-			}
-		  }
-		  
-		  
-		  
-		  //if a card is hosted (e.g. Tranquilizer) only rez if super rich (the *5 is arbitrary, observe and tweak)
-		  //unless breaching could mean game loss
-		  if (!this._runnerMayWinIfServerBreached(attackedServer)) {
-			  if ( (typeof(card.hostedCards) !== 'undefined') && (card.hostedCards.length > 0) && (Credits(corp) < currentRezCost*5) ) {
-				  rezIce = false;
-			  }
-		  }
-		  
-		  //there may be other reasons to leave this ice unrezzed (e.g. allow into an ambush)
-		  if (this._iceToLeaveUnrezzed(attackedServer) == card) {
-			  rezIce = false;
-		  }
-		  
-          //special exceptions:
-          if (GetTitle(card) == "Cell Portal") {
-            //only rez cell portal if it is behind at least one rezzed ice
-            for (var i = approachIce + 1; i < attackedServer.ice.length; i++) {
-              if (attackedServer.ice[i].rezzed)
-                return optionList.indexOf("rez");
-            }
-          }
-          if (GetTitle(card, true) == "Chum") {
-            //only rez chum if it is in front of at least one ice (either rezzed or we can afford its rez cost as well as chum)
-            //(in general the chum AI isn't well done...for example might play this ice as the first in the server...)
-            for (var i = approachIce - 1; i > -1; i--) {
-              var iceBehind = attackedServer.ice[i];
-              if (
-                iceBehind.rezzed ||
-                CheckCredits(
-                  currentRezCost + RezCost(iceBehind),
-                  corp,
-                  "rezzing",
-                  iceBehind
-                )
-              )
-                return optionList.indexOf("rez");
-            }
-          }
-          if (rezIce) {
+          if (this._iceWorthRezzing(card, currentRezCost)) {
             this._log("I will rez the approached ice");
             return this._returnPreference(optionList, "rez", {
               cardToRez: card,
