@@ -159,6 +159,8 @@ function DownloadCapturedLog() {
 	  }
 	  extraOutput += "//"+currentPhase.title+"\n";
   }
+  var verdate = new Date(versionReference * 1000);
+  extraOutput += "\nVersion reference: "+verdate.toString();
   
   //send extra output and log
   var logOutput = capturedLog.concat(extraOutput);
@@ -2047,7 +2049,7 @@ function ChoicesAbility(card, limitTo = "") {
  *
  * @method FullCheckPlay
  * @param {Card} card to full check play
- * @returns {Boolean} true if can play, false if not
+ * @returns {Choice[]} list of choices if can play, null if can not play
  */
 function FullCheckPlay(card) {
   if (card == null) return false;
@@ -2056,12 +2058,12 @@ function FullCheckPlay(card) {
       if (CheckCredits(card.playCost, card.player, "playing", card)) {
         if (typeof card.Enumerate !== "undefined") {
           var choices = card.Enumerate.call(card);
-          if (choices.length > 0) return true; //valid by Enumerate
-        } else return true; //no Enumerate, assumed valid
+          if (choices.length > 0) return choices; //valid by Enumerate
+        } else return [{}]; //no Enumerate, assumed valid
       }
     }
   }
-  return false;
+  return null;
 }
 
 /**

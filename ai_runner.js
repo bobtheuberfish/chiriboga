@@ -98,9 +98,16 @@ class RunnerAI {
     return false;
   }
 
-  _wastefulToPlay(card) {
+  //accepts choices, if you want to check AIPreferredPlayChoice as well
+  _wastefulToPlay(card,choices) {
 	if (typeof card.AIWastefulToPlay == 'function') {
 		if (card.AIWastefulToPlay.call(card)) return true;
+	}
+	if (choices) {
+		if (typeof card.AIPreferredPlayChoice == 'function') {
+			//AIPreferredPlayChoice returns -1 if preference is to not play it
+			if (card.AIPreferredPlayChoice.call(card, choices) < 0) return true;
+		}
 	}
     return false;
   }
@@ -125,7 +132,7 @@ class RunnerAI {
   }
 
   //get cached potential or zero
-  _getCachedPotential(server, allowRecalculate = true) {
+  _getCachedPotential(server) {
     var result = 0;
     for (var i = 0; i < this.cachedPotentials.length; i++) {
       if (this.cachedPotentials[i].server == server)
@@ -437,7 +444,7 @@ class RunnerAI {
 	var otherCredits = AvailableCredits(runner) - runner.creditPool + otherCreditOffset; //sources other than credit pool
     var damageLimit = runner.grip.length + damageOffset; //(this gets updated during the run calculation if clicks is used up)
     //this works because potentials are calculated before costs in (optionList.includes("run")). Note the false here prevents an infinite loop
-    if (this._getCachedPotential(server, false) < 2.0)
+    if (this._getCachedPotential(server) < 2.0)
       damageLimit -= this.cardsWorthKeeping.length; //the 2.0 is arbitrary but basically don't risk stuff for lowish potential
     if (damageLimit < 0) damageLimit = 0;
 	var tagLimit =
@@ -792,8 +799,14 @@ console.log(this.preferred);
       //special: specific option in specific phase
       if (typeof this.preferred.title !== "undefined") {
         if (this.preferred.title == currentPhase.title) {
-          ret = optionList.indexOf(this.preferred.option);
-          if (ret > -1) {
+		  if (typeof this.preferred.option !== 'undefined') {
+			ret = optionList.indexOf(this.preferred.option);
+		  }
+		  else if (typeof this.preferred.index !== 'undefined') {
+			ret = this.preferred.index;
+console.log("Using preferred index "+ret);
+		  }
+          if ((ret > -1)&&(ret < optionList.length)) {
             this.preferred = null; //reset (don't reuse the preference)
             return ret;
           }
@@ -1635,19 +1648,23 @@ console.log(this.preferred);
 			}
 			if (optionList.includes("play")) {
 			  cardToPlay = null;
+			  var pbrBestChoices = [];
 			  //loop through cards in hand and check playables that have AIPlayBeforeRun defined and high enough priority returned
 			  //AIPlayBeforeRun returns 0 for "don't", > 0 for "do" with higher return value meaning higher priority
 			  for (var i=0; i<runner.grip.length; i++) {
 				var pbrCard = runner.grip[i];
 				if (typeof pbrCard.AIPlayBeforeRun == "function") {
-                  if (FullCheckPlay(pbrCard)) {
+				  var pbrChoices = FullCheckPlay(pbrCard); //returns list of choices or null
+                  if (pbrChoices) {
 					var pbrPriority = pbrCard.AIPlayBeforeRun.call(pbrCard,this.serverList[0].server,this.serverList[0].potential,runCreditCost,runClickCost);
 					if (pbrPriority > brHighestPriority) {
-					  if (!this._wastefulToPlay(pbrCard)) {
+					  //_wastefulToPlay also checks AIPreferredPlayChoice, if any
+					  if (!this._wastefulToPlay(pbrCard, pbrChoices)) {
 						  //should probably use PlayCost here but it isn't implemented yet
 						  if (runCreditCost < AvailableCredits(runner) - pbrCard.playCost) {
 							cardToPlay = pbrCard;
 							brHighestPriority = pbrPriority;
+							pbrBestChoices = pbrChoices;
 						  }
 					  }
 					}
@@ -1657,8 +1674,16 @@ console.log(this.preferred);
 			  //card found to play before run (and all checks passed above), play it
 			  if (cardToPlay) {
 				this._log("I should play "+cardToPlay.title+" before running");
+				var pbrnextprefs = null;
+				if (typeof cardToPlay.AIPreferredPlayChoice == 'function') {
+					var pbrPrefIndex = cardToPlay.AIPreferredPlayChoice.call(cardToPlay, pbrBestChoices);
+					if (pbrPrefIndex > -1) {
+						pbrnextprefs = { title:"Playing "+cardToPlay.title, index: pbrPrefIndex };
+					}
+				}
                 return this._returnPreference(optionList, "play", {
                     cardToPlay: cardToPlay,
+					nextPrefs: pbrnextprefs
                 });
 			  }
 			}
@@ -1913,9 +1938,10 @@ console.log(this.preferred);
           );
           if (cardToPlay) {
             this._log("maybe by playing a card?");
+			var ctpChoices = FullCheckPlay(cardToPlay); //returns list of choices or null
             if (
-              FullCheckPlay(cardToPlay) &&
-              !this._wastefulToPlay(cardToPlay)
+              ctpChoices &&
+              !this._wastefulToPlay(cardToPlay, ctpChoices)
             ) {
 			  var playThis = true; //if no specific rules have been defined then just play it whenever you can
 			  if (typeof(cardToPlay.AIWouldPlay) == 'function') playThis = cardToPlay.AIWouldPlay.call(cardToPlay);
@@ -1995,7 +2021,8 @@ console.log(this.preferred);
       var card = this.cardsWorthKeeping[i];
       if (card.cardType == "event" && optionList.includes("play")) {
         //play
-        if (FullCheckPlay(card) && !this._wastefulToPlay(card)) {
+		var cwkpChoices = FullCheckPlay(card); //returns list of choices or null
+        if (cwkpChoices && !this._wastefulToPlay(card,cwkpChoices)) {
           this._log("there's a card worth playing");
           return this._returnPreference(optionList, "play", {
             cardToPlay: card,
@@ -2059,10 +2086,21 @@ console.log(this.preferred);
 				//don't just play things randomly, only if there is a specifically defined reason
 				if (typeof(card.AIWouldPlay) == 'function') {
 					var playThis = card.AIWouldPlay.call(card);
-					if (playThis&&FullCheckPlay(card)&&(!this._wastefulToPlay(card)))
+					var playChoices = FullCheckPlay(card); //returns list of choices or null
+					if (playThis&&playChoices&&(!this._wastefulToPlay(card,playChoices)))
 					{
 						this._log("maybe play "+card.title);
-						return this._returnPreference(optionList, "play", { cardToPlay:card });
+						var playNextPrefs = null;
+						if (typeof card.AIPreferredPlayChoice == 'function') {
+							var playPrefIndex = card.AIPreferredPlayChoice.call(card, playChoices);
+							if (playPrefIndex > -1) {
+								playNextPrefs = { title:"Playing "+card.title, index: playPrefIndex };
+							}
+						}
+						return this._returnPreference(optionList, "play", {
+							cardToPlay: card,
+							nextPrefs: playNextPrefs
+						});
 					}
 				}
 			}

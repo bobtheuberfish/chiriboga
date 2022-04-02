@@ -2288,7 +2288,7 @@ cardSet[30032] = {
           break;
         }
     }
-    if (runner.AI._getCachedPotential(server, false) > 1.5 || mayflyInGrip) {
+    if (runner.AI._getCachedPotential(server) > 1.5 || mayflyInGrip) {
         result = result.concat(
           runner.AI.rc.ImplementIcebreaker(
             point,

@@ -1040,18 +1040,10 @@ cardSet[31017] = {
     subTypes: ["Sabotage"],
     playCost: 1,
 	//Choose 1 unrezzed piece of ice.
-	//Enumerate doesn't normally have parameters but AI is using this to filter
-	Enumerate: function (server) {
+	Enumerate: function () {
         var choices = ChoicesInstalledCards(corp, function (card) {
           //unrezzed ice only
           if (!card.rezzed && CheckCardType(card, ["ice"])) {
-		    //AI might want to filter a particular server
-		    if (typeof server != 'undefined') {
-			  if (GetServer(card) !== server) return false;
-		    }
-			else if (runner.AI != null && runner.AI.serverList.length > 0) {
-			  if (GetServer(card) !== runner.AI.serverList[0].server) return false;
-			}
 			return true;
 		  }
           return false;
@@ -1112,18 +1104,37 @@ cardSet[31017] = {
 		  }
 		  corp.AI.preferred = { title: "Forged Activation Orders", option: choice };
 		}
-	},	
+	},
+	//outputs the preferred index from the provided choices list (return -1 to not play)
+	AIPreferredPlayChoice: function(choices) {
+		var bestScore = 0;
+		var bestIndex = -1; //by default, don't play
+		for (var i = 0; i < choices.length; i++) {
+			var server = GetServer(choices[i].card);
+			//if there is a target server, ignore targets not protecting that server
+			if (runner.AI.serverList.length > 0) {
+				if (server !== runner.AI.serverList[0].server) {
+					continue;
+				}
+			}
+			//otherwise, the decision between pieces of ice is based on potential + random jitter
+			var thisScore = 0.1*Math.random() + runner.AI._getCachedPotential(server);
+			if (thisScore > bestScore) {
+				bestScore = thisScore;
+				bestIndex = i;
+			}
+		}
+		return bestIndex;
+	},
 	//play before run if server has worthwhile targets in it
     AIPlayBeforeRun: function(server,priority,runCreditCost,runClickCost) {
 	  if (!server) return 0; //no server, no need
-	  var choices = this.Enumerate(server); //since there is an AI, this will return only worthwhile choices
-	  if (choices.length > 0) return 1; //yes
-	  return 0; //this run wouldn't benefit, don't play
+	  return 1; //yes (but not certain; the AI will also check _wastefulToPlay which checks AIPreferredPlayChoice)
     },
 	AIWouldPlay: function() {
 		//play if the corp probably can't afford it i.e. RezCost - rezCost > corp.creditPool - 1 (this isn't cheating because we only check the bonus cost, assumes cost is 1)
-		//will be sad if it turns out to be Pop=up Window though!
-		var choices = this.Enumerate();
+		//will be sad if it turns out to be Pop-up Window though!
+		var choices = this.Enumerate(); //just an easy way to pick an installed unrezzed ice to use for our cost check
 		if (choices.length > 0) {
 			if (RezCost(choices[0].card) - choices[0].card.rezCost > corp.creditPool - 1) return true;
 		}

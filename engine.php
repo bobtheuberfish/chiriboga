@@ -26,26 +26,24 @@
 		</script>
 		<?php
 		echo '<link rel="stylesheet" type="text/css" href="style.css?' . filemtime('style.css') . '" />';
-		echo '<script src="init.js?' . filemtime('init.js') . '"></script>';
-		echo '<script src="phase.js?' . filemtime('phase.js') . '"></script>';
-		echo '<script src="command.js?' . filemtime('command.js') . '"></script>';
-		echo '<script src="checks.js?' . filemtime('checks.js') . '"></script>';
-		echo '<script src="mechanics.js?' . filemtime('mechanics.js') . '"></script>';
-		echo '<script src="utility.js?' . filemtime('utility.js') . '"></script>';
-		
+		$jsfiles = array('init','phase', 'command', 'checks', 'mechanics', 'utility');
 		$sets = ["systemgateway","systemupdate2021"];
 		if (isset($_GET['sets'])) {
 			$sets = explode("-",preg_replace( "/[^a-zA-Z0-9-]/", "", $_GET['sets'] )); 
 		}
 		foreach ($sets as $set) {
-			echo '<script src="sets/'.$set.'.js?' . filemtime('sets/'.$set.'.js') . '"></script>';
+			array_push($jsfiles, 'sets/'.$set);
 		}
-		
-		echo '<script src="sets/tutorial.js?' . filemtime('sets/tutorial.js') . '"></script>';
-		echo '<script src="decks.js?' . filemtime('decks.js') . '"></script>';
-		echo '<script src="runcalculator.js?' . filemtime('runcalculator.js') . '"></script>';
-		echo '<script src="ai_corp.js?' . filemtime('ai_corp.js') . '"></script>';
-		echo '<script src="ai_runner.js?' . filemtime('ai_runner.js') . '"></script>';
+		$jsfiles = array_merge($jsfiles, array('sets/tutorial', 'decks', 'runcalculator', 'ai_corp', 'ai_runner'));
+		$maxfilemtime = 0;
+		foreach ($jsfiles as $jsfile) {
+			$thisfilemtime = filemtime($jsfile.'.js');
+			echo '<script src="'.$jsfile.'.js?' . $thisfilemtime . '"></script>';
+			if ($thisfilemtime > $maxfilemtime) {
+				$maxfilemtime = $thisfilemtime;
+			}
+		}
+		echo '<script>var versionReference=' . $maxfilemtime . ';</script>';
 		?> 
 	</head>
 
