@@ -1780,8 +1780,11 @@ cardSet[30024] = {
   },
   //Whenever a successful run on R&D ends, you may place 1 virus counter on this program
   runEnds: {
+	Enumerate: function() {
+		if (attackedServer == corp.RnD && this.runWasSuccessful) return [{}];
+		return [];
+	},
     Resolve: function () {
-      if (attackedServer == corp.RnD && this.runWasSuccessful) {
         //"may"
         var choices = BinaryDecision(
           runner,
@@ -1799,7 +1802,6 @@ cardSet[30024] = {
           var choice = choices[0]; //always place a virus counter (why wouldn't you?)
           runner.AI.preferred = { title: "Conduit", option: choice }; //title must match currentPhase.title for AI to fire
         }
-      }
     },
   },
   //[click]: Run R&D.
@@ -3299,7 +3301,8 @@ cardSet[30046] = {
 		if (theServer.ice[examiningIdx].rezzed) rezzedIceBeforeThis++;
 		examiningIdx --;
 	}
-	if (evenCardsInHand == 0 || (evenCardsInHand < runner.grip.length && rezzedIceBeforeThis > 0) ) result.sr[0][0].push("endTheRun");
+	//don't rely too heavily on luck (the 0.7 is arbitrary) or try to luck past inner ice
+	if (evenCardsInHand < runner.grip.length * 0.7 || (evenCardsInHand < runner.grip.length && rezzedIceBeforeThis > 0) ) result.sr[0][0].push("endTheRun");
 	else if (evenCardsInHand < runner.grip.length)
 	  result.sr[0][0].push("misc_moderate"); //maybe will end, maybe not
 	return result;
@@ -4022,7 +4025,7 @@ cardSet[30058] = {
   //Persistent (If the runner trashes this card while accessing it, this ability still applies for the remainder of the run.)
   cardTrashed: {
     Resolve: function (card) {
-      if (card == this) {
+      if (card == this && this.rezzed && card == accessingCard) {
         this.runEnds.availableWhenInactive = true;
       }
     },

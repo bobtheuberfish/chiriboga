@@ -1201,7 +1201,7 @@ phases.runPassesIce = CreatePhaseFromTemplate(
   phaseTemplates.globalTriggers,
   runner,
   "Run: Movement",
-  "Run: 4.1",
+  "Run 4.1",
   null
 );
 phases.runPassesIce.triggerCallbackName = "passesIce";
@@ -1476,7 +1476,8 @@ phases.runnerEndOfTurn.next = phases.corpStartDraw; //"Runner 2.3"
 phases.runApproachIce.next = phases.runRezApproachedIce; //"Run 2.1"
 phases.runRezApproachedIce.next = phases.runEncounterIce; //"Run 2.2"
 phases.runEncounterIce.next = phases.runSubroutines; //"Run 3.1"
-phases.runSubroutines.next = phases.runPassesIce; //"Run Subroutines"
+phases.runSubroutines.next = phases.runEncounterEnd; //"Run Subroutines"
+phases.runEncounterEnd.next = phases.runPassesIce; //"Run 3.5"
 phases.runPassesIce.next = phases.runDecideContinue; //"Run 4.1"
 phases.runDecideContinue.next = phases.runResponseBeforeApproach; //"Run 4.3"
 phases.runResponseBeforeApproach.next = phases.runApproachServer; //"Run 4.5"  by default after ice will move to approach server (change to indicate ice is there to approach)

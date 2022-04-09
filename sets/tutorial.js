@@ -383,15 +383,15 @@ tutorial[4] = {
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
-        TutorialMessage("During their turn, the corp used the advance action three times.\n\nEach advance action costs one click and one credit, so they spent a total of 3 clicks and 3 credits.",true);
+        TutorialMessage("During their turn, the Corp used the advance action three times.\n\nEach advance action costs one click and one credit, so they spent a total of 3 clicks and 3 credits.",true);
       },
     },
     {
       //Corp discard phase
       str: "Corp 3.1",
       action: function () {
-        TutorialMessage("The corp reached the advancement requirement of an agenda and chose to SCORE it.\n\nScoring an agenda does not use a click but can only be done either at the start of the Corp's turn or after the Corp finishes an action.",true,function(){
-			TutorialMessage("The Corp currently has 2 agenda points in their SCORE AREA.\n\nThe corp wins the game once they have scored 7 agenda points (6 if using the starter deck).",true);
+        TutorialMessage("The Corp reached the advancement requirement of an agenda and chose to SCORE it.\n\nScoring an agenda does not use a click but can only be done either at the start of the Corp's turn or after the Corp finishes an action.",true,function(){
+			TutorialMessage("The Corp currently has 2 agenda points in their SCORE AREA.\n\nThe Corp wins the game once they have scored 7 agenda points (6 if using the starter deck).",true);
 		});
       },
     },
@@ -438,7 +438,7 @@ tutorial[4] = {
 	},
     {
 	  //Movement
-      str: "Run 4.3",
+      str: "Run 4.1",
       action: function () {
 		  TutorialMessage("");
 	  },

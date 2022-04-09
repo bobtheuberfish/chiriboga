@@ -1142,6 +1142,32 @@ cardSet[31017] = {
 	},
 };
 
+cardSet[31018] = {
+  title: "Inside Job",
+  imageFile: "31018.png",
+  player: runner,
+  faction: "Criminal",
+  influence: 3,
+  cardType: "event",
+  subTypes: ["Run"],
+  playCost: 2,
+  //Run any server. The first time this run you encounter a piece of ice, bypass it.
+  encounteredIceThisRun: false,
+  Enumerate: function () {
+    return ChoicesExistingServers();
+  },
+  Resolve: function (params) {
+	encounteredIceThisRun=false;
+    MakeRun(params.server);
+  },
+  cardEncountered: {
+    Resolve: function (card) {
+		if (!encounteredIceThisRun) Bypass();
+		encounteredIceThisRun=true;
+    },
+  },  
+};
+
 //TODO link (e.g. Reina)
 
 /*

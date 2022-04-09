@@ -24,6 +24,17 @@ function MakeRun(server) {
 }
 
 /**
+ * Bypass the currently encountered ice.<br/>This is logged.
+ *
+ * @method Bypass
+ */
+function Bypass() {
+	Log(GetTitle(attackedServer.ice[approachIce], true)+" bypassed");
+	phases.runEncounterEnd.next = phases.runPassesIce; //this needs to be said because it's not constant what happens when the encounter ends (e.g. the run may end)
+	ChangePhase(phases.runEncounterEnd);
+}
+
+/**
  * Advance an installed card.<br/>Makes no checks or payments.<br/>Logs the result.
  *
  * @method Advance
