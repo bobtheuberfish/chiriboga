@@ -754,8 +754,11 @@ class RunnerAI {
 		//playCost probably should be PlayCost (here and everywhere) but it is not implemented yet
 		if (typeof runEventCardToUse.AIRunEventExtraCredits != 'undefined') {
 			extraCredits += runEventCardToUse.AIRunEventExtraCredits;
-			poolCreditOffset -= runEventCardToUse.playCost; //for now we assume pool credit is used to play the card
 		}
+		//for now we assume pool credit is used to play the card
+		//TODO take into account Prepaid VoicePAD
+		poolCreditOffset -= runEventCardToUse.playCost;
+		//take into account one less card in grip
 		damageOffset -= 1;
 	}
 	//make temporary changes (I don't like this but having lots of AIRunEvent functions that are only used once...)
