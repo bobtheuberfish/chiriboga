@@ -30,6 +30,10 @@ function MakeRun(server) {
  */
 function Bypass() {
 	Log(GetTitle(attackedServer.ice[approachIce], true)+" bypassed");
+	//clear AI run cache (the bypassed ice needs to be ignored)
+	if (runner.AI != null) {
+		runner.AI.cachedBestPath = null; //force a recalculation
+	}
 	phases.runEncounterEnd.next = phases.runPassesIce; //this needs to be said because it's not constant what happens when the encounter ends (e.g. the run may end)
 	ChangePhase(phases.runEncounterEnd);
 }
