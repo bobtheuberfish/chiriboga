@@ -143,7 +143,7 @@ class RunnerAI {
 
   //get cached complete run cost or Infinity
   _getCachedCost(server) {
-    if (!this.runsEverCalculated.includes[server])
+    if (!this.runsEverCalculated.includes(server))
       this._calculateBestCompleteRun(server, 0, 0, 0, 0);
     var result = Infinity;
     for (var i = 0; i < this.cachedCosts.length; i++) {
@@ -170,7 +170,52 @@ class RunnerAI {
     return ret; //reached bottom of R&D
   }
   
-  //get a rough score for ice comparison
+  //hypothesise extra HQ accesses that are worthwhile
+  _additionalHQAccessValue(usingCard=null) {
+	  var totalAccesses=1;
+	  //passive effects:
+	  var activeCards = ActiveCards(runner);
+	  for (var i = 0; i < activeCards.length; i++) {
+		if (typeof activeCards[i].AIAdditionalAccess == 'function') {
+		  totalAccesses += activeCards[i].AIAdditionalAccess.call(activeCards[i],corp.HQ);
+	    }
+	  }
+	  //using card
+	  if (usingCard) {
+		if (typeof usingCard.AIAdditionalAccess == 'function') {
+		  totalAccesses += usingCard.AIAdditionalAccess.call(usingCard,corp.HQ);
+	    }
+	  }
+	  //take into account size
+	  if (totalAccesses > corp.HQ.cards.length) {
+		  totalAccesses = corp.HQ.cards.length;
+	  }
+	  var ret = totalAccesses - 1;
+	  if (ret < 0) ret = 0;
+	  return ret;
+  }
+  
+  //get an approximate measure of ice threat
+  _iceThreatScore(iceCard) {
+	  var ret = 3; //most common ice printed rez cost
+	  if (PlayerCanLook(runner,iceCard)) {
+		ret=iceCard.rezCost;
+		//no threat if cannot be rezzed
+        if (!iceCard.rezzed && !CheckCredits(RezCost(iceCard), corp, "rezzing", iceCard)) ret = 0;
+		//reduce threat if a matching breaker is installed
+		if (this._matchingBreakerInstalled(iceCard)) ret *= 0.2; //the 0.2 is arbitrary
+	  } else {
+	    //reduce threat if corp is poor and ice is unrezzed
+	    if (!iceCard.rezzed && ret > corp.creditPool) ret=corp.creditPool;
+	  }
+	  //for now, assume hosted cards nullify this ice (TODO Magnet changes this and other similar Chiriboga functions)
+	  if (typeof iceCard.hostedCards !== "undefined") {
+		if (iceCard.hostedCards.length > 0) ret = 0;
+	  }  
+	  return ret;
+  }
+  
+  //get a rough score for ice comparison (taking into account server potential)
   _iceComparisonScore(iceCard) {
 	  var ret = 0;
 	  var estimatedValue = 3; //most common ice printed rez cost
@@ -179,7 +224,7 @@ class RunnerAI {
 	  ret = runner.AI._getCachedPotential(server) * estimatedValue;
 	  if (typeof iceCard.hostedCards !== "undefined")
 		ret -= iceCard.hostedCards.length; //assume hosted cards weaken it
-	return ret;
+	  return ret;
   }
 
   constructor() {
@@ -380,8 +425,9 @@ class RunnerAI {
 		//ideally complete runs
 		this._calculateBestCompleteRun(server, 0, 0, 0, 0, startIceIdx);  //0 means no credit/click/damage offset
 		//but if not, use an exit strategy (incomplete run)
-		if (!this.cachedBestPath)
+		if (!this.cachedBestPath) {
 		  this._calculateBestExitStrategy(server, 0, 0, 0, 0, startIceIdx);  //0 means no credit/click/damage offset
+		}
 	  } else {
 		  //remove ice before this one
 		  for (var i=this.cachedBestPath.length-1; i>-1; i--) {
@@ -712,7 +758,27 @@ class RunnerAI {
 		}
 		damageOffset -= 1;
 	}
-    return this._calculateBestCompleteRun(server, poolCreditOffset, extraCredits, clickOffset, damageOffset);
+	//make temporary changes (I don't like this but having lots of AIRunEvent functions that are only used once...)
+	var madeTemporaryChanges = false;
+    if (runEventCardToUse) {
+		if (typeof runEventCardToUse.AIRunEventModify == 'function') {
+			madeTemporaryChanges = true;
+			runEventCardToUse.AIRunEventModify.call(runEventCardToUse,server);
+		}
+	}	
+	//do the run calculation
+	var bestpath = this._calculateBestCompleteRun(server, poolCreditOffset, extraCredits, clickOffset, damageOffset);
+	//restore from temporary changes
+    if (madeTemporaryChanges) {
+		if (typeof runEventCardToUse.AIRunEventRestore == 'function') {
+			runEventCardToUse.AIRunEventRestore.call(runEventCardToUse,server);
+		}
+		else {
+			console.error(runEventCardToUse.title+" has AIRunEventModify but is missing AIRunEventRestore");
+		}
+	}
+	//return the result
+	return bestpath;
   }
 
   _commonCardToInstallChecks(cardToInstall) {
@@ -778,7 +844,7 @@ class RunnerAI {
     }
 	
     //temporary detailed log for troublesome bugs
-    /*
+/*
 console.log("AI making choice from:");
 console.log(optionList);
 console.log("With identifier="+currentPhase.identifier+" and title="+currentPhase.title+" and preferred=");
@@ -804,7 +870,6 @@ console.log(this.preferred);
 		  }
 		  else if (typeof this.preferred.index !== 'undefined') {
 			ret = this.preferred.index;
-console.log("Using preferred index "+ret);
 		  }
           if ((ret > -1)&&(ret < optionList.length)) {
             this.preferred = null; //reset (don't reuse the preference)
@@ -1146,9 +1211,12 @@ console.log("Using preferred index "+ret);
 			if (optionList.includes("trigger") && ((p.card_str_mods.length > 0)||(p.sr_broken.length > 0)) ) {
 			  //console.log("trigger");
 			  //console.log(p);
-			  //e.g. str up and break srs
-			  //for now assume there will only be one ability possible for this card, so we just prefer the card
-			  //we need to check iceIdx here in case there are persists (don't retrigger them)
+			  //e.g. str up/down and break srs
+			  //first we clear out any persists from previous iceIdx (don't retrigger them)
+			  while (p.card_str_mods.length > 0 && p.card_str_mods[0].iceIdx != approachIce) {
+				  p.card_str_mods.splice(0,1);
+			  }
+			  //now assume there will only be one ability possible for this card, so we just prefer the card
 			  if (p.card_str_mods.length > 0 && p.card_str_mods[0].iceIdx == approachIce) {
 				return this._returnPreference(optionList, "trigger", {
 				  cardToTrigger: p.card_str_mods.splice(0,1)[0].use, //assumes they are added to the array in order of use, discard immediately
@@ -1179,9 +1247,9 @@ console.log("Using preferred index "+ret);
 			}
 			//game is asking for something unanticipated. if this happens, investigate.
 			if (!optionList.includes("trigger")) {
-				console.error("Something went wrong during path resolution");
 				console.log(JSON.stringify(p));
 				console.log(JSON.stringify(optionList));
+				console.error("Something went wrong during path resolution (p and optionList above)");
 			}
 		}
 		//nothing specified, do nothing
@@ -1249,15 +1317,6 @@ console.log("Using preferred index "+ret);
             useConduit = triggerChoices[i].card;
         }
       }
-	  //and from particular cards
-	  var useRetrievalRun = null;
-      if (optionList.includes("play")) {
-        useRetrievalRun = this._copyOfCardExistsIn("Retrieval Run", runner.grip);
-        if (useRetrievalRun) {
-          if ( !FullCheckPlay(useRetrievalRun) || !useRetrievalRun.AIWouldPlay.call(useRetrievalRun) ) useRetrievalRun = null;
-        }
-      }
-
       //go through all the servers
       this.serverList = [
         { server: corp.HQ },
@@ -1312,20 +1371,11 @@ console.log("Using preferred index "+ret);
                 )
                   this.serverList[i].potential += 1; //the 1 is arbitrary
               }
-              //special case: if Docklands would fire
-              if (corp.HQ.cards.length > 1) {
-                var docklands = this._copyOfCardExistsIn(
-                  "Docklands Pass",
-                  runner.rig.hardware
-                );
-                if (docklands) {
-                  if (
-                    !docklands.breachedHQThisTurn &&
-                    this.serverList[i].potential > 0
-                  )
-                    this.serverList[i].potential += 0.5; //extra potential for that 1 bonus card (but no extra potential if none to start with)
-                }
-              }
+              //extra potential per additional access value (but no extra potential if none to start with)
+			  if (this.serverList[i].potential > 0) {
+				var additionalHQAccessValue = this._additionalHQAccessValue(null); //null means even without a Run event/ability
+				this.serverList[i].potential += additionalHQAccessValue*0.5; 
+			  }
               //if there's just one card and it's unknown then there must be some potential
               if (
                 this.serverList[i].potential < 0.5 &&
@@ -1358,9 +1408,6 @@ console.log("Using preferred index "+ret);
             if (conduitDepth < corp.RnD.cards.length)
               this.serverList[i].potential += 0.5; //arbitrary, for being able to gain virus counters (ignore if dig reaching the bottom of R&D)
           }
-		  if (useRetrievalRun && server == corp.archives) {
-			  this.serverList[i].potential += 1.5; //arbitrary, for getting that important card install
-		  }
         } //remote
         else {
           this.serverList[i].potential = 0; //empty has no potential
@@ -1400,29 +1447,35 @@ console.log("Using preferred index "+ret);
             }
           }
         }
+
+	    //extra potential from best run event (if any)
+		this.serverList[i].useRunEvent = null; //by default don't use a run event
+		var runEventBestExtraPotential = 0;
+        if (optionList.includes("play")) {
+		  for (var j=0; j<runner.grip.length; j++) {
+			  if (CheckSubType(runner.grip[j], "Run")) {
+				  var extraPotentialFromThisRunEvent = 0;
+				  if (typeof runner.grip[j].AIRunEventExtraPotential == 'function') extraPotentialFromThisRunEvent = runner.grip[j].AIRunEventExtraPotential.call(runner.grip[j],this.serverList[i].server,this.serverList[i].potential);
+				  if ( extraPotentialFromThisRunEvent > runEventBestExtraPotential ) {
+					  if ( FullCheckPlay(runner.grip[j]) ) {
+						  runEventBestExtraPotential = extraPotentialFromThisRunEvent;
+						  this.serverList[i].useRunEvent = runner.grip[j];
+					  }
+				  }
+			  }
+		  }
+	    }
+		this.serverList[i].potential += runEventBestExtraPotential;
+
 		//cache server potential
         this.cachedPotentials.push({
           server: this.serverList[i].server,
           potential: this.serverList[i].potential,
         }); //store potential for other use (costs are cached in _calculateRunPath)
         //console.log(this.cachedPotentials[this.cachedPotentials.length-1].server.serverName+": "+this.cachedPotentials[this.cachedPotentials.length-1].potential);
+
         //and calculate best path
-		//TODO generalise to other run event cards too
-        this.serverList[i].useOverclock = null; //the overclock card to use. If null, don't or can't use.
-        if (optionList.includes("play")) {
-            //save Overclock for high value targets
-            var thisRunEventCard = this._copyOfCardExistsIn("Overclock", runner.grip);
-            if (thisRunEventCard) {
-		      var wouldRunWithThis = true;
-			  if (typeof thisRunEventCard.AIWouldRunWithThis == 'function') {
-				wouldRunWithThis = thisRunEventCard.AIWouldRunWithThis.call(thisRunEventCard, this.serverList[i].server, this.serverList[i].potential);
-			  }
-			  if (wouldRunWithThis) {
-				if (FullCheckPlay(thisRunEventCard)) this.serverList[i].useOverclock = thisRunEventCard;
-			  }
-            }
-        }
-		var bestpath = this._commonRunCalculationChecks(this.serverList[i].server,this.serverList[i].useOverclock,false); //the false is for foresight, i.e. run now not later
+		var bestpath = this._commonRunCalculationChecks(this.serverList[i].server,this.serverList[i].useRunEvent,false); //the false is for foresight, i.e. run now not later
         this.serverList[i].bestpath = bestpath;
 		this.serverList[i].bestcost = Infinity;
         if (bestpath && bestpath.length > 0) {
@@ -1459,7 +1512,7 @@ console.log("Using preferred index "+ret);
         ) {
           var server = this.serverList[i].server;
           //recalculate paths
-          var bestpath = this._commonRunCalculationChecks(server,this.serverList[i].useOverclock,true); //the true is for foresight, i.e. prep first
+          var bestpath = this._commonRunCalculationChecks(server,this.serverList[i].useRunEvent,true); //the true is for foresight, i.e. prep first
           if (bestpath) {
             this.serverList = []; //don't run this click
             this._log("Gotta do some prep");
@@ -1691,22 +1744,6 @@ console.log("Using preferred index "+ret);
 
         //maybe run by playing a run event?
         if (optionList.includes("play")) {
-          //if Overclock has been suggested, decompensate to see if it's necessary by checking the path cost spent (not lost) credits, no recalculation
-          if (this.serverList[0].useOverclock) {
-            if (
-              AvailableCredits(runner) <
-              this.serverList[0].bestpath[
-                this.serverList[0].bestpath.length - 1
-              ].runner_credits_spent
-            ) {
-              //i.e the run uses more than the credit available without Overclock
-              return this._returnPreference(optionList, "play", {
-                cardToPlay: this.serverList[0].useOverclock,
-                nextPrefs: { chooseServer: this.serverList[0].server },
-              });
-            }
-          }
-
           //playing a card would reduce the max damage, make sure it is still safe
           var pathdamage = this.rc.TotalDamage(
             this.rc.TotalEffect(
@@ -1715,85 +1752,29 @@ console.log("Using preferred index "+ret);
               ]
             )
           );
-          if (pathdamage < runner.grip.length) {
-			//path is still safe, now choose which card to use
-			  
-			//specific situational cards
-			if (useRetrievalRun) {
-              return this._returnPreference(optionList, "play", {
-                cardToPlay: useRetrievalRun
-				//no need for nextPrefs server because can only run archives
-              });
-			}
-			
-			//general run cards just trying to get extra benefit out of runs
-            var unrezzedIceThisServer = 0;
-            for (var i = 0; i < this.serverList[0].server.ice.length; i++) {
-              if (!this.serverList[0].server.ice[i].rezzed)
-                unrezzedIceThisServer++;
-            }
-            //if there are no unrezzed ice
-            if (unrezzedIceThisServer == 0) {
-              //maybe Jailbreak (costs no credits so no need to recalculate run)
-              //only for HQ and R&D and if there is more than 1 card
-              if (
-                this.serverList[0].server == corp.HQ ||
-                this.serverList[0].server == corp.RnD
-              ) {
-                var minCardsWorth = 2;
-                if (this.serverList[0].server == corp.HQ) {
-                  //special case: Docklands bonus
-                  var docklands = this._copyOfCardExistsIn(
-                    "Docklands Pass",
-                    runner.rig.hardware
-                  );
-                  if (docklands) {
-                    if (!docklands.breachedHQThisTurn) minCardsWorth++;
-                  }
-                }
-                var worthJailbreak =
-                  this.serverList[0].server.cards.length >= minCardsWorth;
-                if (this.serverList[0].server == corp.RnD) {
-                  if (
-                    this._countNewCardsThatWouldBeAccessedInRnD(
-                      minCardsWorth
-                    ) == 0
-                  )
-                    worthJailbreak = false;
-                }
-                if (worthJailbreak) {
-                  cardToPlay = this._copyOfCardExistsIn(
-                    "Jailbreak",
-                    runner.grip
-                  );
-                  if (FullCheckPlay(cardToPlay)) {
-                    return this._returnPreference(optionList, "play", {
-                      cardToPlay: cardToPlay,
-                      nextPrefs: { chooseServer: this.serverList[0].server },
-                    });
-                  }
-                }
-              }
-            } //otherwise (there are any unrezzed ice)
-            else {
-              if (this.serverList[0].potential > 1.5) {
-                //save Tread Lightly for high value targets
-                //maybe Tread Lightly (costs 1 credit but no need to recalculate run because the ice is unrezzed anyway)
-                if (AvailableCredits(corp) < 5 + 5 * unrezzedIceThisServer) {
-                  //arbitrary but basically about making the corp pay more for stuff (not worth it if super rich)
-                  cardToPlay = this._copyOfCardExistsIn(
-                    "Tread Lightly",
-                    runner.grip
-                  );
-                  if (FullCheckPlay(cardToPlay)) {
-                    return this._returnPreference(optionList, "play", {
-                      cardToPlay: cardToPlay,
-                      nextPrefs: { chooseServer: this.serverList[0].server },
-                    });
-                  }
-                }
-              }
-            }
+          if (pathdamage < runner.grip.length + 1) {
+			//path is still safe
+			if (this.serverList[0].useRunEvent) {
+			  //if the suggested run event provides extra credits, decompensate to see if it's necessary by checking the path cost spent (not lost) credits, no recalculation
+			  if (this.serverList[0].useRunEvent.AIRunEventExtraCredits) {
+				if (
+				  AvailableCredits(runner) >=
+				  this.serverList[0].bestpath[
+					this.serverList[0].bestpath.length - 1
+				  ].runner_credits_spent
+				) {
+				  //i.e the run could be made without using the extra credits so we should save it for later
+				  this.serverList[0].useRunEvent = null;
+				}
+			  }
+			  //still committing to using this run event?
+			  if (this.serverList[0].useRunEvent) {
+				  return this._returnPreference(optionList, "play", {
+					cardToPlay: this.serverList[0].useRunEvent,
+					nextPrefs: { chooseServer: this.serverList[0].server },
+				  });
+			  }
+			}			
           }
         }
 

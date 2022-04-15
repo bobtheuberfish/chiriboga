@@ -949,6 +949,30 @@ cardSet[30012] = {
       return 0; //no modification to cost
     },
   },
+  //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
+  AIRunEventExtraPotential: function(server,potential) {
+	  //use Tread Lightly for high value targets with unrezzed ice (unless Corp is super rich)
+	  if (potential > 1.5) {
+		var unrezzedIceThisServer = 0;
+		for (var i = 0; i < server.ice.length; i++) {
+		  if (!server.ice[i].rezzed) unrezzedIceThisServer++;
+		}
+        if (AvailableCredits(corp) < 5 + 5 * unrezzedIceThisServer + runner.creditPool) {
+		  //the runner.creditPool part is that the Runner can be more comfortable using it if rich
+		  return 0.01; //greater than zero means 'yes' but we don't want to significantly change the potential
+		}
+	  }
+	  return 0; //no benefit (don't play)
+  },
+  //make temporary changes during run calculations
+  AIRunEventModify: function(server) {
+	this.storedCorpCreditPool = corp.creditPool; 
+	corp.creditPool -= 3;
+  },
+  //then restore from changes afterwards
+  AIRunEventRestore: function(server) {
+	corp.creditPool = this.storedCorpCreditPool;
+  },
 };
 cardSet[30013] = {
   title: "Docklands Pass",
@@ -978,6 +1002,13 @@ cardSet[30013] = {
     },
     automatic: true,
     availableWhenInactive: true,
+  },
+  //indicate when passive bonus to accesses will apply
+  //(assumes the card is or will be active)
+  AIAdditionalAccess: function(server) {
+      if (server != corp.HQ) return 0;
+      if (this.breachedHQThisTurn) return 0; //first time only
+      return 1;
   },
   //install before run if the server is HQ and Docklands is in worthkeeping
   AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
@@ -2131,6 +2162,32 @@ cardSet[30028] = {
       return 1;
     },
   },
+  //indicate bonus to accesses (when active)
+  AIAdditionalAccess: function(server) {
+      if (server != corp.HQ && server != corp.RnD) return 0;
+      return 1;
+  },
+  //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
+  AIRunEventExtraPotential: function(server,potential) {
+	  //use Jailbreak only for HQ and R&D with no unrezzed ice
+	  if (server == corp.HQ || server == corp.RnD) {
+		var unrezzedIceThisServer = 0;
+		for (var i = 0; i < server.ice.length; i++) {
+		  if (!server.ice[i].rezzed) unrezzedIceThisServer++;
+		}
+		if (unrezzedIceThisServer == 0) {
+			//only play Jailbreak if the extra accesses are worthwhile
+			if (server == corp.HQ) {
+				return 0.5*runner.AI._additionalHQAccessValue(this);
+			}
+			else if (server == corp.RnD) {
+				return 0.5*runner.AI._countNewCardsThatWouldBeAccessedInRnD(1+1);
+			}
+			return 0;
+		}
+	  }
+	  return 0; //no benefit (don't play)
+  },
 };
 cardSet[30029] = {
   title: "Overclock",
@@ -2153,11 +2210,13 @@ cardSet[30029] = {
   canUseCredits: function (doing, card) {
     return true;
   },
-  AIWouldRunWithThis: function(server, potential) {
-	  if (potential > 1.5) return true;
-	  return false;
+  //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
+  AIRunEventExtraPotential: function(server,potential) {
+	  //save Overclock for high value targets
+	  if (potential > 1.5) return 0.01; //greater than zero means 'yes' but we don't want to significantly change the potential
+	  return 0; //no benefit (don't play)
   },
-  AIRunEventExtraCredits: 5, //the runner AI code will subtract the 1 play cost so effectively 4 net bonus
+  AIRunEventExtraCredits: 5, //the runner AI code will subtract the 1 play cost so effectively 4 net bonus  
 };
 cardSet[30030] = {
   title: "Sure Gamble",

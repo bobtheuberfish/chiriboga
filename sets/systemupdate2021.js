@@ -256,10 +256,15 @@ cardSet[31004] = {
 			InstalledCards(runner)
 	  );
   },
-  AIWouldPlay: function() {
-	  //only play if there are cards worth retrieving from heap
-	  if (this.SharedPreferredCard()) return true;
-	  return false;
+  //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
+  AIRunEventExtraPotential: function(server,potential) {
+	  //archives only
+	  if (server == corp.archives) { 
+		  //only play if there are cards worth retrieving from heap
+		  if (this.SharedPreferredCard()) 
+		  return 1.5; //arbitrary, for getting that important card install
+	  }
+	  return 0; //no benefit (don't play)
   },
 };
 
@@ -1166,6 +1171,38 @@ cardSet[31018] = {
 		encounteredIceThisRun=true;
     },
   },  
+  //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
+  AIRunEventExtraPotential: function(server,potential) {
+	  //use for high value targets with a decent outermost ice (or moderate targets with an overfull hand, better than throwing it out)
+	  var value = 0;
+	  if (potential > 1.5) value = 0.01; //greater than zero means 'yes' but we don't want to significantly change the potential
+	  if (!value && potential > 0.5) {
+		  if (runner.AI._currentOverDraw() > runner.AI._maxOverDraw()) value = 0.2; //potential of a run for 2c is better than wasted card
+	  }
+	  if (value && server.ice.length > 0) {
+		  //the 1 is arbitrary but basically a rough 'might be a threat' test
+		  if (runner.AI._iceThreatScore(server.ice[server.ice.length-1]) > 1) {
+			return value; 
+		  }
+	  }
+	  return 0; //no benefit (don't play)
+  },
+  //make temporary changes during run calculations
+  AIRunEventModify: function(server) {
+	if (server.ice.length < 1) return;
+	//store and change (replace outermost ice with a blank)
+	this.storedImplementIce = server.ice[server.ice.length-1].AIImplementIce;
+	server.ice[server.ice.length-1].AIImplementIce = function(result, maxCorpCred, incomplete) {
+		//intentionally empty
+		return result;
+	};
+  },
+  //then restore from changes afterwards (put the outermost ice back)
+  AIRunEventRestore: function(server) {
+	if (server.ice.length < 1) return;
+	//restore
+	server.ice[server.ice.length-1].AIImplementIce = this.storedImplementIce;
+  },
 };
 
 //TODO link (e.g. Reina)

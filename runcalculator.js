@@ -40,15 +40,16 @@ class RunCalculator {
     var iceKnown = PlayerCanLook(runner, ice);
     if (!iceKnown) {
       //unknown ice
+	  var extraRezCost = RezCost(ice) - ice.rezCost; //this isn't cheating because we only check the bonus cost (easy way of summarising any card effects)
       //in this set only Pharos can be advanced
       if (Counters(ice, "advancement") > 0) iceKnown = true;
       //not Pharos, if corp has credits assume a general ice
-      else if (maxCorpCred > 0) {
+      else if (maxCorpCred > 0 + extraRezCost) {
         result.subTypes = ["Sentry"];
         result.strength = Math.min(maxCorpCred, 6);
         result.sr = [];
         if (!assumeWeakerUnknown) {
-          if (maxCorpCred < 4) result.sr.push([["netDamage"]]);
+          if (maxCorpCred < 4 + extraRezCost) result.sr.push([["netDamage"]]);
           else result.sr.push([["netDamage", "netDamage"]]);
         }
         result.sr.push([["misc_moderate"]]);
@@ -916,7 +917,7 @@ class RunCalculator {
         }
         if (current.length > max_path_length) max_path_length = current.length; //for reporting/testing
         //uncomment other console.log lines if more detail is desired to debug the run calculator
-        if (!continuing && debugging) console.log(this.OneLiner(current,report_as));
+        //if (!continuing && debugging) console.log(this.OneLiner(current,report_as));
       }
       //console.log(max_loops - num_loops_left);
       if (num_loops_left == 0) {
