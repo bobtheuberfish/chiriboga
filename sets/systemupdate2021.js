@@ -1205,6 +1205,46 @@ cardSet[31018] = {
   },
 };
 
+cardSet[31019] = {
+  title: "Legwork",
+  imageFile: "31019.png",
+  player: runner,
+  faction: "Criminal",
+  influence: 2,
+  cardType: "event",
+  subTypes: ["Run"],
+  playCost: 2,
+  //Run HQ. If successful, access 2 additional cards when you breach the attacked server.
+  Resolve: function (params) {
+    MakeRun(corp.HQ);
+  },
+  breachServer: {
+    Resolve: function () {
+      return 2; //access 2 additional cards
+    },
+  },
+  //indicate bonus to accesses (when active)
+  AIAdditionalAccess: function(server) {
+      if (server != corp.HQ) return 0;
+      return 2;
+  },
+  //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
+  AIRunEventExtraPotential: function(server,potential) {
+	  //use HQ with no unrezzed ice
+	  if (server == corp.HQ) {
+		var unrezzedIceThisServer = 0;
+		for (var i = 0; i < server.ice.length; i++) {
+		  if (!server.ice[i].rezzed) unrezzedIceThisServer++;
+		}
+		if (unrezzedIceThisServer == 0) {
+			//scale potential based on extra accesses (0.5 is arbitrary)
+			return 0.5*runner.AI._additionalHQAccessValue(this);
+		}
+	  }
+	  return 0; //no benefit (don't play)
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*
