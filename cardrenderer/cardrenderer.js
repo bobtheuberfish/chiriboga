@@ -84,6 +84,8 @@ var CardRenderer = {
         //also include hostedCards
         var card = this.cards[i].card;
         if (typeof card.hostedCards !== "undefined") {
+		  var storedXOffset = xOffset;
+		  //var storedYOffset = yOffset;
           for (var j = 0; j < card.hostedCards.length; j++) {
             if (card.player == corp) {
               xOffset -= hostingX;
@@ -97,6 +99,8 @@ var CardRenderer = {
             card.hostedCards[j].renderer.destinationPosition.y = yOffset;
             app.stage.addChild(card.hostedCards[j].renderer.sprite);
           }
+		  xOffset = storedXOffset;
+		  //yOffset = storedYOffset;
         }
         xOffset += this.xStep;
         yOffset += this.yStep;
