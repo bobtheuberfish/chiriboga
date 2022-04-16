@@ -1058,10 +1058,36 @@ console.log(this.preferred);
       return 0;
     }
 
-    if (optionList.includes("remove")) {
-      return optionList.indexOf("remove"); //by default remove
-    }
-
+	if (runner.tags > 0) {
+		//check for events that could be played to remove tags (ranked by number of tags removed, 0 to not play)
+		if (optionList.includes("play")) {
+			var cardToPlay=null;
+			var topTags=0;
+			for (var i = 0; i < runner.grip.length; i++) {
+				if (typeof runner.grip[i].AIPlayToRemoveTags == 'function') {
+				  var tagsWithThis = runner.grip[i].AIPlayToRemoveTags.call(runner.grip[i]);
+				  if (tagsWithThis > topTags) {
+					if (FullCheckPlay(runner.grip[i])) {
+					  cardToPlay=runner.grip[i];
+					  topTags=tagsWithThis;
+					}
+				  }
+				}
+			}
+			if (cardToPlay) {
+			  this._log("there is a card I would play to remove tags");
+			  return this._returnPreference(optionList, "play", {
+				cardToPlay: cardToPlay,
+			  });
+			}
+		}
+		//check for the basic remove tag action
+		if (optionList.includes("remove")) {
+		  //by default use the basic remove tag action
+		  return optionList.indexOf("remove");
+		}
+	}
+	
     if (optionList.includes("jack")) {
       if (currentPhase.identifier == "Run 4.3" && approachIce == 0) {
         //past last ice, choosing whether to approach server

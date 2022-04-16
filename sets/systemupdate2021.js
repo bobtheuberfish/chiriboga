@@ -1245,6 +1245,49 @@ cardSet[31019] = {
   },
 };
 
+cardSet[31020] = {
+  title: "Networking",
+  imageFile: "31020.png",
+  player: runner,
+  faction: "Criminal",
+  influence: 1,
+  cardType: "event",
+  playCost: 0,
+  //Remove 1 tag. Then, you may pay 1 credit to add this event to your grip.
+  Enumerate: function () {
+	if (CheckTags(1)) return [{}];
+    return [];
+  },
+  Resolve: function (params) {
+    RemoveTags(1);
+	if (CheckCredits(1,runner)) {
+		var choices = BinaryDecision(
+			runner,
+			"1[c]: Add Networking to grip",
+			"Continue",
+			"Networking",
+			this,
+			function () {
+			  SpendCredits(runner,1);
+			  MoveCard(this,runner.grip);
+			  Log("Networking added to grip");
+			}
+		);
+		//**AI code
+		if (runner.AI != null) {
+			runner.AI._log("I know this one");
+			var choice = choices[0]; //always recur
+			runner.AI.preferred = { title: "Networking", option: choice }; //title must match currentPhase.title for AI to fire
+		}
+	}
+  },
+  AIPlayToRemoveTags: function() {
+	  if (runner.tags < 1) return 0; //don't use
+	  if (!CheckCredits(1,runner) && CheckClicks(2,runner)) return 0; //don't use yet, would waste recur
+	  return 1; //removes 1 tag
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*
