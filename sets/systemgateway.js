@@ -3188,89 +3188,102 @@ cardSet[30044] = {
   agendaPoints: 2,
   advancementRequirement: 3,
   limitPerDeck: 1,
+  AICardsDiscarded: [],
+  SharedDecisionCallback: function(params) {
+	if (params.card) {
+		Trash(params.card);
+		if (corp.AI != null) this.AICardsDiscarded.push(params.card);
+		if (corp.HQ.cards.length > 0) {
+			this.SharedTrashFromHQDecision();
+			return;
+		}
+	}
+	//Shuffle up to 3 cards from Archives into R&D.
+	var choices = ChoicesArrayCards(corp.archives.cards);
+	choices.push({ label: "Continue", button: "Continue" });
+	for (var i = 0; i < choices.length; i++) {
+	  choices[i].cards = [null, null, null];
+	} //set up a multiple-select for up to three cards
+	var decisionCallback = function (params) {
+	  var cardsShuffled = 0;
+	  for (var i = 0; i < params.cards.length; i++) {
+		if (params.cards[i] !== null) {
+		  Log(
+			GetTitle(params.cards[i], true) +
+			  " shuffled into R&D from Archives"
+		  );
+		  MoveCard(params.cards[i], corp.RnD.cards);
+		  cardsShuffled++;
+		}
+	  }
+	  Shuffle(corp.RnD.cards);
+	  if (cardsShuffled == 0) Log("R&D shuffled");
+	};
+	DecisionPhase(
+	  corp,
+	  choices,
+	  decisionCallback,
+	  "Longevity Serum",
+	  "Longevity Serum",
+	  this
+	);
+	//**AI code
+	if (corp.AI != null) {
+	  corp.AI._log("I know this one");
+	  var desiredCards = [];
+	  //start with any agendas
+	  for (var i = 0; desiredCards.length < 3 && i < corp.archives.cards.length; i++) {
+		  if (CheckCardType(corp.archives.cards[i], ["agenda"])) desiredCards.push(corp.archives.cards[i]);
+	  }
+	  //then other cards that were just trashed
+	  for (var i = 0; desiredCards.length < 3 && i < this.AICardsDiscarded.length; i++) {
+		  if (!desiredCards.includes(this.AICardsDiscarded[i])) desiredCards.push(this.AICardsDiscarded[i]);
+	  }
+	  //then any other cards
+	  for (var i = 0; desiredCards.length < 3 && i < corp.archives.cards.length; i++) {
+		  desiredCards.push(corp.archives.cards[i]);
+	  }
+	  //save and set to prefer
+	  for (var i = 0; i < desiredCards.length; i++) {
+		choices[0].cards[i] = desiredCards[i];
+	  }
+	  var choice = choices[0];
+	  corp.AI.preferred = { title: "Longevity Serum", option: choice }; //title must match currentPhase.title for AI to fire
+	}
+  },
+  SharedTrashFromHQDecision: function() {
+    var choices = ChoicesArrayCards(corp.HQ.cards);
+    choices.push({ label: "Continue", button: "Continue" });
+	var decisionCallback = this.SharedDecisionCallback;
+    DecisionPhase(
+      corp,
+      choices,
+      decisionCallback,
+      "Longevity Serum",
+      "Longevity Serum",
+	  this,
+	  "discard" //i.e. drag to Archives	
+    );
+    //**AI code
+    if (corp.AI != null) {
+        corp.AI._log("I know this one");
+        //just arbitrary for now (but always if over hand limit)
+        var choice = choices[0];
+		//but don't discard more than 3
+		if (this.AICardsDiscarded.length > 2) choice = choices[choices.length-1]; //continue
+		else if (PlayerHand(corp).length <= MaxHandSize(corp) && Math.random() < 0.7) choice = choices[choices.length-1]; //continue
+        corp.AI.preferred = { title: "Longevity Serum", option: choice }; //title must match currentPhase.title for AI to fire
+    }
+  },
   scored: {
     Enumerate: function () {
       if (intended.score == this) return [{}];
       return [];
     },
     Resolve: function (params) {
+	  if (corp.AI != null) this.AICardsDiscarded = [];
       //When you score this agenda, trash any number of cards from HQ.
-      var choicesA = ChoicesArrayCards(corp.HQ.cards);
-      choicesA.push({ label: "Continue", button: "Continue" });
-      var multipleSelectArray = [];
-      for (var i = 0; i < corp.HQ.cards.length; i++) {
-        multipleSelectArray.push(null);
-      } //set up a multiple-select for up to all cards in HQ
-      for (var i = 0; i < choicesA.length; i++) {
-        choicesA[i].cards = multipleSelectArray;
-      }
-      var decisionCallbackA = function (params) {
-        for (var i = 0; i < params.cards.length; i++) {
-          if (params.cards[i] !== null) {
-            Trash(params.cards[i]);
-          }
-        }
-
-        //Shuffle up to 3 cards from Archives into R&D.
-        var choicesB = ChoicesArrayCards(corp.archives.cards);
-        choicesB.push({ label: "Continue", button: "Continue" });
-        for (var i = 0; i < choicesB.length; i++) {
-          choicesB[i].cards = [null, null, null];
-        } //set up a multiple-select for up to three cards
-        var decisionCallbackB = function (params) {
-          var cardsShuffled = 0;
-          for (var i = 0; i < params.cards.length; i++) {
-            if (params.cards[i] !== null) {
-              Log(
-                GetTitle(params.cards[i], true) +
-                  " shuffled into R&D from Archives"
-              );
-              MoveCard(params.cards[i], corp.RnD.cards);
-              cardsShuffled++;
-            }
-          }
-          Shuffle(corp.RnD.cards);
-          if (cardsShuffled == 0) Log("R&D shuffled");
-        };
-        DecisionPhase(
-          corp,
-          choicesB,
-          decisionCallbackB,
-          "Longevity Serum",
-          "Longevity Serum",
-          this
-        );
-        //**AI code
-        if (corp.AI != null) {
-          corp.AI._log("I know this one");
-          //AI doesn't yet know how to multi-select
-          //just arbitrary for now
-          for (var i = 0; i < 3 && i < corp.archives.cards.length; i++) {
-            choicesB[0].cards[i] = choicesB[choicesB.length - 2 - i].card; //i.e. the ones just added
-          }
-          var choice = choicesB[0];
-          corp.AI.preferred = { title: "Longevity Serum", option: choice }; //title must match currentPhase.title for AI to fire
-        }
-      };
-      DecisionPhase(
-        corp,
-        choicesA,
-        decisionCallbackA,
-        "Longevity Serum",
-        "Longevity Serum",
-        this
-      );
-      //**AI code
-      if (corp.AI != null) {
-        corp.AI._log("I know this one");
-        //AI doesn't yet know how to multi-select
-        //just arbitrary for now
-        for (var i = 0; i < 3 && i < corp.HQ.cards.length; i++) {
-          choicesA[0].cards[i] = choicesA[i].card;
-        }
-        var choice = choicesA[0];
-        corp.AI.preferred = { title: "Longevity Serum", option: choice }; //title must match currentPhase.title for AI to fire
-      }
+	  this.SharedTrashFromHQDecision();
     },
     text: "When you score this agenda",
   },
