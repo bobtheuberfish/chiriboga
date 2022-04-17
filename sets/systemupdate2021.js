@@ -52,7 +52,7 @@ cardSet[31001] = {
 		//can only use once
 		//you can put anything in persisents and it will stick around down the run path
 		//in this case we just store this card to show it has been used
-        if (!point.persistents.includes(this)) {
+        if (!runner.AI.rc.PersistentsUse(point,this)) {
 			var results_to_concat = runner.AI.rc.ImplementIcebreaker(
 			  point,
 			  this,
@@ -68,7 +68,7 @@ cardSet[31001] = {
 			);
 			//save persistent effect (i.e. only use this breaker once)
 			for (var i=0; i<results_to_concat.length; i++) {
-				results_to_concat[i].persistents.push(this);
+				results_to_concat[i].persistents.push({use:this});
 			}
 			result = result.concat(results_to_concat);
 		}
@@ -1285,6 +1285,131 @@ cardSet[31020] = {
 	  if (runner.tags < 1) return 0; //don't use
 	  if (!CheckCredits(1,runner) && CheckClicks(2,runner)) return 0; //don't use yet, would waste recur
 	  return 1; //removes 1 tag
+  },
+};
+
+cardSet[31021] = {
+  title: "Abagnale",
+  imageFile: "31021.png",
+  player: runner,
+  faction: "Criminal",
+  influence: 2,
+  cardType: "program",
+  subTypes: ["Icebreaker", "Decoder"],
+  memoryCost: 1,
+  installCost: 4,
+  strength: 2,
+  strengthBoost: 0,
+  modifyStrength: {
+    Resolve: function (card) {
+      if (card == this) return this.strengthBoost;
+      return 0; //no modification to strength
+    },
+  },
+  //Interface -> 1[c]: Break 1 code gate subroutine.
+  abilities: [
+    {
+      text: "Break 1 code gate subroutine.",
+	  alt: "1[c]: Break",
+      Enumerate: function () {
+        if (!CheckEncounter()) return [];
+        if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate")) return [];
+        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckStrength(this)) return [];
+        return ChoicesEncounteredSubroutines();
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          1,
+          "using",
+          this,
+          function () {
+            Break(params.subroutine);
+          },
+          this
+        );
+      },
+    },
+    //2[c]: +2 strength.
+    {
+      text: "+2 strength.",
+	  alt: "+2 strength",
+      Enumerate: function () {
+        if (!CheckEncounter()) return []; //technically you can +1 strength outside encounters but I'm putting this here for interface usability
+        if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
+        if (!CheckUnbrokenSubroutines()) return []; //as above
+        if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate")) return []; //as above
+        if (!CheckCredits(2, runner, "using", this)) return [];
+        return [{}];
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          2,
+          "using",
+          this,
+          function () {
+            BoostStrength(this, 2);
+          },
+          this
+        );
+      },
+    },
+    //[trash]: Bypass the code gate you are encountering
+	{
+	  text: "Bypass the code gate you are encountering.",
+	  alt: "[trash]: Bypass",
+	  Enumerate: function() {
+        if (!CheckEncounter()) return [];
+        if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate")) return [];
+		return [{}];
+	  },
+	  Resolve: function(params) {
+		  Trash(this, false); //false means it cannot be prevented (because it's a cost)
+		  Bypass();
+	  },
+	},
+  ],
+  encounterEnds: {
+    Resolve: function () {
+      this.strengthBoost = 0;
+    },
+    automatic: true,
+  },
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//don't reuse if was trashed
+	//you can put anything in persisents and it will stick around down the run path
+	//in this case we store the card to show its trash ability was used, and info to indicate the bypass
+    if (!runner.AI.rc.PersistentsUse(point,this)) {
+		//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+		result = result.concat(
+			runner.AI.rc.ImplementIcebreaker(
+			  point,
+			  this,
+			  cardStrength,
+			  iceAI,
+			  iceStrength,
+			  ["Code Gate"],
+			  2,
+			  2,
+			  1,
+			  1,
+			  creditsLeft
+			)
+		); //cost to str, amt to str, cost to brk, amt to brk	
+		//include trash-to-breach option (if it is a Code Gate)
+		if (iceAI.subTypes.includes("Code Gate")) {
+			//only use trash-breach for worthwhile targets (the 1.5 is arbitrary) with few clicks left
+			if (runner.AI._getCachedPotential(server) > 1.5 && !CheckClicks(2, runner)) {
+				var pointCopy = runner.AI.rc.PointCopy(point);
+				pointCopy.persistents = pointCopy.persistents.concat([{use:this, target:iceAI.ice, iceIdx:point.iceIdx, action:"bypass", alt:this.abilities[2].alt}]);
+				pointCopy.effects = pointCopy.effects.concat([["misc_serious","misc_serious"]]); //this is arbitrary but basically take it seriously
+				result = result.concat([pointCopy]);
+			}
+		}
+	}
+	return result;
   },
 };
 

@@ -80,6 +80,35 @@ class RunCalculator {
 
     return result;
   }
+  
+  //check whether the given card is a .use in the persistents of the given point
+  PersistentsUse(point,card) {
+	  for (var i=0; i<point.persistents.length; i++) {
+		  if (typeof point.persistents[i].use != 'undefined') {
+			  if (point.persistents[i].use == card) return true;
+		  }
+	  }
+	  return false;
+  }
+  
+  //return a copy of a point
+  //NOTE this does NOT make copies of the object properties, you need to concat when modifying (NOT push)
+  //TODO use this throughout rather than copies of code?
+  PointCopy(
+    point
+  ) {
+    return {
+      iceIdx: point.iceIdx,
+      runner_credits_spent: point.runner_credits_spent,
+      runner_credits_lost: point.runner_credits_lost,
+      runner_clicks_spent: point.runner_clicks_spent,
+      virus_counters_spent: point.virus_counters_spent,
+      card_str_mods: point.card_str_mods,
+	  persistents: point.persistents,
+      sr_broken: point.sr_broken,
+      effects: point.effects,
+    };
+  }
 
   SrBroken(point, srIdx) {
     for (var i = 0; i < point.sr_broken.length; i++) {
@@ -281,12 +310,24 @@ class RunCalculator {
         unbroken_sr.push(sr_row);
       }
     }
-
+	
     //process into list of possibilities (unless no unbroken sr left, in which case it's [[]])
     var sr_possibilities = [[]]; //array of arrays of { srIdx, choiceIdx } objects
 
+	//check if ice was bypassed
+	var bypassed = false;
+	for (var i = 0; i < point.persistents.length; i++) {
+	  if (typeof point.persistents[i].iceIdx != 'undefined' && typeof point.persistents[i].action != 'undefined') {
+		  if (point.persistents[i].iceIdx == point.iceIdx && point.persistents[i].action == "bypass") {
+			  bypassed = true;
+			  break;
+		  }
+	  }
+	}
+
     //if there are still unbroken subroutines, consider possible card abilities and effects
-    if (unbroken_sr.length > 0) {
+	//or skip resolving subroutines if the ice was bypassed
+    if (unbroken_sr.length > 0 && !bypassed) {
       sr_possibilities = this.SrOptions(unbroken_sr); //this list will be used later when considering effects of completing encounter
       var potential_result = [];
 
@@ -917,7 +958,7 @@ class RunCalculator {
         }
         if (current.length > max_path_length) max_path_length = current.length; //for reporting/testing
         //uncomment other console.log lines if more detail is desired to debug the run calculator
-        //if (!continuing && debugging) console.log(this.OneLiner(current,report_as));
+        if (!continuing && debugging) console.log(this.OneLiner(current,report_as));
       }
       //console.log(max_loops - num_loops_left);
       if (num_loops_left == 0) {
@@ -974,21 +1015,40 @@ class RunCalculator {
     for (var i = 0; i < p.length; i++) {
 	  var nospc = false;
       if (p[i].card_str_mods.length > st) {
+		//strength modification
 		if (p[i].card_str_mods[p[i].card_str_mods.length - 1].amt != 0) result +=
           p[i].card_str_mods[p[i].card_str_mods.length - 1].use.title[0] +
           ".st";
 		else nospc = true;
 	  }
-      else if (p[i].sr_broken.length > br)
+      else if (p[i].sr_broken.length > br) {
+		//break subroutine(s)
         result +=
           p[i].sr_broken[p[i].sr_broken.length - 1].use.title[0] + ".br";
+	  }
       else {
-        result += "\\/";
-        if (p[i].alt) {
-          for (var j = 0; j < p[i].alt.length; j++) {
-            result += p[i].alt[j].choiceIdx;
-          }
-        }
+		//bypass
+		var bypass = null;
+		for (var j = 0; j < p[i].persistents.length; j++) {
+		  if (typeof p[i].persistents[j].iceIdx != 'undefined' && typeof p[i].persistents[j].action != 'undefined') {
+			  if (p[i].persistents[j].iceIdx == p[i].iceIdx && p[i].persistents[j].action == "bypass") {
+				  bypass = p[i].persistents[j].use;
+				  break;
+			  }
+		  }
+		}
+		if (bypass) {
+			result += bypass.title[0]+".by";
+		}
+		//movement
+		else {
+			result += "\\/";
+			if (p[i].alt) {
+			  for (var j = 0; j < p[i].alt.length; j++) {
+				result += p[i].alt[j].choiceIdx;
+			  }
+			}
+		}
       }
       br = p[i].sr_broken.length;
       st = p[i].card_str_mods.length;
@@ -1063,7 +1123,23 @@ class RunCalculator {
           point.card_str_mods[point.card_str_mods.length - 1].amt +
           " with " +
           point.card_str_mods[point.card_str_mods.length - 1].use.title;
-      }
+      } else {
+		//check for bypass
+		var bypass = null;
+		for (var j = 0; j < point.persistents.length; j++) {
+		  if (typeof point.persistents[j].iceIdx != 'undefined' && typeof point.persistents[j].action != 'undefined') {
+			  if (point.persistents[j].iceIdx == point.iceIdx && point.persistents[j].action == "bypass") {
+				  bypass = point.persistents[j];
+				  break;
+			  }
+		  }
+		}
+		if (bypass) output = 
+		  "Bypass " + 
+		  GetTitle(bypass.target) +
+		  " with " + 
+		  GetTitle(bypass.use);
+	  }
       this._log(output);
     }
 

@@ -2030,6 +2030,7 @@ function ChoicesAbility(card, limitTo = "") {
         var params = {};
         params.ability = card.abilities[i];
         params.label = card.abilities[i].text;
+		if (typeof card.abilities[i].alt != 'undefined') params.alt = card.abilities[i].alt; //if buttons are required
         params.choices = choices;
         ret.push(params);
         LogDebug('"' + card.abilities[i].text + '" is a valid option');
@@ -2086,11 +2087,13 @@ function ChoicesTriggerableAbilities(player, limitTo = "") {
     for (var j = 0; j < abilities.length; j++) {
       var choiceLabel =
         "(" + GetTitle(activeCards[i], true) + ") " + abilities[j].ability.text;
-      ret.push({
+	  var choiceObj = {
         card: activeCards[i],
         ability: abilities[j].ability,
         label: choiceLabel,
-      });
+      };
+	  if (typeof abilities[j].ability.alt != 'undefined') choiceObj.alt = abilities[j].ability.alt;
+      ret.push(choiceObj);
     }
   }
   return ret;
@@ -2607,7 +2610,7 @@ function DeckBuild(
 	  //decoders
 	  var decoderCards = [];
 	  if (setIdentifiers.includes('sg')) decoderCards = decoderCards.concat([30005, 30026]);
-	  if (setIdentifiers.includes('su21')) decoderCards = decoderCards.concat([]);
+	  if (setIdentifiers.includes('su21')) decoderCards = decoderCards.concat([31021]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		decoderCards,

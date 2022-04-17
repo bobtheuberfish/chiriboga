@@ -2341,15 +2341,15 @@ cardSet[30032] = {
   },
   AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
-    //unless have a spare, only use Mayfly for worthwhile targets (the 1.5 is arbitrary, and the false prevents infinite loop)
-    var mayflyInGrip = false;
+    //unless have a spare, only use Mayfly for worthwhile targets (the 1.5 is arbitrary)
+    var anotherInGrip = false;
     for (var i = 0; i < runner.grip.length; i++) {
         if (runner.grip[i].title == "Mayfly") {
-          mayflyInGrip = true;
+          anotherInGrip = true;
           break;
         }
     }
-    if (runner.AI._getCachedPotential(server) > 1.5 || mayflyInGrip) {
+    if (runner.AI._getCachedPotential(server) > 1.5 || anotherInGrip) {
         result = result.concat(
           runner.AI.rc.ImplementIcebreaker(
             point,
@@ -2834,6 +2834,29 @@ cardSet[30039] = {
             for (var i = 0; i < choicesB.length; i++) {
               choicesB[i].server = attackedServer;
             }
+			//**AI code
+			if (corp.AI != null) {
+			  //choose highest printed rez cost ice which we would rez and can afford
+			  var harcc = choicesB[0].card; //highest affordable rez cost card
+			  var haprc = choicesB[0].card.rezCost; //highest affordable printed rez cost
+			  var zerothRezCost = RezCost(harcc);
+			  var wouldRez = CheckCredits(zerothRezCost, corp, "rezzing", harcc) && corp.AI._iceWorthRezzing(harcc, zerothRezCost, attackedServer);
+			  for (var i=1; i<choicesB.length; i++) {
+				  var possibleCard = choicesB[i].card;
+				  if (possibleCard.rezCost > haprc || !wouldRez) {
+					  var thisRezCost = RezCost(possibleCard);
+					  if ( CheckCredits(thisRezCost, corp, "rezzing", possibleCard) && corp.AI._iceWorthRezzing(possibleCard, thisRezCost, attackedServer) ) {
+						  harcc = possibleCard;
+						  haprc = possibleCard.rezCost;
+						  wouldRez = true;
+					  }
+				  }
+			  }
+			  //AI can nope out if it realises there are no good options (better to keep the ice in hand)
+			  if (!wouldRez && params.id == 0) return; //the decision phase is skipped
+			  corp.AI._log("I choose this one");			  
+			  corp.AI.preferred = { command: "install", cardToInstall: harcc, serverToInstallTo:attackedServer };
+			}
             //choose the ice to install
             function decisionCallbackB(params) {
               if (params.card !== null)
@@ -2847,7 +2870,7 @@ cardSet[30039] = {
               "Install ice, ignoring all costs",
               this,
               "install"
-            );
+            );	
           }
         }
         DecisionPhase(

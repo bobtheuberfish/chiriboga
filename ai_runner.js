@@ -900,7 +900,10 @@ console.log(this.preferred);
           var data = [];
           if (cmd == "run") data = [{ prop: "server", key: "serverToRun" }];
           else if (cmd == "trigger")
-            data = [{ prop: "card", key: "cardToTrigger" }];
+            data = [
+			  { prop: "card", key: "cardToTrigger" },
+			  { prop: "alt", key: "abilityAlt" },
+			];
           else if (cmd == "play") data = [{ prop: "card", key: "cardToPlay" }];
           else if (cmd == "install")
             data = [
@@ -916,23 +919,25 @@ console.log(this.preferred);
             //loop through optionList
             //if data includes multiple props/keys then all must match for a hit
             for (var i = 0; i < optionList.length; i++) {
-              var matches = 0;
+			  var required = data.length; //number to match	
+              var matches = 0; //matches so far
               for (var j = 0; j < data.length; j++) {
                 var prop = data[j].prop;
                 var key = data[j].key;
                 if (typeof this.preferred[key] !== "undefined") {
                   var value = this.preferred[key];
                   if (optionList[i][prop] == value) matches++;
-                  if (matches == data.length) {
-                    this._log("a relevant preference has been set");
-                    if (typeof this.preferred.nextPrefs !== "undefined")
-                      this.preferred = this.preferred.nextPrefs;
-                    //used saved next preference
-                    else this.preferred = null; //reset (don't reuse the preference)
-                    return i;
-                  }
                 }
+				else required--; //if that key isn't defined in preferred, then allow any
               }
+			  if (matches == required) {
+				this._log("a relevant preference has been set");
+				if (typeof this.preferred.nextPrefs !== "undefined")
+				  this.preferred = this.preferred.nextPrefs;
+				//used saved next preference
+				else this.preferred = null; //reset (don't reuse the preference)
+				return i;
+			  }
             }
           }
           console.log(optionList);
@@ -1236,12 +1241,19 @@ console.log(this.preferred);
 				break;
 			}
 		}
-		if (p != null) {
+		if (p != null) {	
+			//remove any sr breaks that are already broken but are still in the path for whatever reason
+			var ice = GetApproachEncounterIce();
+			if (ice) {
+				  for (var i=p.sr_broken.length-1; i>-1; i--) {
+					  if (ice.subroutines[p.sr_broken[i].idx].broken) p.sr_broken.splice(i,1);
+				  }
+			}
 			if (optionList.includes("trigger") && ((p.card_str_mods.length > 0)||(p.sr_broken.length > 0)) ) {
 			  //console.log("trigger");
 			  //console.log(p);
 			  //e.g. str up/down and break srs
-			  //first we clear out any persists from previous iceIdx (don't retrigger them)
+			  //first we clear out any persist card_str_mods from previous iceIdx (don't retrigger them)
 			  while (p.card_str_mods.length > 0 && p.card_str_mods[0].iceIdx != approachIce) {
 				  p.card_str_mods.splice(0,1);
 			  }
@@ -1251,7 +1263,7 @@ console.log(this.preferred);
 				  cardToTrigger: p.card_str_mods.splice(0,1)[0].use, //assumes they are added to the array in order of use, discard immediately
 				});
 			  }
-			  else if (p.sr_broken.length > 0) {
+			  else if (p.sr_broken.length > 0) {		
 				return this._returnPreference(optionList, "trigger", {
 				  cardToTrigger: p.sr_broken[0].use, //assumes they are added to the array in order of use, keep for sr choice
 				});
@@ -1264,7 +1276,6 @@ console.log(this.preferred);
 			  //assume choosing which subroutine to break (note that multiple breaks, even with one ability, are listed separately)
 			  //console.log("break");
 			  //console.log(p);
-			  var ice = GetApproachEncounterIce();
 			  if (ice) {
 				//the index in the sr array is not necessarily the index in the optionList e.g. if sr[1] is broken then options are [0,2] and index 2 will fail
 				var sridx = p.sr_broken.splice(0,1)[0].idx; //assumes they are added to the array in order of use, discard immediately
@@ -1273,6 +1284,18 @@ console.log(this.preferred);
 				  if (optionList[i].subroutine == sr) return i;
 				}
 			  }
+			}	
+			//check for abilities indicated by persistent (it's ok to splice because pathing is already finished)
+			if (optionList.includes("trigger"))  {
+			    //first we clear out any other persistents from previous iceIdx (don't retrigger them) and persistents which are not triggering a card ability (.use != 'undefined)
+			    while (p.persistents.length > 0 && (typeof p.persistents[0].iceIdx == 'undefined' || p.persistents[0].iceIdx != approachIce || typeof p.persistents[0].use == 'undefined') ) {
+				  p.persistents.splice(0,1);
+			    }
+				if (p.persistents.length > 0) {
+					var persistent = p.persistents.splice(0,1)[0]; //assumes they are added to the array in order of use, discard immediately
+					var retPref = { cardToTrigger: persistent.use, abilityAlt: persistent.alt };					
+					return this._returnPreference(optionList, "trigger", retPref);
+				}
 			}
 			//game is asking for something unanticipated. if this happens, investigate.
 			if (!optionList.includes("trigger")) {
@@ -1285,6 +1308,8 @@ console.log(this.preferred);
 		if (optionList.includes("n")) return optionList.indexOf("n");
       }
 	  //no path exists? this shouldn't happen so swing wildly
+	  console.log(JSON.stringify(optionList));
+	  console.error("No path to resolve (optionList above)");
       if (optionList.includes("trigger")) return optionList.indexOf("trigger"); //by default, trigger abilities if possible
     }
 

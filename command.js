@@ -359,8 +359,17 @@ function ResolveClick(input) {
       //determine the closest potential host
       var closestOption = 0; //index in relevantOptions, not validOptions
       for (var i = 0; i < relevantOptions.length; i++) {
-        //handle error gracefully
+        //no host? need to manually select (by button)
         if (typeof relevantOptions[i].host == "undefined") {
+		  for (var j=0; j<relevantOptions.length; j++) {
+			  if (typeof relevantOptions[j].alt != 'undefined') relevantOptions[j].button = relevantOptions[j].alt;
+			  else if (typeof relevantOptions[j].label != 'undefined') relevantOptions[j].button = relevantOptions[j].label;
+			  else relevantOptions[j].button = "unlabelled";
+		  }
+		  validOptions = relevantOptions;		  
+		  MakeChoice();
+		  return true; //returning true prevents any remaining code in renderer.OnClick() from firing
+		  /*
           LogError(
             "relevantOptions[i].host not defined for " +
               i +
@@ -368,6 +377,7 @@ function ResolveClick(input) {
               JSON.stringify(relevantOptions)
           );
           closestOption = i; //at least this way something will fire and the game will continue
+		  */
         } else if (relevantOptions[i].host.renderer.isClosestHost)
           closestOption = i;
       }
