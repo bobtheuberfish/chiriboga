@@ -59,6 +59,35 @@ var debugging = false;
   };
 })();
 
+// Functions used to save card locations
+// currently only handles a few specific locations
+function ServerAddress(server) {
+	if (server == corp.HQ) return "corp.HQ";
+	if (server == corp.RnD) return "corp.RnD";
+	if (server == corp.archives) return "corp.archives";
+	for (var i=0; i<corp.remoteServers.length; i++) {
+		if (server == corp.remoteServers[i]) return "corp.remoteServers["+i+"]";
+	}
+	return "";
+}
+function LocationStringIfRelevant(src) {
+	if (src.cardLocation) {
+		var server = GetServer(src);
+		if (server) {
+			var idx=-1;
+			if (typeof server.cards != 'undefined') {
+				idx = server.cards.indexOf(src);
+				if (idx > -1) return ServerAddress(server)+".cards["+idx+"]";
+			}
+			idx = server.root.indexOf(src);
+			if (idx > -1) return ServerAddress(server)+".root["+idx+"]";
+			idx = server.ice.indexOf(src);
+			if (idx > -1) return ServerAddress(server)+".ice["+idx+"]";
+		}
+	}
+	return src;
+}
+
 // Function used to automatically create replication code (src is an array, str is its address)
 function ReplicationCode(src,str) {
   var ret = "";
@@ -66,8 +95,14 @@ function ReplicationCode(src,str) {
 	  var card = src[j];
 	  var addr = str+'['+j+']';
 	  if (card.player == corp) {
-		  if (card.rezzed) ret += addr+".rezzed=true;\n";
-		  else if (card.faceUp) ret += addr+".faceUp=true;\n";
+		  if (card.rezzed) {
+			  card.knownToRunner = false; //no need for both to be set
+			  ret += addr+".rezzed=true;\n";
+		  }
+		  else if (card.faceUp) {
+			  card.knownToRunner = false; //no need for both to be set
+			  ret += addr+".faceUp=true;\n";
+		  }
 		  else if (card.knownToRunner) ret += addr+".knownToRunner=true;\n";
 	  }
 	  //counters
@@ -79,7 +114,7 @@ function ReplicationCode(src,str) {
 	  //custom properties
 	  for (var i = 0; i < cardPropertyResets.length; i++) {
 		if (typeof card[cardPropertyResets[i].propertyName] !== "undefined") {
-		  if (card[cardPropertyResets[i].propertyName] != cardPropertyResets[i].defaultValue) ret += addr+"."+cardPropertyResets[i].propertyName+"="+card[cardPropertyResets[i].propertyName]+";\n";
+		  if (card[cardPropertyResets[i].propertyName] != cardPropertyResets[i].defaultValue) ret += addr+"."+cardPropertyResets[i].propertyName+"="+LocationStringIfRelevant(card[cardPropertyResets[i].propertyName])+";\n";
 		}
 	  }
 	  //hosted cards
@@ -1108,6 +1143,7 @@ var cardPropertyResets = [
   { propertyName: "cardsToLookAt", defaultValue: null },
   { propertyName: "knownToRunner", defaultValue: false },
   { propertyName: "AITurnsInstalled", defaultValue: 0 },
+  { propertyName: "chosenCard", defaultValue: null },
 ];
 function ResetProperties(card) {
   for (var i = 0; i < cardPropertyResets.length; i++) {
@@ -1665,16 +1701,18 @@ function AdvancementRequirement(card) {
  * @method ValidateTriggerList
  * @param {Params[]} triggerList array of {card,label} where card[callbackName] is defined
  * @param {String} callbackName name of the callback property
+ * @param [Object] enumerateParams to send to Enumerate functions
  * @returns {Params[]} array of {card,label} where card[callbackName] is defined
  */
-function ValidateTriggerList(triggerList, callbackName) {
+function ValidateTriggerList(triggerList, callbackName, enumerateParams) {
   var ret = [];
   for (var i = 0; i < triggerList.length; i++) {
     triggerList[i].id = i;
     var choices = [{}]; //assume valid by default
     if (typeof triggerList[i].card[callbackName].Enumerate === "function")
-      choices = triggerList[i].card[callbackName].Enumerate.call(
-        triggerList[i].card
+      choices = triggerList[i].card[callbackName].Enumerate.apply(
+        triggerList[i].card,
+		enumerateParams
       );
     triggerList[i].choices = choices;
     if (choices.length > 0) ret.push(triggerList[i]);
@@ -2145,11 +2183,12 @@ function CamelToSentence(src) {
  * @method TriggeredResponsePhase
  * @param {Player} player corp or runner to get first priority
  * @param {String} callbackName name of the simultaneous trigger property
+ * @param [Object] enumerateParams to send to Enumerate functions
  * @param {function} afterOpportunity called after pseudophase completes
  * @param {String} [title] given to the pseudophase, defaults to CamelToSentence(callbackName)
  * @returns {Phase} the pseudophase created
  */
-function TriggeredResponsePhase(player, callbackName, afterOpportunity, title) {
+function TriggeredResponsePhase(player, callbackName, enumerateParams, afterOpportunity, title) {
   var printableCallbackName = CamelToSentence(callbackName);
   if (typeof title !== "undefined") printableCallbackName = title;
   var responsePhase = CreatePhaseFromTemplate(
@@ -2159,6 +2198,8 @@ function TriggeredResponsePhase(player, callbackName, afterOpportunity, title) {
     printableCallbackName,
     null
   );
+  if (typeof enumerateParams == 'undefined') enumerateParams = [];
+  responsePhase.triggerEnumerateParams = enumerateParams;
   responsePhase.triggerCallbackName = callbackName;
   responsePhase.Resolve.n = function () {
     GlobalTriggersPhaseCommonResolveN(true, afterOpportunity); //when done, this will return to original phase (true skips init) and then fire afterOpportunity
@@ -2174,14 +2215,16 @@ function TriggeredResponsePhase(player, callbackName, afterOpportunity, title) {
  * @method OpportunityForAvoidPrevent
  * @param {Player} player corp or runner
  * @param {String} callbackName name of the callback property
+ * @param [Object] enumerateParams to send to Enumerate functions
  * @param {function} afterOpportunity called after opportunites given for avoid/prevent
  * @returns {Phase} the pseudophase created
  */
-function OpportunityForAvoidPrevent(player, callbackName, afterOpportunity) {
+function OpportunityForAvoidPrevent(player, callbackName, enumerateParams, afterOpportunity) {
   var printableCallbackName = CamelToSentence(callbackName);
   return TriggeredResponsePhase(
     player,
     callbackName,
+	enumerateParams,
     afterOpportunity,
     "About to " + printableCallbackName
   );
@@ -2626,7 +2669,7 @@ function DeckBuild(
 	  //killer
 	  var killerCards = [];
 	  if (setIdentifiers.includes('sg')) killerCards = killerCards.concat([30015, 30025]);
-	  if (setIdentifiers.includes('su21')) killerCards = killerCards.concat([31008]);
+	  if (setIdentifiers.includes('su21')) killerCards = killerCards.concat([31008,31022]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		killerCards,

@@ -48,6 +48,7 @@
 // .text
 // .automatic //set true to have this fire before the others i.e. not on the resolution order list (usually used for things that are not actual effects on card, just implementation)
 // .availableWhenInactive //set true to have this fire even when not active
+//To implement non-automatic trigger phases, use TriggeredResponsePhase
 //Player chooses resolution order when multiple trigger simultaneously (e.g. multiple cards have 'when turn begins')
 /*
  .abilities[] //for operations and events the .Enumerate, .Resolve and .text are properties of the card itself not in abilities array
@@ -66,6 +67,7 @@
  .runnerDiscardEnds
  .stolen //called after a card is stolen (intended.steal will still be available to use)
  .scored //called after a card is scored (intended.score will still be available to use)
+ .installed //called when a card is installed (Enumerate takes the installed card as an input, use cardInstalled instead if you need automatic)
  .addTags //called when tags are to be added
  .tagsTaken //called after tags are taken (or given), intended.addTags has the number
  .netDamage //called when net damage is to be given/taken

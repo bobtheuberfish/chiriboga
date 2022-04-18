@@ -1193,9 +1193,10 @@ class CorpAI {
 
   //returns true to rez, false not to
   //passing the rez cost is an optimisation
-  _iceWorthRezzing(card, currentRezCost) {
+  //input server to hypothesise if the ice isn't installed yet
+  _iceWorthRezzing(card, currentRezCost, server) {
 	  var rezIce = true;
-	  var server = GetServer(card);
+	  if (typeof server == 'undefined') server = GetServer(card);
 	  if (typeof currentRezCost == 'undefined') {
 		  currentRezCost = RezCost(card);
 	  }

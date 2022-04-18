@@ -208,7 +208,7 @@ class RunnerAI {
 	    //reduce threat if corp is poor and ice is unrezzed
 	    if (!iceCard.rezzed && ret > corp.creditPool) ret=corp.creditPool;
 	  }
-	  //for now, assume hosted cards nullify this ice (TODO Magnet changes this and other similar Chiriboga functions)
+	  //for now, assume hosted cards nullify this ice (TODO Magnet changes this, as does Femme chosen. Consider also other similar Chiriboga functions)
 	  if (typeof iceCard.hostedCards !== "undefined") {
 		if (iceCard.hostedCards.length > 0) ret = 0;
 	  }  
@@ -770,6 +770,7 @@ class RunnerAI {
 		}
 	}	
 	//do the run calculation
+	if (debugging) console.log("RC for "+ServerName(server)+":");	  
 	var bestpath = this._calculateBestCompleteRun(server, poolCreditOffset, extraCredits, clickOffset, damageOffset);
 	//restore from temporary changes
     if (madeTemporaryChanges) {
@@ -1227,9 +1228,8 @@ console.log(this.preferred);
 	  this._cachedOrBestRun(attackedServer, approachIce);
       var bestpath = [];
       if (this.cachedBestPath) {
-        bestpath = this.cachedBestPath;
+        bestpath = this.cachedBestPath;		
         //console.log(optionList);
-
         //console.log("approachIce = "+approachIce);
         //console.log("subroutine = "+subroutine);
 		//console.log(JSON.stringify(bestpath));
@@ -1241,7 +1241,13 @@ console.log(this.preferred);
 				break;
 			}
 		}
-		if (p != null) {	
+		//in some cases there can be info in the start of encounter (e.g. full bypass)
+		if (p == null) {
+			if (bestpath[0].iceIdx == approachIce) {
+				p = bestpath[0];
+			}
+		}
+		if (p != null) {
 			//remove any sr breaks that are already broken but are still in the path for whatever reason
 			var ice = GetApproachEncounterIce();
 			if (ice) {
@@ -1254,7 +1260,7 @@ console.log(this.preferred);
 			  //console.log(p);
 			  //e.g. str up/down and break srs
 			  //first we clear out any persist card_str_mods from previous iceIdx (don't retrigger them)
-			  while (p.card_str_mods.length > 0 && p.card_str_mods[0].iceIdx != approachIce) {
+			  while (p.card_str_mods.length > 0 && p.card_str_mods[0].iceIdx > approachIce) {
 				  p.card_str_mods.splice(0,1);
 			  }
 			  //now assume there will only be one ability possible for this card, so we just prefer the card
@@ -1273,28 +1279,48 @@ console.log(this.preferred);
 				  return optionList.indexOf("n");
 			  }
 			} else if (p.sr_broken.length > 0) {
-			  //assume choosing which subroutine to break (note that multiple breaks, even with one ability, are listed separately)
+			  //check for choosing which subroutine to break (note that multiple breaks, even with one ability, are listed separately)
 			  //console.log("break");
 			  //console.log(p);
 			  if (ice) {
 				//the index in the sr array is not necessarily the index in the optionList e.g. if sr[1] is broken then options are [0,2] and index 2 will fail
-				var sridx = p.sr_broken.splice(0,1)[0].idx; //assumes they are added to the array in order of use, discard immediately
+				var sridx = p.sr_broken[0].idx; //assumes they are added to the array in order of use
 				var sr = ice.subroutines[sridx];
 				for (var i = 0; i < optionList.length; i++) {
-				  if (optionList[i].subroutine == sr) return i;
+				  if (typeof optionList[i].subroutine != 'undefined' && optionList[i].subroutine == sr) {
+					  p.sr_broken.splice(0,1); //used, discard
+					  return i;
+				  }
 				}
 			  }
 			}	
-			//check for abilities indicated by persistent (it's ok to splice because pathing is already finished)
-			if (optionList.includes("trigger"))  {
-			    //first we clear out any other persistents from previous iceIdx (don't retrigger them) and persistents which are not triggering a card ability (.use != 'undefined)
-			    while (p.persistents.length > 0 && (typeof p.persistents[0].iceIdx == 'undefined' || p.persistents[0].iceIdx != approachIce || typeof p.persistents[0].use == 'undefined') ) {
-				  p.persistents.splice(0,1);
-			    }
-				if (p.persistents.length > 0) {
+			//first we clear out any other persistents from previous iceIdx (don't retrigger them) and persistents which are not triggering a card ability (.use != 'undefined)
+			while (p.persistents.length > 0 && (typeof p.persistents[0].iceIdx == 'undefined' || p.persistents[0].iceIdx > approachIce || typeof p.persistents[0].use == 'undefined') ) {
+			  p.persistents.splice(0,1);
+			}
+			//check for abilities indicated by persistent
+			if (p.persistents.length > 0 && p.persistents[0].iceIdx == approachIce) {
+				//maybe triggerable?
+				if (optionList.includes("trigger"))  {
 					var persistent = p.persistents.splice(0,1)[0]; //assumes they are added to the array in order of use, discard immediately
 					var retPref = { cardToTrigger: persistent.use, abilityAlt: persistent.alt };					
 					return this._returnPreference(optionList, "trigger", retPref);
+				}
+				//maybe some choice? For this one we don't assume order
+				for (var j=0; j<p.persistents.length; j++) {
+					var persistent = p.persistents[j];
+					for (var i = 0; i < optionList.length; i++) {
+						if (optionList[i].alt && optionList[i].alt == persistent.alt ) {
+							p.persistents.splice(j,1); //found a match, now we can discard
+							return i;
+						}
+					}
+				}
+			}
+			//look for a continue path alt in the options
+			for (var i = 0; i < optionList.length; i++) {
+				if (optionList[i].alt && optionList[i].alt == "continue") {
+					return i;
 				}
 			}
 			//game is asking for something unanticipated. if this happens, investigate.

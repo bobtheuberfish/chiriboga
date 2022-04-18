@@ -355,6 +355,7 @@ function GlobalTriggersPhaseCommonResolveN(
 //NOTE: triggerCallbackName must be set
 phaseTemplates.globalTriggers = {
   triggerList: [],
+  triggerEnumerateParams: [],
   triggerCallbackName: "NOT SET",
   Init: function () {
     //follow priority rules
@@ -414,14 +415,16 @@ phaseTemplates.globalTriggers = {
     trigger: function () {
       return ValidateTriggerList(
         currentPhase.triggerList,
-        currentPhase.triggerCallbackName
+        currentPhase.triggerCallbackName,
+		currentPhase.triggerEnumerateParams
       );
     },
     n: function () {
       if (
         ValidateTriggerList(
           currentPhase.triggerList,
-          currentPhase.triggerCallbackName
+          currentPhase.triggerCallbackName,
+		  currentPhase.triggerEnumerateParams
         ).length < 1
       )
         return [{}];
@@ -439,8 +442,7 @@ phaseTemplates.globalTriggers = {
       else instruction = GetTitle(card, true);
       var choices = [{}]; //assume valid by default
       if (typeof triggerCallback.Enumerate === "function")
-        choices = triggerCallback.Enumerate.call(card);
-      //DecisionPhase(card.player,choices,triggerCallback.Resolve,"Triggering '"+currentPhase.triggerCallbackName+"' on "+GetTitle(card,true),instruction,card);
+        choices = triggerCallback.Enumerate.apply(card,currentPhase.triggerEnumerateParams);
       DecisionPhase(
         card.player,
         choices,
@@ -761,7 +763,8 @@ phases.corpActionMain = {
     draw: function () {
       SetHistoryThumbnail("Corp_back.png", "Draw");
       BasicActionDraw(corp);
-      IncrementPhase();
+	  //nextPhase will be undefined if the Corp lost by attempting to draw from empty R&D
+      if (typeof nextPhase != 'undefined') IncrementPhase();
     },
     gain: function () {
       SetHistoryThumbnail("credit.png", "Gain");
@@ -1750,28 +1753,3 @@ function BinaryDecision(
   return choices;
 }
 
-/**
- * Quick setup for triggered conditions that may need decisions (i.e. not all automatic).
- *
- * @method DecisionPhaseTriggered
- * @param {String} triggerName to enumerate trigger list
- * @param {function} afterOpportunity called once all triggers have resolved for both players
- * @param {Object} [context] context for function to be called in
- * @returns {Phase} the phase object created and changed to
- */
-function DecisionPhaseTriggered(triggerName, afterOpportunity, context) {
-  var triggeredPhase = CreatePhaseFromTemplate(
-    phaseTemplates.globalTriggers,
-    playerTurn,
-    currentPhase.title,
-    currentPhase.identifier,
-    null
-  );
-  triggeredPhase.triggerCallbackName = triggerName;
-  triggeredPhase.next = currentPhase;
-  triggeredPhase.Resolve.n = function () {
-    GlobalTriggersPhaseCommonResolveN(true, afterOpportunity, context); //true skips init so we return to current phase
-  };
-  ChangePhase(triggeredPhase);
-  return triggeredPhase;
-}

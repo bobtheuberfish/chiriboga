@@ -1075,6 +1075,9 @@ function Render() {
       attackedServerGlow.y
     );
   } else cardRenderer.UpdateGlow(null, 0);
+  
+  //render choices made for card abilities
+  cardRenderer.RenderChosens();
 
   //update actual rendered view (this would eventually be done automatically but this can cause issues with hover detection out of sync
   cardRenderer.app.render(cardRenderer.app.stage);

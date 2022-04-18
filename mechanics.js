@@ -138,7 +138,7 @@ function RemoveFromGame(card) {
 function Trash(card, canBePrevented, afterTrashing, context) {
   if (canBePrevented) {
     intended.trash = card;
-    OpportunityForAvoidPrevent(intended.trash.player, "trash", function () {
+    OpportunityForAvoidPrevent(intended.trash.player, "trash", [], function () {
       if (intended.trash == null) return;
       Trash(intended.trash, false, afterTrashing, context);
     });
@@ -314,6 +314,7 @@ function Install(
       },
     },
     Resolve: {
+	  //see Nisei CR 1.5 8.5.13 for steps of installing (e.g. trash, pay, trigger "when installed")
       trash: function (params) {
         var storedServer = GetServerByArray(installDestination); //as above, see below
         var serverIndex = corp.remoteServers.indexOf(storedServer); //to make sure servers aren't destroyed here (see below)
@@ -391,9 +392,14 @@ function Install(
                 }
               }
             }
-            AutomaticTriggers("cardInstalled", installingCard);
             //install done, card becomes active
-            IncrementPhase(returnToPhase);
+			//first the automatic triggers
+			AutomaticTriggers("cardInstalled", installingCard);
+			//then the Enumerate ones
+			//currently giving whoever's turn it is priority...not sure this is always going to be right
+			TriggeredResponsePhase(playerTurn, "installed", [installingCard], function() {
+				IncrementPhase(returnToPhase);
+			});
           },
           this
         );
@@ -587,7 +593,7 @@ function NetDamage(num, afterTrashing, context) {
     cardsTrashed.push(cardToTrash);
     Trash(cardToTrash, true, trashCallback);
   };
-  OpportunityForAvoidPrevent(runner, "netDamage", function () {
+  OpportunityForAvoidPrevent(runner, "netDamage", [], function () {
     Log("Runner takes " + intended.netDamage + " net damage");
     trashCallback();
   });
@@ -619,7 +625,7 @@ function MeatDamage(num, afterTrashing, context) {
       trashCallback
     );
   };
-  OpportunityForAvoidPrevent(runner, "meatDamage", function () {
+  OpportunityForAvoidPrevent(runner, "meatDamage", [], function () {
     Log("Runner takes " + intended.meatDamage + " meat damage");
     trashCallback();
   });
@@ -991,12 +997,13 @@ function AddTags(num) {
     return;
   }
   intended.addTags = num;
-  OpportunityForAvoidPrevent(runner, "addTags", function () {
+  OpportunityForAvoidPrevent(runner, "addTags", [], function () {
     runner.tags += intended.addTags;
     if (intended.addTags == 1) Log("1 tag added");
     else Log(intended.addTags + " tags added");
     UpdateCounters();
-    TriggeredResponsePhase(playerTurn, "tagsTaken"); //currently giving whoever's turn it is priority...not sure this is always going to be right
+	//currently giving whoever's turn it is priority...not sure this is always going to be right
+    TriggeredResponsePhase(playerTurn, "tagsTaken");
   });
 }
 
@@ -1012,7 +1019,7 @@ function BadPublicity(num) {
     return;
   }
   intended.badPublicity = num;
-  OpportunityForAvoidPrevent(corp, "badPublicity", function () {
+  OpportunityForAvoidPrevent(corp, "badPublicity", [], function () {
     corp.badPublicity += intended.badPublicity;
     if (intended.badPublicity == 1) Log("1 bad publicity added");
     else Log(intended.badPublicity + " bad publicity added");
@@ -1149,16 +1156,16 @@ function JackOut() {
  * @param {function} [afterScore] called after scoring complete
  * @param {Object} [context] for afterScore
  */
-function Score(card, afterSteal, context) {
+function Score(card, afterScore, context) {
   intended.score = card; //if callback sets this to null, the score will not happen
-  OpportunityForAvoidPrevent(runner, "score", function () {
+  OpportunityForAvoidPrevent(runner, "score", [], function () {
     if (intended.score == null) return;
     MoveCard(intended.score, corp.scoreArea);
     intended.score.faceUp = true;
     if (runner.AI != null) runner.AI.LoseInfoAboutHQCards(intended.score);
     Log(GetTitle(intended.score, true) + " scored");
-    TriggeredResponsePhase(corp, "scored", function () {
-      //corp has priority
+	//currently giving whoever's turn it is priority...not sure this is always going to be right
+    TriggeredResponsePhase(playerTurn, "scored", [], function () {
       intended.score.advancement = 0;
       intended.score = null;
       if (typeof afterScore === "function") afterScore.call(context);
@@ -1174,10 +1181,9 @@ function Score(card, afterSteal, context) {
 function Steal() {
   var originalLocation = accessingCard.cardLocation;
   intended.steal = accessingCard; //if callback sets this to null, the steal will not happen
-  OpportunityForAvoidPrevent(corp, "steal", function () {
+  OpportunityForAvoidPrevent(corp, "steal", [], function () {
     ResolveAccess(originalLocation);
     if (intended.steal == null) return;
-	
 	var stolenFromString = "remote";
 	if (originalLocation == corp.HQ.cards) stolenFromString = "HQ";
 	else if (originalLocation == corp.RnD.cards) stolenFromString = "R&D";
@@ -1188,8 +1194,8 @@ function Steal() {
     intended.steal.faceUp = true;
     if (runner.AI != null) runner.AI.LoseInfoAboutHQCards(intended.steal);
     Log(GetTitle(intended.steal, true) + " stolen");
-    TriggeredResponsePhase(runner, "stolen", function () {
-      //runner has priority
+	//currently giving whoever's turn it is priority...not sure this is always going to be right
+    TriggeredResponsePhase(playerTurn, "stolen", [], function () {
       intended.steal.advancement = 0;
       intended.steal = null;
     });
@@ -1232,7 +1238,7 @@ function Expose(card) {
   var otherPlayer = runner;
   intended.expose = card; //if callback sets this to null, the expose will not happen
   if (intended.expose.player == runner) otherPlayer = corp;
-  OpportunityForAvoidPrevent(otherPlayer, "expose", function () {
+  OpportunityForAvoidPrevent(otherPlayer, "expose", [], function () {
     if (intended.expose == null) return;
     //temporarily turn card face up
     intended.expose.faceUp = true;

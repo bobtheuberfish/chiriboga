@@ -1363,6 +1363,7 @@ cardSet[31021] = {
 	  Enumerate: function() {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate")) return [];
+		if (!CheckUnbrokenSubroutines()) return []; //technically you can still bypass but I'm putting this here for interface usability
 		return [{}];
 	  },
 	  Resolve: function(params) {
@@ -1413,6 +1414,178 @@ cardSet[31021] = {
   },
 };
 
+cardSet[31022] = {
+  title: "Femme Fatale",
+  imageFile: "31022.png",
+  player: runner,
+  faction: "Criminal",
+  influence: 1,
+  cardType: "program",
+  subTypes: ["Icebreaker", "Killer"],
+  memoryCost: 1,
+  installCost: 9,
+  strength: 2,
+  strengthBoost: 0,
+  chosenCard: null,
+  modifyStrength: {
+    Resolve: function (card) {
+      if (card == this) return this.strengthBoost;
+      return 0; //no modification to strength
+    },
+  },
+  //When you install this program, choose 1 installed piece of ice
+  installed: {
+	Enumerate: function(card) {
+      if (card == this) {
+        //installed ice
+        var choices = ChoicesInstalledCards(corp, function (corpCard) {
+          return CheckCardType(corpCard, ["ice"]);
+        });
+		//**AI code (in this case, implemented by setting and returning the preferred option)
+		if (choices.length > 0 && runner.AI != null) {
+			var targetChoice = choices[0];
+			var hts = runner.AI._iceThreatScore(targetChoice.card) * runner.AI._getCachedPotential(GetServer(targetChoice.card)); //highest threat score
+			for (var i=1; i<choices.length; i++) {
+				var threat = runner.AI._iceThreatScore(choices[i].card) * runner.AI._getCachedPotential(GetServer(choices[i].card));
+				if (threat > hts) {
+					hts = threat;
+					targetChoice = choices[i];
+				}
+			}
+			return [targetChoice];
+		}
+		return choices;
+	  }
+	  return [];
+	},		
+    Resolve: function (params) {
+		this.chosenCard = params.card;
+    },
+  },
+  //Whenever you encounter the chosen ice, you may pay 1[c] for each subroutine it has. If you do, bypass that ice.
+  cardEncountered: {
+    Resolve: function (card) {
+		if (!card.subroutines) return;
+		if (card != this.chosenCard) return;
+		var numsr = card.subroutines.length;
+		if (!CheckCredits(numsr, runner, "using", this)) return; //can't afford
+		var paylabel = numsr+"[c]: Bypass";
+        var choices = [
+          { id: 0, label: paylabel, button: paylabel, alt:"femme_bypass" },
+          { id: 1, label: "Continue", button: "Continue", alt:"continue" },
+        ];
+        function decisionCallback(params) {
+          if (params.id == 0) {
+			SpendCredits(
+			  runner,
+			  numsr,
+			  "using",
+			  this,
+			  function () {
+				Bypass();
+			  },
+			  this
+			);
+		  }
+        }
+        DecisionPhase(
+          runner,
+          choices,
+          decisionCallback,
+          "Femme Fatale",
+          "Femme Fatale",
+          this
+        );
+    },
+  },
+  //Interface -> 1[c]: Break 1 sentry subroutine.
+  //2[c]: +1 strength.
+  abilities: [
+    {
+      text: "Break 1 sentry subroutine.",
+      Enumerate: function () {
+        if (!CheckEncounter()) return [];
+        if (!CheckSubType(attackedServer.ice[approachIce], "Sentry")) return [];
+        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckStrength(this)) return [];
+        return ChoicesEncounteredSubroutines();
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          1,
+          "using",
+          this,
+          function () {
+            Break(params.subroutine);
+          },
+          this
+        );
+      },
+    },
+    {
+      text: "+1 strength.",
+      Enumerate: function () {
+        if (!CheckEncounter()) return []; //technically you can +1 strength outside encounters but I'm putting this here for interface usability
+        if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
+        if (!CheckUnbrokenSubroutines()) return []; //as above
+        if (!CheckSubType(attackedServer.ice[approachIce], "Sentry")) return []; //as above
+        if (!CheckCredits(2, runner, "using", this)) return [];
+        return [{}];
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          2,
+          "using",
+          this,
+          function () {
+            BoostStrength(this, 1);
+          },
+          this
+        );
+      },
+    },
+  ],
+  encounterEnds: {
+    Resolve: function () {
+      this.strengthBoost = 0;
+    },
+    automatic: true,
+  },
+  AISpecialBreaker:true,
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    result = result.concat(
+        runner.AI.rc.ImplementIcebreaker(
+          point,
+          this,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Sentry"],
+          2,
+          1,
+          1,
+          1,
+          creditsLeft
+        )
+    ); //cost to str, amt to str, cost to brk, amt to brk
+	return result;
+  },
+  //AIEncounterOptions is a bit of a weird one. At the moment we return an array of objects with .runner_credits_spent, .effects and .persistent
+  //the runcalculator will add/concatenate these into the point where needed
+  AIEncounterOptions: function(iceIdx,iceAI) {
+	//include option to bypass
+	if (iceAI.ice == this.chosenCard) {
+		var persistents = [{use:this, target:iceAI.ice, iceIdx:iceIdx, action:"bypass", alt:"femme_bypass"}];
+		var numsr = 2; //just an arbitrary default if ice is not known (no cheating!)
+		if (PlayerCanLook(runner, iceAI.ice)) numsr = iceAI.ice.subroutines.length;
+		return [{runner_credits_spent:numsr, effects:[], persistents:persistents}];
+	}
+	return [];
+  },
+};
 //TODO link (e.g. Reina)
 
 /*

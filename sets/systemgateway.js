@@ -3924,7 +3924,9 @@ cardSet[30054] = {
 			runner.AI._log("I was not expecting this");
             choice = choices[1]; //etr preferred because no acceptable path through the run
 		  } else {
-			runner.AI._log("I've committed to this");  
+			if (!runner.AI.rc.PointIncludesBypass(runner.AI.cachedBestPath[0])) {
+				runner.AI._log("I've committed to this");  
+			}
 		  }
           runner.AI.preferred = { title: "Funhouse", option: choice }; //title must match currentPhase.title for AI to fire
         }
