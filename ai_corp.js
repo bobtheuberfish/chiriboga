@@ -108,14 +108,24 @@ class CorpAI {
     return iceToChooseFrom[0]; //just random for now
   }
 
+  //special case e.g Sneakdoor Beta
+  _archivesIsBackdoorToHQ() {
+	  if (this._copyOfCardExistsIn("Sneakdoor Beta",runner.rig.programs)) {
+		  return true;
+	  }
+	  return false;
+  }
+
   //returns the preferred server. input is the upgrade to install
   _bestServerToUpgrade(upgrade) {
     var preferredServer = null; //install into new if necessary
     var nonEmptyProtectedRemotes = this._nonEmptyProtectedRemotes();
     if (nonEmptyProtectedRemotes.length > 0)
       preferredServer = nonEmptyProtectedRemotes[0];
-    else if (this._protectionScore(corp.HQ) < this._protectionScore(corp.RnD))
-      preferredServer = corp.HQ;
+    else if (this._protectionScore(corp.HQ, {returnArchivesLowerScoreForHQIfBackdoor:true}) < this._protectionScore(corp.RnD, {})) {
+      if (this._archivesIsBackdoorToHQ() && this._protectionScore(corp.archives, {}) < this._protectionScore(corp.HQ, {})) preferredServer = corp.archives;
+	  else preferredServer = corp.HQ;
+	}
     else preferredServer = corp.RnD;
     return preferredServer;
   }
@@ -127,11 +137,13 @@ class CorpAI {
     if (typeof server.cards == "undefined") {
       //is remote
       //no if its protection is too weak
-      var protScore = this._protectionScore(server);
-      var minProt = this._protectionScore(corp.HQ); //new method: just needs to be at least as strong as HQ
+      var protScore = this._protectionScore(server, {});
+      var minProt = this._protectionScore(corp.HQ, {returnArchivesLowerScoreForHQIfBackdoor:true}); //new method: just needs to be at least as strong as HQ
 	  //var minProt = RandomRange(3, 4); //arbitrary: tweak as needed (old method)
-      if (this._agendasInHand() > MaxHandSize(corp) - 1)
-        minProt = this._protectionScore(corp.archives); //if it's going to be thrown out, it just has to be better protection than Archives
+	  if (this._agendasInHand() > MaxHandSize(corp) - 1) {
+		//if it's going to be thrown out, it just has to be better protection than Archives
+        minProt = this._protectionScore(corp.archives, {ignoreBackdoorFromArchives:true}); 
+	  }
       if (protScore < minProt) return false;
 
       //yes if it has a scoring upgrade, an agenda or an ambush installed
@@ -173,7 +185,7 @@ class CorpAI {
   //returns value of current scoring window if using the given server (zero if no window)
   _scoringWindow(server) {
 	var ret = 0;
-	ret = this._protectionScore(server) - this._protectionScore(corp.HQ) + (0.3*this._clicksLeft()) + (Credits(corp)/(Credits(runner)+1.0)) - 1.0;
+	ret = this._protectionScore(server, {}) - this._protectionScore(corp.HQ, {returnArchivesLowerScoreForHQIfBackdoor:true}) + (0.3*this._clicksLeft()) + (Credits(corp)/(Credits(runner)+1.0)) - 1.0;
 	return ret;
   }
 
@@ -472,10 +484,17 @@ class CorpAI {
   }
 
   _protectionScore(
-    server //higher number = more protected
+    server, //higher number = more protected
+	options //ignoreSuccessfulRuns, ignoreBackdoorFromArchives, returnArchivesLowerScoreForHQIfBackdoor
   ) {
+	if (typeof options == 'undefined') {
+		console.error("options not defined for call to corp.AI._protectionScore");
+		options={};
+	}
     //new servers have a score of 1 (because they are empty)
     if (server == null) return 1;
+	var archivesIsBackdoorToHQ = this._archivesIsBackdoorToHQ();
+	if (options.ignoreBackdoorFromArchives) archivesIsBackdoorToHQ = false;
     //for 'protecting' check we build a score considering how much ice and how effective the ice is
     var ret = 0;
     for (var i = 0; i < server.ice.length; i++) {
@@ -484,13 +503,27 @@ class CorpAI {
     for (var i = 0; i < server.root.length; i++) {
       ret += this._cardProtectionValue(server.root[i]);
     }
-    //if it is being run successfully a lot, need extra protection
-    if (typeof server.AISuccessfulRuns !== "undefined")
-      ret -= Math.round(Math.sqrt(server.AISuccessfulRuns));
-    //if it is archives we will deprioritise protection by default
-    if (server == corp.archives) ret += 3; //archives (the 3 is arbitrary)
-	//if it HQ, increase or decrease priorisation based on agenda points compared to cards in hand
-	if (server == corp.HQ) ret += corp.HQ.cards.length - this._agendaPointsInServer(corp.HQ) - 2.5; //the subtracted value is arbitrary (with 2 the AI was underprotective of HQ)
+	if (!options.ignoreSuccessfulRuns) {
+		//if it is being run successfully a lot, need extra protection
+		var successfulRuns = 0;
+		if (typeof server.AISuccessfulRuns !== "undefined") successfulRuns = server.AISuccessfulRuns;
+		//if archives is a backdoor to HQ, consider successful runs on HQ
+		if (server == corp.archives && archivesIsBackdoorToHQ && corp.HQ.AISuccessfulRuns !== "undefined") {
+			if (corp.HQ.AISuccessfulRuns > successfulRuns) successfulRuns = corp.HQ.AISuccessfulRuns;
+		}
+		if (successfulRuns > 0) ret -= Math.round(Math.sqrt(successfulRuns));
+	}
+	//if it is archives we will deprioritise protection (if it is not a backdoor into HQ)
+	if (server == corp.archives && !archivesIsBackdoorToHQ) ret += 3; //archives (the 3 is arbitrary)
+	//if it is HQ (or backdoor), increase or decrease priorisation based on agenda points compared to cards in hand
+	if (server == corp.HQ || (server == corp.archives && archivesIsBackdoorToHQ) ) ret += corp.HQ.cards.length - this._agendaPointsInServer(corp.HQ) - 2.5; //the subtracted value is arbitrary (with 2 the AI was underprotective of HQ)
+	if (options.returnArchivesLowerScoreForHQIfBackdoor) {
+		//if it is HQ we will return the lowest protection of either HQ or Archives
+		if (server == corp.HQ && archivesIsBackdoorToHQ) {
+			var archivesProt = this._protectionScore(corp.archives,options);
+			if (archivesProt < ret) ret = archivesProt;
+		}
+	}
     return ret;
   }
 
@@ -502,22 +535,22 @@ class CorpAI {
 
     var serverToProtect = corp.HQ;
     if (runner.identityCard.faction == "Shaper") serverToProtect = corp.RnD;
-    var protectionScore = this._protectionScore(serverToProtect);
+    var protectionScore = this._protectionScore(serverToProtect, {});
 
-    protectionScores.HQ = this._protectionScore(corp.HQ);
+    protectionScores.HQ = this._protectionScore(corp.HQ, {});
     if (protectionScores.HQ < protectionScore) {
       serverToProtect = corp.HQ;
       protectionScore = protectionScores.HQ;
     }
 
-    protectionScores.RnD = this._protectionScore(corp.RnD);
+    protectionScores.RnD = this._protectionScore(corp.RnD, {});
     if (protectionScores.RnD < protectionScore) {
       serverToProtect = corp.RnD;
       protectionScore = protectionScores.RnD;
     }
     for (var i = 0; i < corp.remoteServers.length; i++) {
       protectionScores[corp.remoteServers[i].serverName] =
-        this._protectionScore(corp.remoteServers[i]);
+        this._protectionScore(corp.remoteServers[i], {});
       if (this._isAScoringServer(corp.remoteServers[i]))
         protectionScores[corp.remoteServers[i].serverName] -=
           this._agendasInHand(); //scoring servers need more protection than other remotes (and the more agendas in hand, the more need to strengthen them
@@ -529,7 +562,7 @@ class CorpAI {
       }
     }
     if (this._emptyProtectedRemotes().length == 0) {
-      protectionScores["null"] = this._protectionScore(null);
+      protectionScores["null"] = this._protectionScore(null, {});
       if (protectionScores["null"] < protectionScore) {
         serverToProtect = null;
         protectionScore = protectionScores["null"];
@@ -542,7 +575,7 @@ class CorpAI {
 		}
 	}
     if (!ignoreArchives) {
-      protectionScores.archives = this._protectionScore(corp.archives);
+      protectionScores.archives = this._protectionScore(corp.archives, {});
       if (protectionScores.archives < protectionScore) {
         serverToProtect = corp.archives;
         protectionScore = protectionScores.archives;
@@ -556,9 +589,9 @@ class CorpAI {
     var bestProtectedRemote = null;
     var protectionScore = 0;
     for (var i = 0; i < corp.remoteServers.length; i++) {
-      if (this._protectionScore(corp.remoteServers[i]) > protectionScore) {
+      if (this._protectionScore(corp.remoteServers[i], {}) > protectionScore) {
         bestProtectedRemote = corp.remoteServers[i];
-        protectionScore = this._protectionScore(bestProtectedRemote);
+        protectionScore = this._protectionScore(bestProtectedRemote, {});
       }
     }
     return bestProtectedRemote;
@@ -577,7 +610,7 @@ class CorpAI {
       }
       if (corp.remoteServers[i].ice.length > 0 && hasRoom) {
         //insert into ret in order by finding the relevant index
-        var thisProtectionScore = this._protectionScore(corp.remoteServers[i]);
+        var thisProtectionScore = this._protectionScore(corp.remoteServers[i], {});
         var k = 0;
         while (
           k < protectionScores.length &&
@@ -902,10 +935,10 @@ class CorpAI {
         }
       }
 
-      //otherwise just basic action is fine, unless last click and potentiall bringing an agenda into weaker protection
+      //otherwise just basic action is fine, unless last click and potentially bringing an agenda into weaker protection
       var drawIsOK = true;
 	  if (this._clicksLeft() < 2) {
-		  if (this._protectionScore(corp.HQ) < this._protectionScore(corp.RnD)) {
+		  if (this._protectionScore(corp.HQ, {returnArchivesLowerScoreForHQIfBackdoor:true}) < this._protectionScore(corp.RnD, {})) {
 			  drawIsOK = false;
 			  this._log("But no I don't want to draw right now");
 		  }
@@ -1781,7 +1814,7 @@ class CorpAI {
 			//don't start advancing if too poor to finish the job (the false means not necessarily this turn) or agenda in weak server
 			var startOrContinueAdvancement = false;
 			if (card.advancement > 0) startOrContinueAdvancement = true; //already started, feel free to continue (the counter shows the runner it is advanceable)
-			else if (!CheckCardType(card, ["agenda"]) || card == almostDoneAgenda || this._protectionScore(corp.remoteServers[i]) > this._protectionScore(corp.HQ)) {
+			else if (!CheckCardType(card, ["agenda"]) || card == almostDoneAgenda || this._protectionScore(corp.remoteServers[i], {}) > this._protectionScore(corp.HQ, {returnArchivesLowerScoreForHQIfBackdoor:true})) {
 				if (this._potentialAdvancement(card,false) >= advancementLimit) startOrContinueAdvancement = true;
 			}
 			if ( startOrContinueAdvancement ) {
@@ -1891,10 +1924,10 @@ class CorpAI {
           //if the best option is to install non-ice into an unprotected server, don't do it unless we can install ice next click
           if (
             rankedInstallOptions[0].cardToInstall.cardType == "ice" ||
-            this._protectionScore(rankedInstallOptions[0].serverToInstallTo) >
+            this._protectionScore(rankedInstallOptions[0].serverToInstallTo, {}) >
               1 ||
             (this._clicksLeft() > 2 &&
-              this._affordableIce(rankedInstallOptions[0].serverToInstallTo))
+              this._affordableIce(rankedInstallOptions[0].serverToInstallTo, {}))
           )
             return optionList.indexOf("install");
         }

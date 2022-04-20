@@ -1102,8 +1102,9 @@ console.log(this.preferred);
           if (runner.heap[i].title == "Conduit") {
             if (runner.heap[i].runningWithThis) {
               runner.heap[i].runningWithThis = false;
-              if (corp.RnD.cards[corp.RnD.cards.length - 1].knownToRunner)
-                return optionList.indexOf("jack"); //jack out, the top card is already known
+			  var topCard = corp.RnD.cards[corp.RnD.cards.length - 1];
+              if (topCard.knownToRunner && !CheckCardType(topCard, ["agenda"]))
+                return optionList.indexOf("jack"); //jack out, the top card is already known and isn't an agenda
             }
           }
         }
@@ -1385,23 +1386,11 @@ console.log(this.preferred);
 
     //if run is an option, assess the possible runs
     if (optionList.includes("run")) {
-      //keep track of extra potential from trigger abilities
-      var useRedTeam = null;
-      var useConduit = null;
-      if (optionList.includes("trigger")) {
-        var triggerChoices = ChoicesTriggerableAbilities(runner, "click");
-        for (var i = 0; i < triggerChoices.length; i++) {
-          if (triggerChoices[i].card.title == "Red Team")
-            useRedTeam = triggerChoices[i].card;
-          else if (triggerChoices[i].card.title == "Conduit")
-            useConduit = triggerChoices[i].card;
-        }
-      }
       //go through all the servers
       this.serverList = [
         { server: corp.HQ },
         { server: corp.RnD },
-        { server: corp.archives },
+        { server: corp.archives }, //this order is important or Sneakdoor won't work
       ];
       this.cachedPotentials = []; //store potentials for other use
       this.cachedCosts = []; //clear costs too
@@ -1465,29 +1454,6 @@ console.log(this.preferred);
                 this.serverList[i].potential = 0.5;
             }
           }
-		  //special potential from triggers and cards
-          if (useRedTeam) {
-            //might get a little credit from this (the 0.5 is arbitrary)
-            if (!useRedTeam.runHQ && server == corp.HQ)
-              this.serverList[i].potential += 0.5;
-            else if (!useRedTeam.runRnD && server == corp.RnD)
-              this.serverList[i].potential += 0.5;
-            else if (!useRedTeam.runArchives && server == corp.archives)
-              this.serverList[i].potential += 0.5;
-          }
-          if (useConduit && server == corp.RnD) {
-            //extra potential the deeper you can dig (except cards already known)
-            var conduitDepth = Counters(useConduit, "virus") + 1;
-			//ignore top card as it is not 'bonus'
-            var conduitBonusCards =
-              this._countNewCardsThatWouldBeAccessedInRnD(conduitDepth,[corp.RnD.cards[corp.RnD.cards.length-1]]);
-            if (conduitBonusCards > 0) {
-              //only use it if it gives a benefit (it still gains counters from runs with other cards either way)
-              this.serverList[i].potential += conduitBonusCards - 1;
-            } else useConduit = null;
-            if (conduitDepth < corp.RnD.cards.length)
-              this.serverList[i].potential += 0.5; //arbitrary, for being able to gain virus counters (ignore if dig reaching the bottom of R&D)
-          }
         } //remote
         else {
           this.serverList[i].potential = 0; //empty has no potential
@@ -1528,24 +1494,45 @@ console.log(this.preferred);
           }
         }
 
-	    //extra potential from best run event (if any)
+		//extra potential from passive card abilities
+		var activeCards = ActiveCards(runner);
+		for (var j = 0; j < activeCards.length; j++) {
+			if (typeof activeCards[j].AIRunExtraPotential == 'function') {
+			  this.serverList[i].potential += activeCards[j].AIRunExtraPotential.call(activeCards[j],this.serverList[i].server,this.serverList[i].potential);
+			}
+		}
+
+	    //extra potential from best run event or ability (if any)
+		var runEventOrAbilityBestExtraPotential = 0;
 		this.serverList[i].useRunEvent = null; //by default don't use a run event
-		var runEventBestExtraPotential = 0;
         if (optionList.includes("play")) {
 		  for (var j=0; j<runner.grip.length; j++) {
 			  if (CheckSubType(runner.grip[j], "Run")) {
 				  var extraPotentialFromThisRunEvent = 0;
 				  if (typeof runner.grip[j].AIRunEventExtraPotential == 'function') extraPotentialFromThisRunEvent = runner.grip[j].AIRunEventExtraPotential.call(runner.grip[j],this.serverList[i].server,this.serverList[i].potential);
-				  if ( extraPotentialFromThisRunEvent > runEventBestExtraPotential ) {
+				  if ( extraPotentialFromThisRunEvent > runEventOrAbilityBestExtraPotential ) {
 					  if ( FullCheckPlay(runner.grip[j]) ) {
-						  runEventBestExtraPotential = extraPotentialFromThisRunEvent;
+						  runEventOrAbilityBestExtraPotential = extraPotentialFromThisRunEvent;
 						  this.serverList[i].useRunEvent = runner.grip[j];
 					  }
 				  }
 			  }
 		  }
 	    }
-		this.serverList[i].potential += runEventBestExtraPotential;
+		this.serverList[i].useRunAbility = null; //by default don't use a run ability
+        if (optionList.includes("trigger")) {
+			var triggerChoices = ChoicesTriggerableAbilities(runner, "click");
+			for (var j = 0; j < triggerChoices.length; j++) {
+				  var extraPotentialFromThisRunAbility = 0;
+				  if (typeof triggerChoices[j].card.AIRunAbilityExtraPotential == 'function') extraPotentialFromThisRunAbility = triggerChoices[j].card.AIRunAbilityExtraPotential.call(triggerChoices[j].card,this.serverList[i].server,this.serverList[i].potential);
+				  if ( extraPotentialFromThisRunAbility > runEventOrAbilityBestExtraPotential ) {
+					  runEventOrAbilityBestExtraPotential = extraPotentialFromThisRunAbility;
+					  this.serverList[i].useRunAbility = triggerChoices[j].card;
+					  this.serverList[i].useRunEvent = null; //ability is better than event right now
+				  }
+			  }
+	    }
+		this.serverList[i].potential += runEventOrAbilityBestExtraPotential;
 
 		//cache server potential
         this.cachedPotentials.push({
@@ -1859,27 +1846,13 @@ console.log(this.preferred);
         }
 
         //maybe run by triggering a run ability
-        if (useConduit && this.serverList[0].server == corp.RnD)
-          return this._returnPreference(optionList, "trigger", {
-            cardToTrigger: useConduit,
-            nextPrefs: { chooseServer: this.serverList[0].server },
-          });
-        if (useRedTeam) {
-          var redTeamServer = null;
-          if (!useRedTeam.runHQ && this.serverList[0].server == corp.HQ)
-            redTeamServer = corp.HQ;
-          else if (!useRedTeam.runRnD && this.serverList[0].server == corp.RnD)
-            redTeamServer = corp.RnD;
-          else if (
-            !useRedTeam.runArchives &&
-            this.serverList[0].server == corp.archives
-          )
-            redTeamServer = corp.archives;
-          if (redTeamServer)
-            return this._returnPreference(optionList, "trigger", {
-              cardToTrigger: useRedTeam,
-              nextPrefs: { chooseServer: redTeamServer },
-            });
+        if (optionList.includes("trigger")) {
+			if (this.serverList[0].useRunAbility) {
+			  return this._returnPreference(optionList, "trigger", {
+				cardToTrigger: this.serverList[0].useRunAbility,
+				nextPrefs: { chooseServer: this.serverList[0].server },
+			  });
+			}			
         }
 
 		var serverToRun = this.serverList[0].server;

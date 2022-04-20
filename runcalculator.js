@@ -679,15 +679,15 @@ class RunCalculator {
           if (totalEffect.netDamage) totalDamage += totalEffect.netDamage;
           if (totalEffect.meatDamage) totalDamage += totalEffect.meatDamage;
           if (totalEffect.brainDamage) totalDamage += totalEffect.brainDamage;
-		  //update damage limit based on clicks spent
-		  if (clicksLeft < 1) damageLimit = runner.grip.length - MaxHandSize(runner); //try to keep a full hand at end of turn	
+		  //update damage limit based on clicks spent (unless it is set to Infinity)
+		  if (clicksLeft < 1 && damageLimit != Infinity) damageLimit = runner.grip.length - MaxHandSize(runner); //try to keep a full hand at end of turn	
 		  if (damageLimit < 0) damageLimit = 0;
 		  //now check damage against limit
           if (totalDamage <= damageLimit) {
             var totalTag = 0;
             if (totalEffect.tag) totalTag += totalEffect.tag;
-			//update tag limit based on clicks and credits spent
-			var tagLimit =
+			//update tag limit based on clicks and credits spent (unless it is set to Infinity)
+			if (tagLimit != Infinity) tagLimit =
 			  Math.min(clicksLeft, Math.floor(poolCreditsLeft * 0.5)) - runner.tags; //allow 1 tag for each click+2[c] (pool only for now) remaining but less if tagged
 			if (tagLimit < 0) tagLimit = 0;
 			//now check tags against limit
@@ -1037,6 +1037,14 @@ class RunCalculator {
           this.paths.push(p);
       }
     }
+
+	//incomplete path not found, try again permitting more tags
+	if (this.paths.length == 0 && incomplete && tagLimit != Infinity) {
+		var infiniteTagPath = this.Calculate(server,clicks,poolCredits,otherCredits,damageLimit,Infinity,true,startIceIdx);
+		if (infiniteTagPath.length > 0) return infiniteTagPath;
+		//failing that, permit damage (this may lose the game but should reduce chance of error)
+		return this.Calculate(server,clicks,poolCredits,otherCredits,Infinity,Infinity,true,startIceIdx);
+	}
 
     return this.paths;
   }

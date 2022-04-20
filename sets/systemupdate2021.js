@@ -176,7 +176,7 @@ cardSet[31003] = {
 	    return choices;	  
 	},
 	runBegins: {
-		Resolve: function (params) {
+		Resolve: function (server) {
 			this.icePassedLastRun = [];
 		},
 		automatic: true,
@@ -479,7 +479,7 @@ cardSet[31007] = {
 	}
     return 0; //do install
   },
-  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
 	  //extra costs of install have already been considered, so yes install it
 	  return 1; //yes
   },
@@ -653,7 +653,7 @@ cardSet[31011] = {
     if (doing == "paying trash costs") return true;
     return false;
   },
-  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
 	  //extra costs of install have already been considered, so yes install it
 	  return 1; //yes
   },
@@ -680,7 +680,7 @@ cardSet[31012] = {
 	  return 1; //increase cost by 1
     },
   },
-  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
 	  if (!server) return 0; //no server, no need
 	  //install before run if server has unrezzed ice
 	  var serverHasUnrezzedIce = false;
@@ -816,7 +816,7 @@ cardSet[31014] = {
 					  var cardB = ctcf[RandomRange(0, ctcf.length - 1)];
 					  return [{ cards: [ cardA, cardB] }];
 					  //is there any reason not to proc Steve?
-					  return continueChoice;
+					  //return continueChoice;
 					}
 					//not AI? set up for human choice (multi-choice)
 					for (var i = 0; i < choices.length; i++) {
@@ -1586,6 +1586,92 @@ cardSet[31022] = {
 	return [];
   },
 };
+
+cardSet[31023] = {
+  title: "Sneakdoor Beta",
+  imageFile: "31023.png",
+  player: runner,
+  faction: "Criminal",
+  influence: 3,
+  cardType: "program",
+  memoryCost: 2,
+  installCost: 4,
+  runningWithThis: false,
+  //[click]: Run Archives.
+  abilities: [
+    {
+      text: "Run Archives.",
+      Enumerate: function () {
+        if (!CheckActionClicks(runner, 1)) return [];
+        return [{}];
+      },
+      Resolve: function (params) {
+        SpendClicks(runner, 1);
+        this.runningWithThis = true;
+        MakeRun(corp.archives);
+      },
+    },
+  ],
+  //If that run would be declared successful, change the attacked server to HQ for the remainder of that run.
+    //Note re:Crisium (check the interaction)
+    //Crisium on Archives means you don't move.
+    //Crisium on HQ you will change to HQ, but the run is not successful.
+  beforeDeclareSuccess: {
+    Resolve: function () {
+      if (this.runningWithThis) {
+		  Log("Attacked server changed to HQ");
+		  attackedServer = corp.HQ;
+		  this.runningWithThis = false;
+	  }
+    },
+    automatic: true,
+	//If Sneakdoor Beta is trashed during a run it initiated, the run is still treated as a run on HQ if it is successful. [Official FAQ]
+	availableWhenInactive: true,
+  },
+  runUnsuccessful: {
+    Resolve: function () {
+      this.runningWithThis = false;
+    },
+    automatic: true,
+	availableWhenInactive: true,
+  },
+  AIRunAbilityExtraPotential: function(server,potential) {
+	  if (server == corp.archives) {
+		//this works because in the AI, HQ potential is calculated and stored before Archives is calculated
+		var HQpotential = runner.AI._getCachedPotential(corp.HQ);
+		if (HQpotential > potential) {
+			return HQpotential + 0.1; //plus a little bonus since running Archives will make the Corp sweat a bit
+		}
+	  }
+	  return 0; //don't use
+  },
+  //install before run if the chosen server is HQ and Sneakdoor is in worthkeeping
+  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+	if (server == corp.HQ) {
+		if (runner.AI.cardsWorthKeeping.includes(this)) return 1; //yes
+	}
+	return 0; //no
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if not wasteful (i.e. there is not already a Sneakdoor installed) and a run into Archives is cheaper than direct into HQ
+	  if (!this.AIWastefulToInstall()) {
+		if (runner.AI._getCachedCost(corp.archives) < runner.AI._getCachedCost(corp.HQ)) {
+			return true;
+		}
+	  }
+	  return false;
+  },
+  AIWastefulToInstall: function() {
+	  for (var j = 0; j < runner.rig.programs.length; j++) {
+		if (runner.rig.programs[j].title == this.title) {
+		  return true; //already one installed
+		}
+	  }
+	  return false;
+  },
+  AILimitPerDeck: 2,
+};
+
 //TODO link (e.g. Reina)
 
 /*

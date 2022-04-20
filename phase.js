@@ -308,8 +308,8 @@ function BuildGlobalTriggerList() {
         );
       var oldPhase = currentPhase;
       initialList[i].card[triggerName].Resolve.call(initialList[i].card);
-      //phase shouldn't change during automatic triggers
-      if (oldPhase !== currentPhase) {
+      //phase shouldn't change during automatic triggers (except for game end)
+      if (oldPhase !== currentPhase && currentPhase.instruction !== "Game Over") {
         LogError(
           "." +
             triggerName +
@@ -395,6 +395,9 @@ phaseTemplates.globalTriggers = {
     }
     //log successful run
     if (currentPhase.identifier == "Run 5.1") {
+	  //first fire any pre-success triggers
+	  AutomaticTriggers("beforeDeclareSuccess");
+	  //now declare successful
       Log("Run successful");
       //store a little extra info to help AIs with decisionmaking
       if (

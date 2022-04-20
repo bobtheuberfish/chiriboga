@@ -59,6 +59,7 @@
  .encounterEnds //note encountering will now be false but approachIce available to use
  .passesIce //called when movement begins (approachIce still refers to the ice passed)
  .approachServer //called when approaching the server (before runner decides whether to continue the run)
+ .beforeDeclareSuccess //called before declaring successful run (currently treats all as automatic)
  .runSuccessful //called before breaching the server
  .breachServer //called before accessing cards, return an int modifier e.g. -1, 0, 1 to access more or less cards (currently treats all as automatic)
  .runUnsuccessful

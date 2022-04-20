@@ -648,7 +648,7 @@ cardSet[30008] = {
 	*/
   },
   //install before run if the server is central
-  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
 	  if (typeof server.cards !== "undefined") return 1; //yes
 	  return 0; //no
   },
@@ -695,12 +695,12 @@ cardSet[30009] = {
     },
   },
   //require two clicks spare for run, require virus card in hand with AIInstallBeforeRun > 0, and enough spare credits to still run after installing both
-  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
 	  if (runClickCost < runner.clickTracker - 2) {
 		  for (var i=0; i<runner.grip.length; i++) {
 			  if (CheckSubType(runner.grip[i],"Virus")) {
 				if (typeof runner.grip[i].AIInstallBeforeRun == "function") {
-					var virusIBRPriority = runner.grip[i].AIInstallBeforeRun.call(runner.grip[i],server,priority,runCreditCost,runClickCost);
+					var virusIBRPriority = runner.grip[i].AIInstallBeforeRun.call(runner.grip[i],server,potential,runCreditCost,runClickCost);
 					if (virusIBRPriority > 0) {
 						if ( runCreditCost < AvailableCredits(runner) - InstallCost(this) - InstallCost(runner.grip[i]) ) {
 							return virusIBRPriority + 1; //yes, at higher priority than that virus card
@@ -741,7 +741,7 @@ cardSet[30010] = {
     automatic: true,
   },
   runBegins: {
-    Resolve: function () {
+    Resolve: function (server) {
       this.cardsAccessedThisRun = 0;
     },
     automatic: true,
@@ -1011,7 +1011,7 @@ cardSet[30013] = {
       return 1;
   },
   //install before run if the server is HQ and Docklands is in worthkeeping
-  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
 	if (server == corp.HQ) {
 		if (runner.AI.cardsWorthKeeping.includes(this)) return 1; //yes
 	}
@@ -1416,12 +1416,19 @@ cardSet[30018] = {
     },
     automatic: true,
   },
+  //Rulings: "Red Team cares about the server the Runner declared to be the attacked server at the beginning of the run."
+  runBegins: {
+    Resolve: function (server) {
+      if (server == corp.HQ) this.runHQ = true;
+      if (server == corp.RnD) this.runRnD = true;
+      if (server == corp.archives) this.runArchives = true;
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
   runEnds: {
     Resolve: function () {
       this.runningWithThis = false;
-      if (attackedServer == corp.HQ) this.runHQ = true;
-      if (attackedServer == corp.RnD) this.runRnD = true;
-      if (attackedServer == corp.archives) this.runArchives = true;
     },
     automatic: true,
     availableWhenInactive: true,
@@ -1446,7 +1453,7 @@ cardSet[30018] = {
     },
   ],
   //install before run if this server is central and hasn't been run this turn
-  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
 	  if (typeof server.cards !== "undefined") {
 		var alreadyRunThisTurn = false;
 		if (server == corp.HQ)
@@ -1460,6 +1467,16 @@ cardSet[30018] = {
 	  return 0; //no
   },
   AIEconomyInstall: 1, //priority 1 (yes install but there are better options)
+  AIRunAbilityExtraPotential: function(server,potential) {
+	  //might get a little credit from this (the 0.5 is arbitrary)
+	  if (!this.runHQ && server == corp.HQ)
+		return 0.5;
+	  else if (!this.runRnD && server == corp.RnD)
+		return 0.5;
+	  else if (!this.runArchives && server == corp.archives)
+		return 0.5;
+	  return 0; //no benefit (don't use)
+  },
 };
 cardSet[30019] = {
   title: "Tāo Salonga: Telepresence Magician",
@@ -1851,7 +1868,7 @@ cardSet[30024] = {
     },
   ],
   //install before run if the server is R&D and Conduit is in worthkeeping
-  AIInstallBeforeRun: function(server,priority,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
 	if (server == corp.RnD) {
 		if (runner.AI.cardsWorthKeeping.includes(this)) return 1; //yes
 	}
@@ -1871,6 +1888,30 @@ cardSet[30024] = {
 		}
 	  }
 	  return false;
+  },
+  AIRunAbilityExtraPotential: function(server,potential) {
+	  if (server == corp.RnD) {
+		//extra potential the deeper you can dig (except cards already known)
+		var conduitDepth = Counters(this, "virus") + 1;
+		//ignore top card as it is not 'bonus'
+		var conduitBonusCards =
+		  runner.AI._countNewCardsThatWouldBeAccessedInRnD(conduitDepth,[corp.RnD.cards[corp.RnD.cards.length-1]]);
+		if (conduitBonusCards > 0) {
+		  //only use it if it gives a benefit (it still gains counters from runs with other cards either way)
+		  return conduitBonusCards - 1;
+		}
+	  }
+	  return 0; //don't use
+  },
+  AIRunExtraPotential: function(server,potential) {
+	  if (server == corp.RnD) {
+	    //passive bonus to R&D potential due to gaining virus counters
+		var conduitDepth = Counters(this, "virus") + 1;
+	    if (conduitDepth < corp.RnD.cards.length) {
+		  return 0.5; //arbitrary, for being able to gain virus counters (ignore if dig reaching the bottom of R&D)
+	    }
+	  }
+	  return 0; //no bonus
   },
 };
 cardSet[30025] = {
@@ -4103,7 +4144,7 @@ cardSet[30058] = {
   runnerStoleAgendasThisRun: false,
   serverThisWasInstalledIn: null,
   runBegins: {
-    Resolve: function (params) {
+    Resolve: function (server) {
       //track agendas stolen every run in case attacked server changes mid-run
       this.runnerStoleAgendasThisRun = false;
       //store the server, in case this is trashed
@@ -4645,12 +4686,12 @@ cardSet[30069] = {
         //choose the most expensive one, taking into account server protection that exists already
 		servprotmult = 0.5; //arbitrary, this mostly exists to break ties
         var mostExpensiveChoice = choices[0];
-        var highestValue = RezCost(choices[0].card) - servprotmult*corp.AI._protectionScore(GetServer(choices[0].card));
+        var highestValue = RezCost(choices[0].card) - servprotmult*corp.AI._protectionScore(GetServer(choices[0].card), {});
 		//console.log("value of "+choices[0].card.title+" in "+ServerName(GetServer(choices[0].card))+" is "+highestValue);
         for (var i = 0; i < choices.length; i++) {
 	      //ignore ice that has a card hosted (e.g. Tranquilizer but just a general check for now)
 		  if ( (typeof choices[i].card.hostedCards !== "undefined") && (choices[i].card.hostedCards.length > 0) ) continue;
-          var iHighestValue = RezCost(choices[i].card) - servprotmult*corp.AI._protectionScore(GetServer(choices[i].card));
+          var iHighestValue = RezCost(choices[i].card) - servprotmult*corp.AI._protectionScore(GetServer(choices[i].card), {});
 		  //console.log("value of "+choices[i].card.title+" in "+ServerName(GetServer(choices[i].card))+" is "+iHighestValue);
           if (iHighestValue > highestValue) {
             highestValue = iHighestValue;
