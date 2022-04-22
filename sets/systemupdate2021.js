@@ -211,42 +211,29 @@ cardSet[31004] = {
   Resolve: function (params) {
     MakeRun(corp.archives);
   },
-  storedModifiedPhase: null,
-  storedModifiedNext: null,
-  runSuccessful: {
-    Resolve: function () {
-		var choices = [{id:0, label: "Breach", button: "Breach", card:null }];
-		var installablesFromHeap = ChoicesArrayInstall(runner.heap,true); //the true means ignore costs
-		//all programs in heap
-		for (var i=0; i<installablesFromHeap.length; i++) {
-			if (CheckCardType(installablesFromHeap[i].card, ["program"])) choices.push(installablesFromHeap[i]);
+  insteadOfBreaching: {
+    Enumerate: function() {
+	  //this will only fire while active therefore is available as an option for breach replacement
+	  //as long as there are valid targets in heap
+	  var choices = [];
+	  var installablesFromHeap = ChoicesArrayInstall(runner.heap,true); //the true means ignore costs
+	  //all programs in heap
+	  for (var i=0; i<installablesFromHeap.length; i++) {
+		if (CheckCardType(installablesFromHeap[i].card, ["program"])) choices.push(installablesFromHeap[i]);
+	  }
+	  //**AI code (in this case, implemented by setting and returning the preferred option)
+	  if (runner.AI != null && choices.length > 1) {
+		var choice = choices[0]; //choose arbitrary by default in case algorithm fails
+		var preferredcard = this.SharedPreferredCard();
+		for (var i = 0; i < choices.length; i++) {
+		  if (choices[i].card == preferredcard) choice = choices[i];
 		}
-		
-		//**AI code (in this case, implemented by setting and returning the preferred option)
-		if (runner.AI != null && choices.length > 1) {
-		  var choice = choices[0]; //choose breach by default in case algorithm fails
-		  var preferredcard = this.SharedPreferredCard();
-		  for (var i = 0; i < choices.length; i++) {
-			if (choices[i].card == preferredcard) choice = choices[i];
-		  }
-		  choices = [choice];
-		}
-		
-		//decision and implementation code
-		function decisionCallback(params) {
-		  if (params.card !== null) {
-			ChangePhase(phases.runEnds); //change phase in advance ready for install to finish
-			Install(params.card, params.host, true, null, true); //the first true means ignore all costs, the second means return to phase (i.e. runEnds)
-		  }
-		}
-		var decisionPhase = DecisionPhase(
-		  runner,
-		  choices,
-		  decisionCallback,
-		  "Retrieval Run",
-		  "Retrieval Run",
-		  this
-		);
+		choices = [choice];
+	  }
+	  return choices;
+    },
+	Resolve: function(params) {
+	  Install(params.card, params.host, true, null, true); //the first true means ignore all costs, the second means return to phase (i.e. runEnds)
     },
   },
   SharedPreferredCard: function() {
@@ -256,6 +243,7 @@ cardSet[31004] = {
 			InstalledCards(runner)
 	  );
   },
+  AIBreachReplacementValue: 2, //priority 2 (medium)
   //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
   AIRunEventExtraPotential: function(server,potential) {
 	  //archives only
@@ -635,7 +623,9 @@ cardSet[31010] = {
 	  if (Credits(runner) < 7 && Credits(runner) > 2) return true;
 	  return false;
   },
-  AIEconomyInstall: 3, //priority 3 (can't get much better econ than this)
+  AIEconomyInstall: function() {
+	  return 3; //priority 3 (can't get much better econ than this)
+  },
   AIEconomyTrigger: 3, //priority 3 (can't get much better econ than this)
 };
 
@@ -1670,6 +1660,128 @@ cardSet[31023] = {
 	  return false;
   },
   AILimitPerDeck: 2,
+};
+
+cardSet[31024] = {
+  title: "Security Testing",
+  imageFile: "31024.png",
+  player: runner,
+  faction: "Criminal",
+  influence: 3,
+  cardType: "resource",
+  subTypes: ["Job"],
+  installCost: 0,
+  chosenServer: null,
+  madeSuccessfulRunOnChosenServerThisTurn: false,
+  breachReplacementQueued: false,
+  //When your turn begins, you may choose a server
+  runnerTurnBegin: {
+    Enumerate: function() {
+	  var choices = ChoicesExistingServers();
+	  choices.push({button:"Continue", label:"Continue"});
+	  //**AI code (in this case, implemented by setting and returning the preferred options)
+	  if (choices.length > 1 && runner.AI != null) {
+		  for (var i=choices.length-2; i>-1; i--) {
+			//not protected
+			if (runner.AI._serverIsProtected(choices[i].server)) {
+				choices.splice(i,1);
+				continue;
+			}
+			//not chosen by another Security Testing
+			for (var j=0; j<runner.rig.resources.length; j++) {
+				if (runner.rig.resources[j].title == this.title && runner.rig.resources[j].chosenServer == choices[i].server) {
+					choices.splice(i,1);
+					break;
+				}
+			}
+		  }
+		  if (choices.length > 1) choices.splice(choices.length-1,1); //remove "continue" option
+	  }
+	  return choices;
+	},
+	Resolve: function (params) {
+	  this.madeSuccessfulRunOnChosenServerThisTurn = false;
+      if (typeof params.server != 'undefined') {
+		  this.chosenServer = params.server;
+	      Log("Runner chose "+ServerName(params.server)+" for Security Testing");
+	  }
+	  else {
+		  this.chosenServer = null;
+		  Log("Runner chose no server for Security Testing");
+	  }
+    },
+  },
+  //The first time this turn you make a successful run on the chosen server, instead of breaching it, gain 2 credits.
+  //(The reason for the weird breachReplacementQueued approach is in case runEnds automatic triggers fire before breach replacement completes)
+  runSuccessful: {
+    Resolve: function (params) {
+      if (attackedServer == this.chosenServer && !this.madeSuccessfulRunOnChosenServerThisTurn) {
+		this.madeSuccessfulRunOnChosenServerThisTurn = true;
+		this.breachReplacementQueued=true; //make available as an option instead of this breach
+	  }
+	  else {
+		this.breachReplacementQueued=false; //make sure it doesn't fire out of place
+	  }
+    },
+    automatic: true,
+	availableWhenInactive: true,
+  },
+  insteadOfBreaching: {
+	Enumerate: function() {
+      if (this.breachReplacementQueued) return [{required:true}];
+      return [];
+	},
+    Resolve: function (params) {
+	  this.breachReplacementQueued=false;
+	  GainCredits(runner,2);
+    },
+  },
+  runEnds: {
+    Resolve: function () {
+       if (this.chosenServer && this.madeSuccessfulRunOnChosenServerThisTurn) this.chosenServer = null; //for usability, hiding the icon shows this has been used
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  AIBreachReplacementValue: 1, //priority 1 (yes replace but there are better options)
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if need money and not wasteful (i.e. there is not already too many installed) and a run into R&D is possible
+	  if (!this.AIWastefulToInstall()) {
+		  if (Credits(runner) < 5) return true;
+	  }
+	  return false;
+  },
+  AIWastefulToInstall: function() {
+	  if (this.AIEconomyInstall() < 1) return true;
+	  return false;
+  },
+  AIEconomyInstall: function() {
+	  var ret = 1; //default priority 1 (yes install but there are better options)
+	  //usefulness increases with each unprotected server and decreases with each copy of Security Testing already installed
+	  var unprotectedServers = runner.AI._unprotectedServers().length;
+	  ret += 0.5*unprotectedServers;
+	  var numInstalled = 0;
+	  for (var j = 0; j < runner.rig.resources.length; j++) {
+		if (runner.rig.resources[j].title == this.title) {
+		  numInstalled++;
+		}
+	  }
+	  ret -= numInstalled;
+	  return ret; 
+  },
+  AIRunExtraPotential: function(server,potential) {
+	  if (!this.madeSuccessfulRunOnChosenServerThisTurn && server == this.chosenServer) {
+		//Runner AI knows that this will prevent usual breach so this will probably be the full potential (except e.g. Red Team combo)
+	    //the choice of 1.5 is to prevent the AI from considering it a worthless run
+		return 1.5;
+	  }
+	  return 0; //no change to potential
+  },
+  AIBreachNotRequired:true,
+  AIPreventBreach: function(server) {
+	  if (!this.madeSuccessfulRunOnChosenServerThisTurn && server == this.chosenServer) return true; //cannot breach
+	  return false; //allow breach
+  },
 };
 
 //TODO link (e.g. Reina)

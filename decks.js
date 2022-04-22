@@ -61,6 +61,7 @@
  .approachServer //called when approaching the server (before runner decides whether to continue the run)
  .beforeDeclareSuccess //called before declaring successful run (currently treats all as automatic)
  .runSuccessful //called before breaching the server
+ .insteadOfBreaching //called after runSuccessful, will replace breaching server (return choices with required:true to prevent Breach option appearing)
  .breachServer //called before accessing cards, return an int modifier e.g. -1, 0, 1 to access more or less cards (currently treats all as automatic)
  .runUnsuccessful
  .runEnds (note this is the phase after runSuccessful/runUnsuccessful i.e. not equivalent to triggering in both)

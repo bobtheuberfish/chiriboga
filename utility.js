@@ -1144,6 +1144,7 @@ var cardPropertyResets = [
   { propertyName: "knownToRunner", defaultValue: false },
   { propertyName: "AITurnsInstalled", defaultValue: 0 },
   { propertyName: "chosenCard", defaultValue: null },
+  { propertyName: "chosenServer", defaultValue: null },
 ];
 function ResetProperties(card) {
   for (var i = 0; i < cardPropertyResets.length; i++) {
@@ -2687,7 +2688,7 @@ function DeckBuild(
 	  //economy
 	  var economyCards = []; //only includes cards that would fairly certainly provide credits
 	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30007, 30018, 30020, 30027, 30029, 30030, 30033]);
-	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31010, 31011, 31015]);
+	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31010, 31011, 31015, 31024]);
 	  var influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded

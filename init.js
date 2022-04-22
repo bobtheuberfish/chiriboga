@@ -801,6 +801,7 @@ function Render() {
     attackedServerGlow.x = HQWidth * 0.5 + serverStartX;
   corp.HQ.xStart = serverStartX;
   corp.HQ.xEnd = serverStartX + HQWidth;
+  corp.HQ.yCards = rootHeight;
   serverStartX += HQWidth + serverSeparationX;
   for (var i = 0; i < remoteCascades.length; i++) {
     remoteCascades[i].cards.Apply(
@@ -823,6 +824,7 @@ function Render() {
       attackedServerGlow.x = remoteCascades[i].width * 0.5 + serverStartX;
     corp.remoteServers[i].xStart = serverStartX;
     corp.remoteServers[i].xEnd = serverStartX + remoteCascades[i].width;
+	corp.remoteServers[i].yCards = rootHeight;
     serverStartX += remoteCascades[i].width + serverSeparationX;
   }
   

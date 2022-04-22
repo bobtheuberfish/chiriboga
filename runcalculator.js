@@ -749,66 +749,65 @@ class RunCalculator {
       var approachEffects = [];
       var approachTags = 0;
       var knownCardsInServer = []; //actually cards INSTALLED in
-      /*
-			//don't include cards in server, they're not active (although could potentially consider trash costs in HQ / R&D?)
-			if (typeof(server.cards) !== 'undefined')
-			{
-				for (var i=0; i<server.cards.length; i++)
-				{
-					if (server.cards[i].rezzed || server.cards[i].knownToRunner) knownCardsInServer.push(server.cards[i]);
-				}
-			}
-			*/
+	  
       var runnerAI = runner.AI;
       if (runnerAI == null) runnerAI = runner.testAI;
-      for (var i = 0; i < server.root.length; i++) {
-        if (server.root[i].rezzed || server.root[i].knownToRunner)
-          knownCardsInServer.push(server.root[i]);
-        else {
-          var advancement = Counters(server.root[i], "advancement");
-          if (advancement > 0) {
-            /* commented this section because the runner was being too cautious
-						//might be Clearinghouse, in which case need to be able to pay trashcost
-						approachCredits += 3;
-						//maybe can pay with Carnivore?
-						var carn = runnerAI._copyOfCardExistsIn('Carnivore',runner.rig.hardware);
-						if (carn)
-						{
-							if (!carn.usedThisTurn) approachCredits -= 3;
-						}
-						*/
-            //might be Urtica, in which case might do net damage (no need to trash it)
-            var approachEffect = [];
-            for (var j = 0; j < 2 + advancement; j++) {
-              approachEffect.push("netDamage");
-            }
-            approachEffects.push(approachEffect);
-          }
-        }
-      }
-	  //calculate any required trash payment, taking into account potential discount (just considering max for one known card trash cost with just one discounting ability atm)
-	  var highestTrashCost = 0;
-	  var htcCard = null;
-	  for (var i = 0; i < knownCardsInServer.length; i++) {
-        if (typeof knownCardsInServer[i].trashCost !== "undefined") {
-          var kctc = TrashCost(knownCardsInServer[i]);
-		  if (kctc > highestTrashCost) {
-			  highestTrashCost = kctc;
-			  htcCard = knownCardsInServer[i];
-		  }
-        }
-      }
-	  var highestTrashDiscount = 0;
-	  if (htcCard) {
-		  for (var i=0; i<installedRunnerCards.length; i++) {
-			if (typeof installedRunnerCards[i].AIReducesTrashCost == "function") {
-				var ictd = installedRunnerCards[i].AIReducesTrashCost.call(installedRunnerCards[i],htcCard);
-				if (ictd > highestTrashDiscount) highestTrashDiscount = ictd;
+	  
+	  //currently assumes the only cards that would prevent breach are installed Runner cards
+	  var breach = !runnerAI._breachWouldBePrevented(installedRunnerCards,server);
+	  
+	  //costs etc that may apply if breaching:
+	  if (breach) {
+		  for (var i = 0; i < server.root.length; i++) {
+			if (server.root[i].rezzed || server.root[i].knownToRunner)
+			  knownCardsInServer.push(server.root[i]);
+			else {
+			  var advancement = Counters(server.root[i], "advancement");
+			  if (advancement > 0) {
+				/* commented this section because the runner was being too cautious
+							//might be Clearinghouse, in which case need to be able to pay trashcost
+							approachCredits += 3;
+							//maybe can pay with Carnivore?
+							var carn = runnerAI._copyOfCardExistsIn('Carnivore',runner.rig.hardware);
+							if (carn)
+							{
+								if (!carn.usedThisTurn) approachCredits -= 3;
+							}
+							*/
+				//might be Urtica, in which case might do net damage (no need to trash it)
+				var approachEffect = [];
+				for (var j = 0; j < 2 + advancement; j++) {
+				  approachEffect.push("netDamage");
+				}
+				approachEffects.push(approachEffect);
+			  }
 			}
 		  }
+		  //calculate any required trash payment, taking into account potential discount (just considering max for one known card trash cost with just one discounting ability atm)
+		  //note cards in server (e.g. in corp hand) are not considered atm
+		  var highestTrashCost = 0;
+		  var htcCard = null;
+		  for (var i = 0; i < knownCardsInServer.length; i++) {
+			if (typeof knownCardsInServer[i].trashCost !== "undefined") {
+			  var kctc = TrashCost(knownCardsInServer[i]);
+			  if (kctc > highestTrashCost) {
+				  highestTrashCost = kctc;
+				  htcCard = knownCardsInServer[i];
+			  }
+			}
+		  }
+		  var highestTrashDiscount = 0;
+		  if (htcCard) {
+			  for (var i=0; i<installedRunnerCards.length; i++) {
+				if (typeof installedRunnerCards[i].AIReducesTrashCost == "function") {
+					var ictd = installedRunnerCards[i].AIReducesTrashCost.call(installedRunnerCards[i],htcCard);
+					if (ictd > highestTrashDiscount) highestTrashDiscount = ictd;
+				}
+			  }
+		  }
+		  approachCredits += highestTrashCost - highestTrashDiscount;
 	  }
-	  approachCredits += highestTrashCost - highestTrashDiscount;
-
+	  
       //combine approach costs
       approachOptions = [
         {

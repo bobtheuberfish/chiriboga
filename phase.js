@@ -429,9 +429,36 @@ phaseTemplates.globalTriggers = {
           currentPhase.triggerCallbackName,
 		  currentPhase.triggerEnumerateParams
         ).length < 1
-      )
-        return [{}];
-      return [];
+      ) {
+      	  //special case: instead of breaching
+          if (currentPhase.triggerCallbackName == "runSuccessful" && currentPhase.player !== playerTurn) {
+          	var iobChoices = ChoicesActiveTriggers("insteadOfBreaching", runner);
+			//that gives a list of cards but we still need to use Enumerate to remove impossibles and force required
+            var iobRequired = false;			
+			for (var i=iobChoices.length-1; i>-1; i--) {
+				var thisCardChoices = [{}]; //assume valid nonrequired choice if no Enumerate
+				if (typeof iobChoices[i].card.insteadOfBreaching.Enumerate == 'function') {
+					thisCardChoices = iobChoices[i].card.insteadOfBreaching.Enumerate.call(iobChoices[i].card);
+				}
+				//if not valid, remove from list
+				if (thisCardChoices.length < 1) {
+				  iobChoices.splice(i,1);
+				}
+				else {
+				  //just check first option for required
+				  if (thisCardChoices[0].required) iobRequired = true;
+				}
+			}
+			var replaceBreach = false;
+			if (iobChoices.length > 0) replaceBreach = true;
+            if (!iobRequired) {
+              iobChoices.push({label:"Breach", button:"Breach"});
+            }
+			if (replaceBreach) return iobChoices;
+          }
+          return [{}]; //breach
+      }
+      return []; //runSuccessful triggers remain unresolved, cannot breach yet
     },
   },
   Resolve: {
@@ -455,8 +482,26 @@ phaseTemplates.globalTriggers = {
         card
       );
     },
-    n: function () {
-      GlobalTriggersPhaseCommonResolveN();
+    n: function (params) {
+    	//if a card was specified, at the moment the only reason a breach replacement
+      if (typeof params.card == 'undefined') GlobalTriggersPhaseCommonResolveN();
+      else {
+        ChangePhase(phases.runEnds); //skip breach
+		//Enumerate the card and do a decision phase to replace breach
+		var card = params.card;
+		var instruction = GetTitle(card);
+        var choices = [{}]; //assume valid by default
+        if (typeof card.insteadOfBreaching.Enumerate === "function")
+          choices = card.insteadOfBreaching.Enumerate.call(card);
+        DecisionPhase(
+          card.player,
+          choices,
+          card.insteadOfBreaching.Resolve,
+          instruction,
+          instruction,
+          card
+        );
+      }
     },
   },
   text: {},

@@ -226,6 +226,33 @@ class RunnerAI {
 		ret -= iceCard.hostedCards.length; //assume hosted cards weaken it
 	  return ret;
   }
+  
+  _serverIsProtected(server) {
+	if (server.ice.length == 0) {
+		if (server.root.length == 0) {
+			return false;
+		}
+		//check for obvious defensives
+		for (var i=0; i<server.root.length; i++) {
+			if (PlayerCanLook(runner,server.root[i])) {
+				if (server.root[i].AIDefensiveValue) return true;
+			}
+		}
+		return false;
+	}
+	return true;
+  }
+  //list of unprotected servers (not comprehensive check, just no ice and no obvious defensives)
+  _unprotectedServers() {
+	  var ret = [];
+	  if (!this._serverIsProtected(corp.archives)) ret.push(corp.archives);
+	  if (!this._serverIsProtected(corp.RnD)) ret.push(corp.RnD);
+	  if (!this._serverIsProtected(corp.HQ)) ret.push(corp.HQ);
+	  for (var i=0; i<corp.remoteServers.length; i++) {
+		if (!this._serverIsProtected(corp.remoteServers[i])) ret.push(corp.remoteServers[i]);
+	  }
+	  return ret;
+  }
 
   constructor() {
     this.preferred = null;
@@ -814,6 +841,18 @@ class RunnerAI {
   _currentOverDraw() {
     return runner.grip.length - MaxHandSize(runner);
   }
+  
+  _breachWouldBePrevented(activeCards, server) {
+	var ret = false;
+	for (var j = 0; j < activeCards.length; j++) {
+		if (typeof activeCards[j].AIPreventBreach == 'function') {
+		  if (activeCards[j].AIPreventBreach.call(activeCards[j],server)) {
+			  return true;
+		  }
+		}
+	}
+    return ret;		
+  }
  
   //NEVER do this outside of _internalChoiceDetermination
   //because the caller of that function restores the values afterwards
@@ -984,9 +1023,13 @@ console.log(this.preferred);
 	var priorityEcon = null;
 	var priorityPriority = 0;
 	for (var i=0; i<this.cardsWorthKeeping.length; i++) {
-		if (this.cardsWorthKeeping[i].AIEconomyInstall > priorityPriority) {
+		var thisPriority = 0;
+		if (typeof this.cardsWorthKeeping[i].AIEconomyInstall == 'function') {
+			thisPriority = this.cardsWorthKeeping[i].AIEconomyInstall.call(this.cardsWorthKeeping[i]);
+		}
+		if (thisPriority > priorityPriority) {
 			priorityEcon = this.cardsWorthKeeping[i];
-			priorityPriority = this.cardsWorthKeeping[i].AIEconomyInstall;
+			priorityPriority = thisPriority;
 		}
 		else if (this.cardsWorthKeeping[i].AIEconomyPlay > priorityPriority) {
 			priorityEcon = this.cardsWorthKeeping[i];
@@ -1340,6 +1383,24 @@ console.log(this.preferred);
       if (optionList.includes("trigger")) return optionList.indexOf("trigger"); //by default, trigger abilities if possible
     }
 
+    if (currentPhase.identifier == "Run 5.1") {
+		//choosing whether to breach, and if not, which replacement effect to choose
+		var bestBreachReplaceIndex = 0; //this default avoids the basic breach (which is at the end of the list)
+		//find the option with the highest defined card.AIBreachReplacementValue
+		var highestBRV = 0;
+		for (var i=0; i<optionList.length; i++) {
+			if (typeof optionList[i].card !== 'undefined') {
+				if (typeof optionList[i].card.AIBreachReplacementValue !== 'undefined') {
+					if (optionList[i].card.AIBreachReplacementValue > highestBRV) {
+						highestBRV = optionList[i].card.AIBreachReplacementValue;
+						bestBreachReplaceIndex = i;
+					}
+				}
+			}
+		}
+		return bestBreachReplaceIndex;
+	}
+	
     if (currentPhase.identifier == "Run 5.2" && executingCommand == "access") {
       //breaching, choose access order
       for (var i = 0; i < optionList.length; i++) {
@@ -1496,12 +1557,18 @@ console.log(this.preferred);
 
 		//extra potential from passive card abilities
 		var activeCards = ActiveCards(runner);
+		
+		//check if there is an effect that would prevent breach, in which case normal potential rules don't apply
+		var breachPrevented = this._breachWouldBePrevented(activeCards,this.serverList[i].server);
+		if (breachPrevented) this.serverList[i].potential = 0; //reset potential due to no breach
+
+		//consider potential of this server
 		for (var j = 0; j < activeCards.length; j++) {
-			if (typeof activeCards[j].AIRunExtraPotential == 'function') {
+			if (typeof activeCards[j].AIRunExtraPotential == 'function' && (activeCards[j].AIBreachNotRequired || !breachPrevented)) {
 			  this.serverList[i].potential += activeCards[j].AIRunExtraPotential.call(activeCards[j],this.serverList[i].server,this.serverList[i].potential);
 			}
 		}
-
+		
 	    //extra potential from best run event or ability (if any)
 		var runEventOrAbilityBestExtraPotential = 0;
 		this.serverList[i].useRunEvent = null; //by default don't use a run event
@@ -1509,7 +1576,7 @@ console.log(this.preferred);
 		  for (var j=0; j<runner.grip.length; j++) {
 			  if (CheckSubType(runner.grip[j], "Run")) {
 				  var extraPotentialFromThisRunEvent = 0;
-				  if (typeof runner.grip[j].AIRunEventExtraPotential == 'function') extraPotentialFromThisRunEvent = runner.grip[j].AIRunEventExtraPotential.call(runner.grip[j],this.serverList[i].server,this.serverList[i].potential);
+				  if (typeof runner.grip[j].AIRunEventExtraPotential == 'function' && (runner.grip[j].AIBreachNotRequired || !breachPrevented)) extraPotentialFromThisRunEvent = runner.grip[j].AIRunEventExtraPotential.call(runner.grip[j],this.serverList[i].server,this.serverList[i].potential);
 				  if ( extraPotentialFromThisRunEvent > runEventOrAbilityBestExtraPotential ) {
 					  if ( FullCheckPlay(runner.grip[j]) ) {
 						  runEventOrAbilityBestExtraPotential = extraPotentialFromThisRunEvent;
@@ -1524,7 +1591,7 @@ console.log(this.preferred);
 			var triggerChoices = ChoicesTriggerableAbilities(runner, "click");
 			for (var j = 0; j < triggerChoices.length; j++) {
 				  var extraPotentialFromThisRunAbility = 0;
-				  if (typeof triggerChoices[j].card.AIRunAbilityExtraPotential == 'function') extraPotentialFromThisRunAbility = triggerChoices[j].card.AIRunAbilityExtraPotential.call(triggerChoices[j].card,this.serverList[i].server,this.serverList[i].potential);
+				  if (typeof triggerChoices[j].card.AIRunAbilityExtraPotential == 'function' && (triggerChoices[j].card.AIBreachNotRequired || !breachPrevented)) extraPotentialFromThisRunAbility = triggerChoices[j].card.AIRunAbilityExtraPotential.call(triggerChoices[j].card,this.serverList[i].server,this.serverList[i].potential);
 				  if ( extraPotentialFromThisRunAbility > runEventOrAbilityBestExtraPotential ) {
 					  runEventOrAbilityBestExtraPotential = extraPotentialFromThisRunAbility;
 					  this.serverList[i].useRunAbility = triggerChoices[j].card;
@@ -2027,14 +2094,16 @@ console.log(this.preferred);
         cardToInstall=null;
 		var cardPriority=0;
         for (var i = 0; i < runner.grip.length; i++) {
-		    if (runner.grip[i].AIEconomyInstall) {
-			  if (runner.grip[i].AIEconomyInstall > cardPriority) {
+			var thisPriority = 0;
+		    if (typeof runner.grip[i].AIEconomyInstall == 'function') {
+			  thisPriority = runner.grip[i].AIEconomyInstall.call(runner.grip[i]);
+			  if (thisPriority > cardPriority) {
 				if (this._commonCardToInstallChecks(runner.grip[i])) {
 				  var installThis = true; //if no specific rules have been defined then just install it whenever you can
 				  if (typeof(runner.grip[i].AIWouldInstall) == 'function') installThis = runner.grip[i].AIWouldInstall.call(runner.grip[i]);
 				  if (installThis) {					
 					cardToInstall=runner.grip[i];
-					cardPriority=runner.grip[i].AIEconomyInstall;
+					cardPriority=thisPriority;
 				  }
 				}
 			  }

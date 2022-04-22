@@ -544,7 +544,9 @@ cardSet[30007] = {
 	  if (Credits(runner) < 5) return true;
 	  return false;
   },
-  AIEconomyInstall: 1, //priority 1 (yes install but there are better options)
+  AIEconomyInstall: function() {
+	  return 1; //priority 1 (yes install but there are better options)
+  },
   AIEconomyTrigger: 2, //priority 2 (moderate)
 };
 cardSet[30008] = {
@@ -1070,7 +1072,9 @@ cardSet[30014] = {
     }
     return true;
   },
-  AIEconomyInstall: 2, //priority 2 (moderate)
+  AIEconomyInstall: function() {
+	  return 2; //priority 2 (moderate)
+  },
   AIEconomyTrigger: 1, //priority 1 (yes trigger but there are better options)
 };
 cardSet[30015] = {
@@ -1466,7 +1470,9 @@ cardSet[30018] = {
 	  }
 	  return 0; //no
   },
-  AIEconomyInstall: 1, //priority 1 (yes install but there are better options)
+  AIEconomyInstall: function() {
+	  return 1; //priority 1 (yes install but there are better options)
+  },
   AIRunAbilityExtraPotential: function(server,potential) {
 	  //might get a little credit from this (the 0.5 is arbitrary)
 	  if (!this.runHQ && server == corp.HQ)
@@ -1477,6 +1483,7 @@ cardSet[30018] = {
 		return 0.5;
 	  return 0; //no benefit (don't use)
   },
+  AIBreachNotRequired: true, //the benefit is gained with or without breach
 };
 cardSet[30019] = {
   title: "Tāo Salonga: Telepresence Magician",
@@ -1698,7 +1705,9 @@ cardSet[30022] = {
 	  if (spareMU < 2) return true;
 	  return false;
   },
-  AIEconomyInstall: 1, //priority 1 (yes install but there are better options)
+  AIEconomyInstall: function() {
+	  return 1; //priority 1 (yes install but there are better options)
+  },
 };
 cardSet[30023] = {
   title: "Pantograph",
@@ -1787,7 +1796,9 @@ cardSet[30023] = {
     },
     text: "Pantograph: Gain 1[c], you may install 1 card",
   },
-  AIEconomyInstall: 1, //priority 1 (yes install but there are better options)
+  AIEconomyInstall: function() {
+	  return 1; //priority 1 (yes install but there are better options)
+  },
 };
 cardSet[30024] = {
   title: "Conduit",
@@ -2171,7 +2182,9 @@ cardSet[30027] = {
 	  if (Credits(runner) < 5) return true;
 	  return false;
   },
-  AIEconomyInstall: 2, //priority 2 (moderate)
+  AIEconomyInstall: function() {
+	  return 2; //priority 2 (moderate)
+  },
   AIEconomyTrigger: 2, //priority 2 (moderate)
 };
 cardSet[30028] = {
@@ -2461,7 +2474,9 @@ cardSet[30033] = {
     }
     return true;
   },
-  AIEconomyInstall: 1, //priority 1 (yes install but there are better options)
+  AIEconomyInstall: function() {
+	  return 1; //priority 1 (yes install but there are better options)
+  },
   AIEconomyTrigger: 1, //priority 1 (yes trigger but there are better options)
 };
 cardSet[30034] = {
@@ -3566,6 +3581,7 @@ cardSet[30050] = {
   rezCost: 0,
   trashCost: 1,
   unique: true,
+  AIDefensiveValue:3, //arbitrary, observe and tweak
   //Whenever the Runner approaches this server, you may pay 2[c] and trash 2 cards from HQ.
   //If you do, end the run.
   //"The Runner approaches the server at step 4 of a run, and it is the final deciding factor for determining the success of a run." (see also run timing in FAQ)
