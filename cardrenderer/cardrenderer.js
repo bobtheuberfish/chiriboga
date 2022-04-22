@@ -1805,16 +1805,14 @@ var CardRenderer = {
 
 	RenderChosens() {
 		var allCards = AllCards();
-		for (var i=0; i<allCards.length; i++) {			
-			var src = allCards[i];			
-			
-			//card choices
-			if (src.chosenCard) {			
-				var targ = src.chosenCard;
+		for (var i=0; i<allCards.length; i++) {
+			var src = allCards[i];
+			if (src.chosenCard || src.chosenServer) {
 				//first, create the sprite if needed
 				if (typeof src.renderer.chosenSprite == 'undefined') {
 					src.renderer.chosenSprite = new PIXI.Sprite(src.renderer.frontTexture);
-					src.renderer.chosenSprite.scale.x = src.renderer.chosenSprite.scale.y = 0.4;
+					if (src.chosenCard) src.renderer.chosenSprite.scale.x = src.renderer.chosenSprite.scale.y = 0.4;
+					else src.renderer.chosenSprite.scale.x = src.renderer.chosenSprite.scale.y = 0.2;
 					src.renderer.chosenSprite.anchor.set(0.5, 0.5);
 					var cMD = { x: -120, y: -160, w: 240, h: 160, r: 70 };
 					src.renderer.chosenSprite.mask = new PIXI.Graphics()
@@ -1822,28 +1820,37 @@ var CardRenderer = {
 						.drawRoundedRect(cMD.x, cMD.y, cMD.w, cMD.h, cMD.r)
 						.endFill();
 					src.renderer.chosenSprite.addChild(src.renderer.chosenSprite.mask);
-					//positioning assumes ice for now		
-					this.app.ticker.add(function (delta) {
-						if (this.target) {
-							this.rotation = -this.target.rotation;
-						}
-						//acount for the strange pivot (I don't know why it's 30)
-						this.x = -30*Math.sin(this.rotation) + 25;
-						this.y = 30*Math.cos(this.rotation) + 25;
-					},src.renderer.chosenSprite);
+					//card choice rotates with rotation of target card
+					if (src.chosenCard) {
+						//positioning assumes ice for now		
+						this.app.ticker.add(function (delta) {
+							if (this.target) {
+								this.rotation = -this.target.rotation;
+							}
+							//acount for the strange pivot (I don't know why it's 30)
+							this.x = -30*Math.sin(this.rotation) + 25;
+							this.y = 30*Math.cos(this.rotation) + 25;
+						},src.renderer.chosenSprite);
+					}
 				}
 				//then update target choice
-				src.renderer.chosenSprite.target = targ.renderer.sprite;
-				targ.renderer.sprite.addChild(src.renderer.chosenSprite);
+				if (src.chosenCard) {
+					src.renderer.chosenSprite.target = src.chosenCard.renderer.sprite;
+					src.chosenCard.renderer.sprite.addChild(src.renderer.chosenSprite);
+				}
+				else if (src.chosenServer) {
+					this.app.stage.addChild(src.renderer.chosenSprite);
+					src.renderer.chosenSprite.x = src.chosenServer.xEnd - 100;
+					src.renderer.chosenSprite.y = src.chosenServer.yCards + 190;
+				}
+				src.renderer.chosenSprite.visible = true;
 			}
 			else if (src.renderer.chosenSprite) {
 				//no longer chosen, hide the icon
 				src.renderer.chosenSprite.target = null;
 				src.renderer.chosenSprite.visible = false;
 			}
-
-			//TODO server choices
-		}		
+		}
 	}
 
     RenderSubroutineChoices(card, choices) {
