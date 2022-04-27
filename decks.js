@@ -55,6 +55,7 @@
  .subroutines[] //unlike the others here, these do not use Enumerate or params (for decisionmaking, implement a pseudophase) and have .visual with y (centre) and h (height)
  .corpTurnBegin
  .runnerTurnBegin
+ .beforeStartingHand //called before drawing starting hand (currently treats all as automatic)
  .runBegins //called with input (server) (currently treats all as automatic)
  .encounterEnds //note encountering will now be false but approachIce available to use
  .passesIce //called when movement begins (approachIce still refers to the ice passed)
@@ -732,7 +733,7 @@ function LoadDecks() {
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
   debugging = false; //set true to pause execution on error
-  //mainLoopDelay = 10; //for speedy AI vs AI testing
+  //mainLoopDelay = 10; //for speedy AI vs AI testing  
 
   /*
 	RunnerTestField(31002, //identity

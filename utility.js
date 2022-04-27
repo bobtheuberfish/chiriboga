@@ -145,6 +145,17 @@ function DownloadCapturedLog() {
   var runnerInstalled = JSON.stringify(runner.rig.resources.concat(runner.rig.hardware).concat(runner.rig.programs),true);
   var runnerStolen = JSON.stringify(runner.scoreArea,true);
   extraOutput += "RunnerTestField("+runner.identityCard.setNumber+", "+[runnerHeap,runnerStack,runnerGrip,runnerInstalled,runnerStolen].join(', ')+", cardBackTexturesRunner,glowTextures,strengthTextures);\n";
+  //for Ayla, set aside cards
+  if (runner.identityCard.setAsideCards) {
+	var card = runner.identityCard;
+	var addr = "runner.identityCard";
+	extraOutput += addr+".setAsideCards = [];\n";
+	for (var i=0; i<card.setAsideCards.length; i++) {
+		extraOutput += "InstanceCardsPush("+card.setAsideCards[i].setNumber+","+addr+".setAsideCards,1,cardBackTextures"+PlayerName(card.setAsideCards[i].player)+",glowTextures,strengthTextures)[0].host = "+addr+";\n";
+	}
+	extraOutput += ReplicationCode(card.setAsideCards,addr+".setAsideCards");
+  }
+  //now Corp:
   var corpArchivesCards = JSON.stringify(corp.archives.cards,true);
   var corpRndCards = JSON.stringify(corp.RnD.cards,true);
   var corpHQCards = JSON.stringify(corp.HQ.cards,true);

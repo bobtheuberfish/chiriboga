@@ -1,8 +1,10 @@
 //CARD DEFINITIONS FOR SYSTEM UPDATE 2021
+//elo values (higher is better) are from https://trash-or-busto.herokuapp.com/ranking at 26 Apr 2022
 setIdentifiers.push('su21');
 cardSet[31001] = {
   title: 'Quetzal: Free Spirit',
   imageFile: "31001.png",
+  elo: 1506,
   player: runner,
   faction: "Anarch",
   cardType: "identity",
@@ -80,6 +82,7 @@ cardSet[31001] = {
 cardSet[31002] = {
   title: 'Reina Roja: Freedom Fighter',
   imageFile: "31002.png",
+  elo: 1460,
   player: runner,
   faction: "Anarch",
   cardType: "identity",
@@ -118,6 +121,7 @@ cardSet[31002] = {
 cardSet[31003] = {
 	title: 'En Passant',
 	imageFile: "31003.png",
+	elo: 1534,
 	player: runner,
 	faction: "Anarch",
     influence: 2,
@@ -201,6 +205,7 @@ cardSet[31003] = {
 cardSet[31004] = {
   title: 'Retrieval Run',
   imageFile: "31004.png",
+  elo: 1547,
   player: runner,
   faction: "Anarch",
   influence: 2,
@@ -259,6 +264,7 @@ cardSet[31004] = {
 cardSet[31005] = {
   title: "Clot",
   imageFile: "31005.png",
+  elo: 1833,
   player: runner,
   faction: "Anarch",
   influence: 2,
@@ -319,6 +325,7 @@ cardSet[31005] = {
 cardSet[31006] = {
   title: "Corroder",
   imageFile: "31006.png",
+  elo: 1799,
   player: runner,
   faction: "Anarch",
   influence: 2,
@@ -413,6 +420,7 @@ cardSet[31006] = {
 cardSet[31007] = {
   title: "Imp",
   imageFile: "31007.png",
+  elo: 1779,
   player: runner,
   faction: "Anarch",
   influence: 3,
@@ -491,6 +499,7 @@ cardSet[31007] = {
 cardSet[31008] = {
   title: "Mimic",
   imageFile: "31008.png",
+  elo: 1701,
   player: runner,
   faction: "Anarch",
   influence: 1,
@@ -562,6 +571,7 @@ cardSet[31008] = {
 cardSet[31009] = {
   title: "Ice Carver",
   imageFile: "31009.png",
+  elo: 1662,
   player: runner,
   faction: "Anarch",
   influence: 3,
@@ -590,6 +600,7 @@ cardSet[31009] = {
 cardSet[31010] = {
   title: "Liberated Account",
   imageFile: "31010.png",
+  elo: 1785,
   player: runner,
   faction: "Anarch",
   influence: 2,
@@ -632,6 +643,7 @@ cardSet[31010] = {
 cardSet[31011] = {
   title: "Scrubber",
   imageFile: "31011.png",
+  elo: 1565,
   player: runner,
   faction: "Anarch",
   influence: 2,
@@ -657,6 +669,7 @@ cardSet[31011] = {
 cardSet[31012] = {
   title: "Xanadu",
   imageFile: "31012.png",
+  elo: 1535,
   player: runner,
   faction: "Anarch",
   influence: 2,
@@ -688,6 +701,7 @@ cardSet[31012] = {
 cardSet[31013] = {
   title: 'Ken "Express" Tenma: Disappeared Clone',
   imageFile: "31013.png",
+  elo: 1566,
   player: runner,
   faction: "Criminal",
   cardType: "identity",
@@ -729,6 +743,7 @@ cardSet[31013] = {
 cardSet[31014] = {
   title: 'Steve Cambridge: Master Grifter',
   imageFile: "31014.png",
+  elo: 1751,
   player: runner,
   faction: "Criminal",
   cardType: "identity",
@@ -865,6 +880,7 @@ cardSet[31014] = {
 cardSet[31015] = {
   title: "Career Fair",
   imageFile: "31015.png",
+  elo: 1829,
   player: runner,
   faction: "Criminal",
   influence: 1,
@@ -924,6 +940,7 @@ cardSet[31015] = {
 cardSet[31016] = {
 	title: 'Emergency Shutdown',
 	imageFile: "31016.png",
+	elo: 1586,
 	player: runner,
 	faction: "Criminal",
     influence: 2,
@@ -1028,6 +1045,7 @@ cardSet[31016] = {
 cardSet[31017] = {
 	title: 'Forged Activation Orders',
 	imageFile: "31017.png",
+	elo: 1527,
 	player: runner,
 	faction: "Criminal",
     influence: 2,
@@ -1140,6 +1158,7 @@ cardSet[31017] = {
 cardSet[31018] = {
   title: "Inside Job",
   imageFile: "31018.png",
+  elo: 1821,
   player: runner,
   faction: "Criminal",
   influence: 3,
@@ -1198,6 +1217,7 @@ cardSet[31018] = {
 cardSet[31019] = {
   title: "Legwork",
   imageFile: "31019.png",
+  elo: 1787,
   player: runner,
   faction: "Criminal",
   influence: 2,
@@ -1238,6 +1258,7 @@ cardSet[31019] = {
 cardSet[31020] = {
   title: "Networking",
   imageFile: "31020.png",
+  elo: 1494,
   player: runner,
   faction: "Criminal",
   influence: 1,
@@ -1281,6 +1302,7 @@ cardSet[31020] = {
 cardSet[31021] = {
   title: "Abagnale",
   imageFile: "31021.png",
+  elo: 1598,
   player: runner,
   faction: "Criminal",
   influence: 2,
@@ -1407,6 +1429,7 @@ cardSet[31021] = {
 cardSet[31022] = {
   title: "Femme Fatale",
   imageFile: "31022.png",
+  elo: 1684,
   player: runner,
   faction: "Criminal",
   influence: 1,
@@ -1580,6 +1603,7 @@ cardSet[31022] = {
 cardSet[31023] = {
   title: "Sneakdoor Beta",
   imageFile: "31023.png",
+  elo: 1695,
   player: runner,
   faction: "Criminal",
   influence: 3,
@@ -1665,6 +1689,7 @@ cardSet[31023] = {
 cardSet[31024] = {
   title: "Security Testing",
   imageFile: "31024.png",
+  elo: 1660,
   player: runner,
   faction: "Criminal",
   influence: 3,
@@ -1782,6 +1807,123 @@ cardSet[31024] = {
 	  if (!this.madeSuccessfulRunOnChosenServerThisTurn && server == this.chosenServer) return true; //cannot breach
 	  return false; //allow breach
   },
+};
+
+cardSet[31025] = {
+  title: 'Ayla "Bios" Rahim: Simulant Specialist',
+  imageFile: "31025.png",
+  elo: 1560,
+  player: runner,
+  faction: "Shaper",
+  cardType: "identity",
+  deckSize: 45,
+  influenceLimit: 15,
+  setAsideCards: [],
+  SharedSpecialCWK: function() {
+	//returns cwk but only including cards that aren't already in grip
+	var cardstoCWK = [];
+	for (var i=0; i<this.setAsideCards.length; i++) {
+		var card = this.setAsideCards[i];
+		if (!runner.AI._copyOfCardExistsIn(card.title, runner.grip)) cardstoCWK.push(card);
+	}
+	return runner.AI._cardsWorthKeeping(cardstoCWK)
+  },
+  SharedSetAsideChoices: function() {
+	  //**AI code (in this case, implemented by setting and returning the preferred option)
+	  var choices = ChoicesArrayCards(this.setAsideCards);
+	  if (runner.AI) {
+		//start by looking for duplicates
+		for (var i=0; i<choices.length; i++) {
+			var card = choices[i].card;
+			if (runner.AI._copyOfCardExistsIn(card.title, this.setAsideCards, [card])) {
+				runner.AI._log("One is enough");
+				return [choices[i]];
+			}
+		}
+		//then look for cards not worth keeping
+		var cwk = this.SharedSpecialCWK();
+		for (var i=0; i<choices.length; i++) {
+			var card = choices[i].card;
+			if (!cwk.includes(card)) {
+				runner.AI._log("Don't need to keep this");
+				return [choices[i]];
+			}
+		}
+		//failing that, just go by elo
+		var lowestElo = choices[0].card.elo;
+		var lowestChoice = choices[0];
+		for (var i=1; i<choices.length; i++) {
+			if (choices[i].card.elo < lowestElo) {
+				lowestElo = choices[i].card.elo;
+				lowestChoice = choices[i];
+			}
+		}
+		runner.AI._log("This is usually the least useful");
+		return [lowestChoice];
+	  }
+	  return choices;
+  },
+  beforeStartingHand: {
+	Resolve: function() {
+		var choices = [];
+		for (var i = 0; i < 6; i++) {
+		  MoveCardByIndex(runner.stack.length - 1, runner.stack, this.setAsideCards);
+		}
+		Log("Runner set aside top 6 cards of stack facedown");
+        DecisionPhase(
+          runner,
+          this.SharedSetAsideChoices(),
+          function(params) {
+			MoveCard(params.card, runner.stack);
+			DecisionPhase(
+			  runner,
+			  this.SharedSetAsideChoices(),
+			  function(params) {
+				MoveCard(params.card, runner.stack);
+				Shuffle(runner.stack);
+				Log("Runner shuffled 2 of those cards into stack");
+			  },
+			  'Ayla "Bios" Rahim',
+			  'Drag to your stack',
+			  this
+			);
+		  },
+          'Ayla "Bios" Rahim',
+          'Drag to your stack',
+          this
+        );
+	},
+  },
+  //[click]: Add 1 card set aside with this identity to your grip.
+  abilities: [
+    {
+      text: "Add 1 card set aside with this identity to your grip.",
+      Enumerate: function () {
+        if (!CheckActionClicks(runner, 1)) return [];
+		
+		//**AI code (in this case, implemented by setting and returning the preferred option)
+		if (runner.AI) {
+			var cwk = this.SharedSpecialCWK();
+			runner.AI.SortCardsWorthKeeping(cwk);
+			return [ChoicesArrayCards(this.setAsideCards)[0]];
+		}
+		return ChoicesArrayCards(this.setAsideCards);
+      },
+      Resolve: function (params) {
+        SpendClicks(runner, 1);
+		MoveCard(params.card,runner.grip);
+		Log("Runner added "+GetTitle(params.card,true)+" from set aside cards to grip");
+      },
+    },
+  ],
+  AIWouldTrigger: function () {
+	//if no cards in stack, no choice
+	if (runner.stack.length < 1) return true;
+    //don't trigger if there are no cards worth keeping in setAsideCards
+	if (this.SharedSpecialCWK().length < 1) return false;
+    return true;
+  },
+  AIDrawTrigger: 2, //priority 2 (moderate)
 };
 
 //TODO link (e.g. Reina)

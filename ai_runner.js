@@ -711,23 +711,24 @@ class RunnerAI {
     return 0; //neither by default
   }
 
-  //do this right after calculating run costs and priorities
-  SortCardsInHandWorthKeeping() {
-    //console.log("Sorting: " + JSON.stringify(this.cardsWorthKeeping));
+  //recommend do this right after calculating run costs and priorities
+  SortCardsWorthKeeping(cwkToSort) {
+	if (typeof cwkToSort == 'undefined') cwkToSort = this.cardsWorthKeeping;
+    //console.log("Sorting: " + JSON.stringify(cwkToSort));
     var high = [];
     var neither = [];
     var low = [];
 
     //make an ice list (either from the highest priority server or just all ice)
     var priorityIceList = [];
-    if (this.serverList.length > 0) {
+    if (this.cachedPotentials.length > 0) {
       //which server is highest priority?
-      var highestPotential = this.serverList[0].potential;
-      var highestPotentialServer = this.serverList[0].server;
-      for (var i = 1; i < this.serverList.length; i++) {
-        if (this.serverList[i].potential > highestPotential) {
-          highestPotential = this.serverList[i].potential;
-          highestPotentialServer = this.serverList[i].server;
+      var highestPotential = this.cachedPotentials[0].potential;
+      var highestPotentialServer = this.cachedPotentials[0].server;
+      for (var i = 1; i < this.cachedPotentials.length; i++) {
+        if (this.cachedPotentials[i].potential > highestPotential) {
+          highestPotential = this.cachedPotentials[i].potential;
+          highestPotentialServer = this.cachedPotentials[i].server;
         }
       }
       if (highestPotentialServer.ice.length > 0)
@@ -743,17 +744,17 @@ class RunnerAI {
     //console.log("Priority ice: " + JSON.stringify(priorityIceList));
 
     //loop through pushing cards as high (unshift), neither or low (push) priority
-    for (var i = 0; i < this.cardsWorthKeeping.length; i++) {
+    for (var i = 0; i < cwkToSort.length; i++) {
       var priority = this.EstimateCardPriority(
-        this.cardsWorthKeeping[i],
+        cwkToSort[i],
         priorityIceList
       );
-      if (priority < 0) low.push(this.cardsWorthKeeping[i]);
-      else if (priority > 0) high.unshift(this.cardsWorthKeeping[i]);
-      else neither.push(this.cardsWorthKeeping[i]);
+      if (priority < 0) low.push(cwkToSort[i]);
+      else if (priority > 0) high.unshift(cwkToSort[i]);
+      else neither.push(cwkToSort[i]);
     }
-    this.cardsWorthKeeping = high.concat(neither).concat(low);
-    //console.log("Result: " + JSON.stringify(this.cardsWorthKeeping));
+    cwkToSort = high.concat(neither).concat(low);
+    //console.log("Result: " + JSON.stringify(cwkToSort));
   }
   
   //planning check for complete run. Returns bestpath
@@ -1702,7 +1703,7 @@ console.log(this.preferred);
       }
 
       //use the server run-estimate information to sort _cardsInHandWorthKeeping
-      this.SortCardsInHandWorthKeeping();
+      this.SortCardsWorthKeeping();
 
       //don't run servers that have too low potential or infinity cost
       for (var i = this.serverList.length - 1; i > -1; i--) {
@@ -1939,6 +1940,37 @@ console.log(this.preferred);
 		var maxOverDraw = this._maxOverDraw();
 		var currentOverDraw = this._currentOverDraw();
 		if (currentOverDraw < maxOverDraw) {
+		  //an ability to trigger?
+		  if (optionList.includes("trigger")) {
+			//find highest priority draw trigger card
+			var activeCards = ActiveCards(runner);
+			var limitTo = "";
+			if (currentPhase.identifier == "Runner 1.3") limitTo = "click";
+			cardToTrigger=null;
+			var cardPriority=0;
+			for (var i = 0; i < activeCards.length; i++) {
+				if (activeCards[i].AIDrawTrigger) {
+				  if (activeCards[i].AIDrawTrigger > cardPriority) {
+					if (ChoicesAbility(activeCards[i], limitTo).length > 0) {
+					  //i.e. it can be triggered
+					  var triggerThis = true; //if no specific rules have been defined then just trigger it whenever you can
+					  if (typeof(activeCards[i].AIWouldTrigger) == 'function') triggerThis = activeCards[i].AIWouldTrigger.call(activeCards[i]);
+					  if (triggerThis) {					
+						cardToTrigger=activeCards[i];
+						cardPriority=activeCards[i].AIDrawTrigger;
+					  }
+					}
+				  }
+				}
+			}
+			if (cardToTrigger) {
+			  this._log("there is a card I would trigger to draw");
+			  return this._returnPreference(optionList, "trigger", {
+				cardToTrigger: cardToTrigger,
+			  }); //assumes no parameters for now
+			}
+		  }
+			
 		  //a card that could be installed?
 		  if (optionList.includes("install")) {
 			for (var i = 0; i < this.drawInstall.length; i++) {

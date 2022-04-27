@@ -166,6 +166,11 @@ function RenderCards(cards, modifier) {
         RenderCard(cards[i].hostedCards[j], FaceUpNoTint, i); //assuming this is what we want for all hosted cards...could change this later
       }
     }
+    if (typeof cards[i].setAsideCards !== "undefined") {
+      for (var j = 0; j < cards[i].setAsideCards.length; j++) {
+        RenderCard(cards[i].setAsideCards[j], TintIfFaceDown, i); //assuming this is what we want for all hosted cards...could change this later
+      }
+    }
     ret.push(cards[i].renderer);
   }
   return ret;
@@ -1241,7 +1246,10 @@ function Setup() {
 }
 
 function StartGame() {
+  IncrementPhase(); //move to first phase
   if (!skipShuffleAndDraw) {
+    
+	TriggeredResponsePhase(runner, "beforeStartingHand", [], function() {
     for (
       var i = 0;
       i < 5;
@@ -1250,14 +1258,11 @@ function StartGame() {
       MoveCardByIndex(corp.RnD.cards.length - 1, corp.RnD.cards, corp.HQ.cards);
       MoveCardByIndex(runner.stack.length - 1, runner.stack, runner.grip);
     }
-    Log("Each player has taken five credits and drawn five cards");
-	
+    Log("Each player has taken five credits and drawn five cards");	
 	//Narrate();
 	stackedLog = []; //skip narration
-	
-    IncrementPhase();
+	});
   }
-  Render(); //to show cards have moved from decks
   Main();
 }
 
@@ -1389,6 +1394,7 @@ function ExecuteChosen(chosenCommand) {
       if (activePlayer == runner) {
         if (oldFooterText == "Access") footerText = "Access cards";
         else if (oldFooterText == "Discard") footerText = "Drag to your heap";
+		else if (oldFooterText == "Drag to your stack") footerText = oldFooterText;
       } //corp
       else {
         if (oldFooterText == "Discard") footerText = "Drag to Archives";

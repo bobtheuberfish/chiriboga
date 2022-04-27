@@ -200,6 +200,11 @@ function GetAvailability(renderer) {
       }
       //if the card is available with server option(s), drag to choose server
       if (typeof validOptions[i].server !== "undefined") return 2;
+	  //the above case handles Drag to R&D as long as phase.targetServerCardsOnly = true; is set
+	  //but to handle drag to stack, we need this:
+	  if (typeof currentPhase.text != 'undefined' 
+	    && typeof currentPhase.text.continue != 'undefined'
+		&& currentPhase.text.continue == 'Drag to your stack') return 2;
       //but most interaction is just being available to click
       return 1;
     }
@@ -599,6 +604,7 @@ function Cancel() {
   }
 
   //generic cases
+  Render(); //e.g. close any viewingGrids created for the canceled choice
   EnumeratePhase();
   executingCommand = "n"; //i.e. act as if the previous phase was finished
   //MakeChoice();
@@ -727,6 +733,8 @@ function MakeChoice() {
                 } else if (validOptions[j].card.cardLocation == runner.heap)
                   useViewingGrid = true;
                 else if (validOptions[j].card.cardLocation == runner.stack)
+                  useViewingGrid = true;
+                else if (typeof runner.identityCard.setAsideCards != 'undefined' && validOptions[j].card.cardLocation == runner.identityCard.setAsideCards)
                   useViewingGrid = true;
               }
             }

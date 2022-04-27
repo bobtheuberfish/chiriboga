@@ -1,8 +1,10 @@
 //CARD DEFINITIONS FOR SYSTEM GATEWAY
+//elo values (higher is better) are from https://trash-or-busto.herokuapp.com/ranking at 26 Apr 2022
 setIdentifiers.push('sg');
 cardSet[30001] = {
   title: 'René "Loup" Arcemont: Party Animal',
   imageFile: "30001.png",
+  elo: 1598,
   player: runner,
   faction: "Anarch",
   cardType: "identity",
@@ -34,6 +36,7 @@ cardSet[30001] = {
 cardSet[30002] = {
   title: "Wildcat Strike",
   imageFile: "30002.png",
+  elo: 1620,
   player: runner,
   faction: "Anarch",
   influence: 1,
@@ -89,6 +92,7 @@ cardSet[30002] = {
 cardSet[30003] = {
   title: "Carnivore",
   imageFile: "30003.png",
+  elo: 1469,
   player: runner,
   faction: "Anarch",
   influence: 3,
@@ -174,6 +178,7 @@ cardSet[30003] = {
 cardSet[30004] = {
   title: "Botulus",
   imageFile: "30004.png",
+  elo: 1817,
   player: runner,
   faction: "Anarch",
   influence: 3,
@@ -258,6 +263,7 @@ cardSet[30004] = {
 cardSet[30005] = {
   title: "Buzzsaw",
   imageFile: "30005.png",
+  elo: 1615,
   player: runner,
   faction: "Anarch",
   influence: 1,
@@ -379,6 +385,7 @@ cardSet[30005] = {
 cardSet[30006] = {
   title: "Cleaver",
   imageFile: "30006.png",
+  elo: 1599,
   player: runner,
   faction: "Anarch",
   influence: 2,
@@ -498,6 +505,7 @@ cardSet[30006] = {
 cardSet[30007] = {
   title: "Fermenter",
   imageFile: "30007.png",
+  elo: 1685,
   player: runner,
   faction: "Anarch",
   influence: 2,
@@ -552,6 +560,7 @@ cardSet[30007] = {
 cardSet[30008] = {
   title: "Leech",
   imageFile: "30008.png",
+  elo: 1695,
   player: runner,
   faction: "Anarch",
   influence: 1,
@@ -681,6 +690,7 @@ cardSet[30008] = {
 cardSet[30009] = {
   title: "Cookbook",
   imageFile: "30009.png",
+  elo: 1617,
   player: runner,
   faction: "Anarch",
   influence: 3,
@@ -728,6 +738,7 @@ cardSet[30009] = {
 cardSet[30010] = {
   title: "Zahya Sadeghi: Versatile Smuggler",
   imageFile: "30010.png",
+  elo: 1652,
   player: runner,
   faction: "Criminal",
   cardType: "identity",
@@ -789,6 +800,7 @@ cardSet[30010] = {
 cardSet[30011] = {
   title: "Mutual Favor",
   imageFile: "30011.png",
+  elo: 1745,
   player: runner,
   faction: "Criminal",
   influence: 3,
@@ -932,6 +944,7 @@ cardSet[30011] = {
 cardSet[30012] = {
   title: "Tread Lightly",
   imageFile: "30012.png",
+  elo: 1647,
   player: runner,
   faction: "Criminal",
   influence: 1,
@@ -979,6 +992,7 @@ cardSet[30012] = {
 cardSet[30013] = {
   title: "Docklands Pass",
   imageFile: "30013.png",
+  elo: 1704,
   player: runner,
   faction: "Criminal",
   influence: 2,
@@ -1034,6 +1048,7 @@ cardSet[30013] = {
 cardSet[30014] = {
   title: "Pennyshaver",
   imageFile: "30014.png",
+  elo: 1753,
   player: runner,
   faction: "Criminal",
   influence: 3,
@@ -1080,6 +1095,7 @@ cardSet[30014] = {
 cardSet[30015] = {
   title: "Carmen",
   imageFile: "30015.png",
+  elo: 1542,
   player: runner,
   faction: "Criminal",
   influence: 2,
@@ -1207,6 +1223,7 @@ cardSet[30015] = {
 cardSet[30016] = {
   title: "Marjanah",
   imageFile: "30016.png",
+  elo: 1448,
   player: runner,
   faction: "Criminal",
   influence: 1,
@@ -1324,6 +1341,7 @@ cardSet[30016] = {
 cardSet[30017] = {
   title: "Tranquilizer",
   imageFile: "30017.png",
+  elo: 1638,
   player: runner,
   faction: "Criminal",
   influence: 3,
@@ -1385,6 +1403,7 @@ cardSet[30017] = {
 cardSet[30018] = {
   title: "Red Team",
   imageFile: "30018.png",
+  elo: 1517,
   player: runner,
   faction: "Criminal",
   influence: 2,
@@ -1488,6 +1507,7 @@ cardSet[30018] = {
 cardSet[30019] = {
   title: "Tāo Salonga: Telepresence Magician",
   imageFile: "30019.png",
+  elo: 1653,
   player: runner,
   faction: "Shaper",
   link: 0,
@@ -1611,6 +1631,7 @@ cardSet[30019] = {
 cardSet[30020] = {
   title: "Creative Commission",
   imageFile: "30020.png",
+  elo: 1767,
   player: runner,
   faction: "Shaper",
   influence: 2,
@@ -1636,6 +1657,7 @@ cardSet[30020] = {
 cardSet[30021] = {
   title: "VRcation",
   imageFile: "30021.png",
+  elo: 1660,
   player: runner,
   faction: "Shaper",
   influence: 2,
@@ -1661,6 +1683,7 @@ cardSet[30021] = {
 cardSet[30022] = {
   title: "DZMZ Optimizer",
   imageFile: "30022.png",
+  elo: 1570,
   player: runner,
   faction: "Shaper",
   influence: 2,
@@ -1712,6 +1735,7 @@ cardSet[30022] = {
 cardSet[30023] = {
   title: "Pantograph",
   imageFile: "30023.png",
+  elo: 1572,
   player: runner,
   faction: "Shaper",
   influence: 3,
@@ -1803,6 +1827,7 @@ cardSet[30023] = {
 cardSet[30024] = {
   title: "Conduit",
   imageFile: "30024.png",
+  elo: 1767,
   player: runner,
   faction: "Shaper",
   influence: 4,
@@ -1928,6 +1953,7 @@ cardSet[30024] = {
 cardSet[30025] = {
   title: "Echelon",
   imageFile: "30025.png",
+  elo: 1480,
   player: runner,
   faction: "Shaper",
   influence: 1,
@@ -2030,6 +2056,7 @@ cardSet[30025] = {
 cardSet[30026] = {
   title: "Unity",
   imageFile: "30026.png",
+  elo: 1739,
   player: runner,
   faction: "Shaper",
   influence: 2,
@@ -2132,6 +2159,7 @@ cardSet[30026] = {
 cardSet[30027] = {
   title: "Telework Contract",
   imageFile: "30027.png",
+  elo: 1624,
   player: runner,
   faction: "Shaper",
   influence: 2,
@@ -2190,6 +2218,7 @@ cardSet[30027] = {
 cardSet[30028] = {
   title: "Jailbreak",
   imageFile: "30028.png",
+  elo: 1657,
   player: runner,
   faction: "Neutral",
   influence: 0,
@@ -2246,6 +2275,7 @@ cardSet[30028] = {
 cardSet[30029] = {
   title: "Overclock",
   imageFile: "30029.png",
+  elo: 1683,
   player: runner,
   faction: "Neutral",
   influence: 0,
@@ -2275,6 +2305,7 @@ cardSet[30029] = {
 cardSet[30030] = {
   title: "Sure Gamble",
   imageFile: "30030.png",
+  elo: 1924,
   player: runner,
   faction: "Neutral",
   influence: 0,
@@ -2291,6 +2322,7 @@ cardSet[30030] = {
 cardSet[30031] = {
   title: "T400 Memory Diamond",
   imageFile: "30031.png",
+  elo: 1394,
   player: runner,
   faction: "Neutral",
   influence: 0,
@@ -2314,6 +2346,7 @@ cardSet[30031] = {
 cardSet[30032] = {
   title: "Mayfly",
   imageFile: "30032.png",
+  elo: 1665,
   player: runner,
   faction: "Neutral",
   influence: 0,
@@ -2426,6 +2459,7 @@ cardSet[30032] = {
 cardSet[30033] = {
   title: "Smartware Distributor",
   imageFile: "30033.png",
+  elo: 1355,
   player: runner,
   faction: "Neutral",
   influence: 0,
@@ -2482,6 +2516,7 @@ cardSet[30033] = {
 cardSet[30034] = {
   title: "Verbal Plasticity",
   imageFile: "30034.png",
+  elo: 1451,
   player: runner,
   faction: "Neutral",
   influence: 0,
@@ -2513,6 +2548,7 @@ cardSet[30034] = {
 cardSet[30035] = {
   title: "Haas-Bioroid: Precision Design",
   imageFile: "30035.png",
+  elo: 1867,
   player: corp,
   faction: "Haas-Bioroid",
   cardType: "identity",
@@ -2546,6 +2582,7 @@ cardSet[30035] = {
 cardSet[30036] = {
   title: "Luminal Transubstantiation",
   imageFile: "30036.png",
+  elo: 1834,
   player: corp,
   faction: "Haas-Bioroid",
   cardType: "agenda",
@@ -2589,6 +2626,7 @@ cardSet[30036] = {
 cardSet[30037] = {
   title: "Nico Campaign",
   imageFile: "30037.png",
+  elo: 1721,
   player: corp,
   faction: "Haas-Bioroid",
   influence: 2,
@@ -2631,6 +2669,7 @@ cardSet[30037] = {
 cardSet[30038] = {
   title: "Ansel 1.0",
   imageFile: "30038.png",
+  elo: 1699,
   player: corp,
   faction: "Haas-Bioroid",
   influence: 3,
@@ -2844,6 +2883,7 @@ cardSet[30038] = {
 cardSet[30039] = {
   title: "Brân 1.0",
   imageFile: "30039.png",
+  elo: 1656,
   player: corp,
   faction: "Haas-Bioroid",
   influence: 2,
@@ -3013,6 +3053,7 @@ cardSet[30039] = {
 cardSet[30040] = {
   title: "Seamless Launch",
   imageFile: "30040.png",
+  elo: 1845,
   player: corp,
   faction: "Haas-Bioroid",
   influence: 2,
@@ -3071,6 +3112,7 @@ cardSet[30040] = {
 cardSet[30041] = {
   title: "Sprint",
   imageFile: "30041.png",
+  elo: 1635,
   player: corp,
   faction: "Haas-Bioroid",
   influence: 1,
@@ -3162,6 +3204,7 @@ cardSet[30041] = {
 cardSet[30042] = {
   title: "Manegarm Skunkworks",
   imageFile: "30042.png",
+  elo: 1814,
   player: corp,
   faction: "Haas-Bioroid",
   influence: 3,
@@ -3237,6 +3280,7 @@ cardSet[30042] = {
 cardSet[30043] = {
   title: "Jinteki: Restoring Humanity",
   imageFile: "30043.png",
+  elo: 1517,
   player: corp,
   faction: "Jinteki",
   cardType: "identity",
@@ -3260,6 +3304,7 @@ cardSet[30043] = {
 cardSet[30044] = {
   title: "Longevity Serum",
   imageFile: "30044.png",
+  elo: 1631,
   player: corp,
   faction: "Jinteki",
   cardType: "agenda",
@@ -3370,6 +3415,7 @@ cardSet[30044] = {
 cardSet[30045] = {
   title: "Urtica Cipher",
   imageFile: "30045.png",
+  elo: 1566,
   player: corp,
   faction: "Jinteki",
   influence: 2,
@@ -3399,6 +3445,7 @@ cardSet[30045] = {
 cardSet[30046] = {
   title: "Diviner",
   imageFile: "30046.png",
+  elo: 1463,
   player: corp,
   faction: "Jinteki",
   influence: 2,
@@ -3462,6 +3509,7 @@ cardSet[30046] = {
 cardSet[30047] = {
   title: "Karunā",
   imageFile: "30047.png",
+  elo: 1477,
   player: corp,
   faction: "Jinteki",
   influence: 2,
@@ -3513,6 +3561,7 @@ cardSet[30047] = {
 cardSet[30048] = {
   title: "Hansei Review",
   imageFile: "30048.png",
+  elo: 1654,
   player: corp,
   faction: "Jinteki",
   influence: 1,
@@ -3533,6 +3582,7 @@ cardSet[30048] = {
 cardSet[30049] = {
   title: "Neurospike",
   imageFile: "30049.png",
+  elo: 1678,
   player: corp,
   faction: "Jinteki",
   influence: 3,
@@ -3574,6 +3624,7 @@ cardSet[30049] = {
 cardSet[30050] = {
   title: "Anoetic Void",
   imageFile: "30050.png",
+  elo: 1911,
   player: corp,
   faction: "Jinteki",
   influence: 4,
@@ -3688,6 +3739,7 @@ cardSet[30050] = {
 cardSet[30051] = {
   title: "NBN: Reality Plus",
   imageFile: "30051.png",
+  elo: 1623,
   player: corp,
   faction: "NBN",
   cardType: "identity",
@@ -3726,6 +3778,7 @@ cardSet[30051] = {
 cardSet[30052] = {
   title: "Tomorrow's Headline",
   imageFile: "30052.png",
+  elo: 1762,
   player: corp,
   faction: "NBN",
   cardType: "agenda",
@@ -3755,6 +3808,7 @@ cardSet[30052] = {
 cardSet[30053] = {
   title: "Spin Doctor",
   imageFile: "30053.png",
+  elo: 1890,
   player: corp,
   faction: "NBN",
   influence: 1,
@@ -3947,6 +4001,7 @@ cardSet[30053] = {
 cardSet[30054] = {
   title: "Funhouse",
   imageFile: "30054.png",
+  elo: 1594,
   player: corp,
   faction: "NBN",
   influence: 2,
@@ -4026,6 +4081,7 @@ cardSet[30054] = {
 cardSet[30055] = {
   title: "Ping",
   imageFile: "30055.png",
+  elo: 1652,
   player: corp,
   faction: "NBN",
   influence: 2,
@@ -4062,6 +4118,7 @@ cardSet[30055] = {
 cardSet[30056] = {
   title: "Predictive Planogram",
   imageFile: "30056.png",
+  elo: 1637,
   player: corp,
   faction: "NBN",
   influence: 1,
@@ -4090,6 +4147,7 @@ cardSet[30056] = {
 cardSet[30057] = {
   title: "Public Trail",
   imageFile: "30057.png",
+  elo: 1630,
   player: corp,
   faction: "NBN",
   influence: 2,
@@ -4148,6 +4206,7 @@ cardSet[30057] = {
 cardSet[30058] = {
   title: "AMAZE Amusements",
   imageFile: "30058.png",
+  elo: 1512,
   player: corp,
   faction: "NBN",
   influence: 3,
@@ -4228,6 +4287,7 @@ cardSet[30058] = {
 cardSet[30059] = {
   title: "Weyland Consortium: Built to Last",
   imageFile: "30059.png",
+  elo: 1590,
   player: corp,
   faction: "Weyland Consortium",
   cardType: "identity",
@@ -4244,6 +4304,7 @@ cardSet[30059] = {
 cardSet[30060] = {
   title: "Above the Law",
   imageFile: "30060.png",
+  elo: 1757,
   player: corp,
   faction: "Weyland Consortium",
   cardType: "agenda",
@@ -4293,6 +4354,7 @@ cardSet[30060] = {
 cardSet[30061] = {
   title: "Clearinghouse",
   imageFile: "30061.png",
+  elo: 1666,
   player: corp,
   faction: "Weyland Consortium",
   influence: 3,
@@ -4354,6 +4416,7 @@ cardSet[30061] = {
 cardSet[30062] = {
   title: "Ballista",
   imageFile: "30062.png",
+  elo: 1581,
   player: corp,
   faction: "Weyland Consortium",
   influence: 2,
@@ -4436,6 +4499,7 @@ cardSet[30062] = {
 cardSet[30063] = {
   title: "Pharos",
   imageFile: "30063.png",
+  elo: 1588,
   player: corp,
   faction: "Weyland Consortium",
   influence: 3,
@@ -4499,6 +4563,7 @@ cardSet[30063] = {
 cardSet[30064] = {
   title: "Government Subsidy",
   imageFile: "30064.png",
+  elo: 1691,
   player: corp,
   faction: "Weyland Consortium",
   influence: 1,
@@ -4513,6 +4578,7 @@ cardSet[30064] = {
 cardSet[30065] = {
   title: "Retribution",
   imageFile: "30065.png",
+  elo: 1530,
   player: corp,
   faction: "Weyland Consortium",
   influence: 1,
@@ -4569,6 +4635,7 @@ cardSet[30065] = {
 cardSet[30066] = {
   title: "Malapert Data Vault",
   imageFile: "30066.png",
+  elo: 1678,
   player: corp,
   faction: "Weyland Consortium",
   influence: 3,
@@ -4644,6 +4711,7 @@ cardSet[30066] = {
 cardSet[30067] = {
   title: "Offworld Office",
   imageFile: "30067.png",
+  elo: 1822,
   player: corp,
   faction: "Neutral",
   influence: 0,
@@ -4661,6 +4729,7 @@ cardSet[30067] = {
 cardSet[30068] = {
   title: "Orbital Superiority",
   imageFile: "30068.png",
+  elo: 1362,
   player: corp,
   faction: "Neutral",
   influence: 0,
@@ -4684,6 +4753,7 @@ cardSet[30068] = {
 cardSet[30069] = {
   title: "Send a Message",
   imageFile: "30069.png",
+  elo: 1612,
   player: corp,
   faction: "Neutral",
   influence: 0,
@@ -4774,6 +4844,7 @@ cardSet[30069] = {
 cardSet[30070] = {
   title: "Superconducting Hub",
   imageFile: "30070.png",
+  elo: 1335,
   player: corp,
   faction: "Neutral",
   influence: 0,
@@ -4812,6 +4883,7 @@ cardSet[30070] = {
 cardSet[30071] = {
   title: "Regolith Mining License",
   imageFile: "30071.png",
+  elo: 1629,
   player: corp,
   faction: "Neutral",
   influence: 0,
@@ -4864,6 +4936,7 @@ cardSet[30071] = {
 cardSet[30072] = {
   title: "Palisade",
   imageFile: "30072.png",
+  elo: 1556,
   player: corp,
   faction: "Neutral",
   influence: 0,
@@ -4902,6 +4975,7 @@ cardSet[30072] = {
 cardSet[30073] = {
   title: "Tithe",
   imageFile: "30073.png",
+  elo: 1512,
   player: corp,
   faction: "Neutral",
   influence: 0,
@@ -4941,6 +5015,7 @@ cardSet[30073] = {
 cardSet[30074] = {
   title: "Whitespace",
   imageFile: "30074.png",
+  elo: 1579,
   player: corp,
   faction: "Neutral",
   influence: 0,
@@ -4985,6 +5060,7 @@ cardSet[30074] = {
 cardSet[30075] = {
   title: "Hedge Fund",
   imageFile: "30075.png",
+  elo: 1888,
   player: corp,
   faction: "Neutral",
   influence: 0,
@@ -4998,6 +5074,7 @@ cardSet[30075] = {
 cardSet[30076] = {
   title: "The Catalyst",
   imageFile: "30076.png",
+  elo: 1159,
   player: runner,
   link: 0,
   cardType: "identity",
@@ -5013,6 +5090,7 @@ cardSet[30076] = {
 cardSet[30077] = {
   title: "The Syndicate",
   imageFile: "30077.png",
+  elo: 1205,
   player: corp,
   cardType: "identity",
   subTypes: ["Megacorp"],
