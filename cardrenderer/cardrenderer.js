@@ -79,10 +79,33 @@ var CardRenderer = {
         var extraOffset = 0;
         if (!this.cards[i].faceUp) extraOffset = faceDownOffset;
         this.cards[i].destinationPosition.y = yOffset + extraOffset;
+        var card = this.cards[i].card;
+        //special case: set aside cards
+		//assumes Runner for now
+        if (typeof card.setAsideCards !== "undefined") {
+		  var setAsideX = hostingX * 0.2;
+		  var setAsideY = hostingX * 0.4;
+		  var storedXOffset = xOffset;		  
+		  var storedYOffset = yOffset;
+		  var setAsideTotalXOffset = setAsideX * card.setAsideCards.length;
+		  var setAsideTotalYOffset = setAsideY * card.setAsideCards.length;
+		  
+          for (var j = 0; j < card.setAsideCards.length; j++) {
+            xOffset = storedXOffset + setAsideTotalXOffset - (setAsideX*j);
+			yOffset = storedYOffset + setAsideTotalYOffset - (setAsideY*j);
+			
+            app.stage.removeChild(card.setAsideCards[j].renderer.sprite);
+            card.setAsideCards[j].renderer.destinationPosition.x = xOffset;
+            card.setAsideCards[j].renderer.destinationPosition.y = yOffset;
+            app.stage.addChild(card.setAsideCards[j].renderer.sprite);
+          }
+		  
+		  xOffset = storedXOffset;
+		  yOffset = storedYOffset;
+        }
         app.stage.addChild(this.cards[i].glowSprite); //glow immediately under this card
         app.stage.addChild(this.cards[i].sprite);
         //also include hostedCards
-        var card = this.cards[i].card;
         if (typeof card.hostedCards !== "undefined") {
 		  var storedXOffset = xOffset;
 		  //var storedYOffset = yOffset;
@@ -271,6 +294,7 @@ var CardRenderer = {
       this.flipProgress = -1.0; //-1 = fully face down, 0 = neither, 1 = fully face up
       this.zoomed = false;
       this.canView = false;
+      this.speed = 30;
       this.storedRotation = 0;
       this.storedPosition = { x: 0, y: 0 };
       this.destinationPosition = { x: 0, y: 0 };
@@ -511,7 +535,7 @@ var CardRenderer = {
               //yellow (to indicate it won't immediately activate)
               else this.glowSprite.tint = parseInt("D800FF", 16); //purple
             } else if (pixi_playThreshold(this)) {
-              //there swere some special red cases but they are now all purple for consistency (purple means "this will happen when you release")
+              //there were some special red cases but they are now all purple for consistency (purple means "this will happen when you release")
               //if (executingCommand=="trash") this.glowSprite.tint = parseInt("FF0000",16); //special case: dragging to trash (e.g. before install), red
               //else if (executingCommand=="discard") this.glowSprite.tint = parseInt("FF0000",16); //special case: dragging to discard, red
               //else
@@ -867,9 +891,11 @@ var CardRenderer = {
           deltaVec.y = 0;
         } else {
           dispDiff.invLength = 1 / Math.sqrt(sqDist);
-          var speed = 30;
-          var spdMult = delta * speed * dispDiff.invLength;
+          var spdMult = delta * this.speed * dispDiff.invLength;
           if (spdMult > 1) spdMult = 1;
+		  //speed up if far (arbitrary, tweak to feel right)
+		  if (sqDist > 1000000) spdMult *= 3; 
+		  else if (sqDist > 300000) spdMult *= 2;
           deltaVec.x = dispDiff.x * spdMult;
           deltaVec.y = dispDiff.y * spdMult;
         }
@@ -1172,10 +1198,11 @@ var CardRenderer = {
       if ( viewingPile == null && !cardIsInViewingGrid ) {
         if (
           (this.card.card.cardLocation == corp.archives.cards) ||
-          (this.card.card.cardLocation == runner.heap)
+          (this.card.card.cardLocation == runner.heap) ||
+          (typeof runner.identityCard.setAsideCards != 'undefined' && this.card.card.cardLocation == runner.identityCard.setAsideCards)
         ) {
-		  cardRenderer.storedView = previousViewingGrid; //so any existing view can restored when this is closed
-          viewingPile = this.card.card.cardLocation;
+		  cardRenderer.storedView = previousViewingGrid; //so any existing view can restored when this is closed          
+		  viewingPile = this.card.card.cardLocation;
           Render(); //force the visual change
         }
       }
@@ -1513,17 +1540,34 @@ var CardRenderer = {
         }
 
         //special use of iceglow
-        if (executingCommand == "trash" || executingCommand == "discard") {
-          //trash before install or discard at end of turn
+		var specialTarget = null;
+        //trash before install or discard at end of turn
+		if (executingCommand == "trash" || executingCommand == "discard") {
           //NOTE: this currently assuming the player is trashing their own cards
+		  if (viewingPlayer == runner) specialTarget = runner.heap;
+		  else specialTarget = corp.archives; //viewingPlayer assumed to be corp
+		}
+		//drag to stack
+	    if (viewingPlayer == runner && currentPhase
+		  && typeof currentPhase.text != 'undefined' 
+	      && typeof currentPhase.text.continue != 'undefined'
+		  && currentPhase.text.continue == 'Drag to your stack') specialTarget = runner.stack;
+		//set up iceGlow for special cases
+        if (specialTarget) {
           if (viewingPlayer == runner) {
-            this.iceGlow.x = 0.5 * (runner.heap.xStart + runner.heap.xEnd) - 15; //the subtraction amount is arbitrary, tweak to look right
-            this.iceGlow.y = runner.heap.yCards - 100; //the subtraction amount is arbitrary, tweak to look right
+			var xTweak = -15; //arbitrary, tweak to look right
+			var yTweak = -100; //arbitrary, tweak to look right
+			if (specialTarget == runner.stack) {
+				xTweak = 0;
+				yTweak = -110;
+			}
+            this.iceGlow.x = 0.5 * (specialTarget.xStart + specialTarget.xEnd) + xTweak;
+            this.iceGlow.y = specialTarget.yCards + yTweak;
             this.iceGlow.rotation = Math.PI;
-          } //viewingPlayer assumed to be corp
+          }
           else {
-            this.iceGlow.x = 0.5 * (corp.archives.xStart + corp.archives.xEnd);
-            this.iceGlow.y = corp.archives.yCards + 105; //the addition amount is arbitrary, tweak to look right
+            this.iceGlow.x = 0.5 * (specialTarget.xStart + specialTarget.xEnd);
+            this.iceGlow.y = specialTarget.yCards + 105; //the addition amount is arbitrary, tweak to look right
             this.iceGlow.rotation = 0;
           }
 
@@ -1537,7 +1581,7 @@ var CardRenderer = {
             else this.iceGlow.tint = parseInt("FFFFFF", 16); //white
           } else this.iceGlow.visible = false;
         }
-
+		
         //hide subroutine choices when not longer needed
         // and run a timer to prevent accidentally zooming another card after choosing subroutines
         if (!OptionsAreOnlyUniqueSubroutines()) {
@@ -2025,11 +2069,16 @@ function pixi_SqDistToPile(pile, player) {
 var pixi_playY = 180;
 function pixi_playThreshold(cardToPlay) {
   if (cardToPlay != null) {
+	var pile = null;
     if (executingCommand == "trash" || executingCommand == "discard") {
-      //trash before install or discard at end of turn
-      var pile = null;
+	  //trash before install or discard at end of turn
       if (cardToPlay.card.player == corp) pile = corp.archives;
       else if (cardToPlay.card.player == runner) pile = runner.heap;
+	}
+	else if (typeof currentPhase.text != 'undefined' 
+	  && typeof currentPhase.text.continue != 'undefined'
+	  && currentPhase.text.continue == 'Drag to your stack') pile = runner.stack;
+    if (pile) {
       return pixi_SqDistToPile(pile, cardToPlay.card.player) < 50000; //arbitrary to feel right
     } else if (
       activePlayer == corp &&
