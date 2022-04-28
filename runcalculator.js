@@ -29,7 +29,7 @@ class RunCalculator {
   // misc_moderate e.g. trash 1 program
   // misc_serious e.g. install another ice inward (like endTheRun, paths that fire these will be avoided)
   //encounterEffects is an array of OR arrays of effects
-  IceAI(ice, maxCorpCred, assumeWeakerUnknown = false, incomplete = false) {
+  IceAI(ice, maxCorpCred, assumeWeakerUnknown = false, incomplete = false, startIceIdx = -1) {
     var result = {
       ice: ice,
       subTypes: [],
@@ -77,6 +77,14 @@ class RunCalculator {
         if (ice.subroutines[i].broken) result.sr[i] = [[]];
       }
     }
+	
+	//passive effects (assuming Runner only for now)
+	var activeCards = ActiveCards(runner);
+	for (var i = 0; i < activeCards.length; i++) {
+	  if (typeof activeCards[i].AIModifyIceAI == 'function') {
+		result = activeCards[i].AIModifyIceAI.call(activeCards[i],result,startIceIdx);
+	  }
+	}
 
     return result;
   }
@@ -857,14 +865,16 @@ class RunCalculator {
 			server.ice[i], 
 			maxCorpCred, 
 			false, 
-			incomplete
+			incomplete,
+			startIceIdx
 		  ); //just assume the next unknown ice is dangerous
         else
           this.precalculated.iceAIs[i] = this.IceAI(
             server.ice[i],
             maxCorpCred,
             true,
-			incomplete
+			incomplete,
+			startIceIdx
           ); //the true here means 'assume weaker unknown ice'
         if (!PlayerCanLook(runner, server.ice[i])) unknownIce++;
         else maxCorpCred++; //very rough heuristic but essentially allows for rezzed unbroken Tithe

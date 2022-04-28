@@ -1085,6 +1085,42 @@ function Render() {
   
   //render choices made for card abilities
   cardRenderer.RenderChosens();
+  
+  //update overridden type text
+  var stTriggerList = ChoicesActiveTriggers("modifySubTypes");
+  ApplyToAllCards(function(card) {
+	  var stAdd = [];
+	  var stRemove = [];
+	  for (var i = 0; i < stTriggerList.length; i++) {
+		  var stMod = stTriggerList[i].card.modifySubTypes.Resolve.call(
+			stTriggerList[i].card,
+			card
+		  );
+		  if (typeof stMod.add != 'undefined') stAdd = stAdd.concat(stMod.add);
+		  if (typeof stMod.remove != 'undefined') stRemove = stRemove.concat(stMod.remove);
+	  }
+	  if ( stAdd.length > 0 || stRemove.length > 0) {
+		  var st = [];
+		  if (typeof card.subTypes != 'undefined') st = st.concat(card.subTypes); //make unique copy (don't modify original)
+		  for (var i=0; i<stAdd.length; i++) {
+			  if (!st.includes(stAdd[i])) st.push(stAdd[i]);
+		  }
+		  for (var i=0; i<stRemove.length; i++) {
+			  for (var j=st.length-1; j>-1; j--) {
+				if (st[j] == stRemove[i]) st.splice(j,1);
+			  }
+		  }
+		  card.renderer.typeText.text = card.cardType.toUpperCase();
+		  if (st.length > 0) {
+			card.renderer.typeText.text += ": ";  
+			for (var i=0; i<st.length; i++) {
+				card.renderer.typeText.text += st[i];
+				if (i<st.length-1) card.renderer.typeText.text += " - ";
+			}
+		  }
+	  }
+	  else card.renderer.typeText.text = "";
+  });
 
   //update actual rendered view (this would eventually be done automatically but this can cause issues with hover detection out of sync
   cardRenderer.app.render(cardRenderer.app.stage);

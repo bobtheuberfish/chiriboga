@@ -89,7 +89,9 @@
  .modifyBasicActionRunnerDraw //called with input (num) when runner about to draw as a basic action, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .modifyBasicActionCorpDraw //called with input (num) when corp about to draw as a basic action, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .modifyAgendaPointsToWin //called with no inputs when checking agenda points to win, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
+ .modifySubTypes //called with input (card) when checking subtypes, return { add:[], remove:[] } where each array is optional and contains the relevant subtype strings
  .cardInstalled //called with input (card) after a card is installed (currently treats all as automatic)
+ .cardUninstalled //called with input (card) when a card becomes uninstalled (currently treats all as automatic)
  .cardRezzed //called with input (card) after a card is rezzed (currently treats all as automatic)
  .cardAccessed //called with input (card) when a card is accessed (currently treats all as automatic) even if card not active (special case in CheckCallback)
  .cardEncountered //called with input (card) when a card is encountered (currently treats all as automatic)
@@ -733,7 +735,7 @@ function LoadDecks() {
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
   debugging = false; //set true to pause execution on error
-  //mainLoopDelay = 10; //for speedy AI vs AI testing  
+  //mainLoopDelay = 10; //for speedy AI vs AI testing
 
   /*
 	RunnerTestField(31002, //identity

@@ -753,8 +753,20 @@ class RunnerAI {
       else if (priority > 0) high.unshift(cwkToSort[i]);
       else neither.push(cwkToSort[i]);
     }
+		
     cwkToSort = high.concat(neither).concat(low);
+
+	//special case: prioritise Decoders (could just do this for 'neither' array?)
+	if ( runner.identityCard.title=='Rielle "Kit" Peddler: Transhuman' ) {
+		for (var i = 0; i < cwkToSort.length; i++) {
+			if (typeof cwkToSort[i].subTypes != 'undefined') {
+				if (cwkToSort[i].subTypes.includes('Decoder')) cwkToSort.unshift(cwkToSort.splice(i,1)[0]);
+			}
+		}
+	}
+
     //console.log("Result: " + JSON.stringify(cwkToSort));
+	return cwkToSort;
   }
   
   //planning check for complete run. Returns bestpath
@@ -1703,7 +1715,7 @@ console.log(this.preferred);
       }
 
       //use the server run-estimate information to sort _cardsInHandWorthKeeping
-      this.SortCardsWorthKeeping();
+      this.cardsWorthKeeping = this.SortCardsWorthKeeping();
 
       //don't run servers that have too low potential or infinity cost
       for (var i = this.serverList.length - 1; i > -1; i--) {

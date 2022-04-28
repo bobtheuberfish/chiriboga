@@ -193,26 +193,35 @@ function CheckCardType(card, valid) {
 }
 
 /**
- * Check if a card has a certain subtype.<br/>LogDebugs the result.
+ * Check if a card has a certain subtype.<br/>Nothing is logged.
  *
  * @method CheckSubType
  * @param {Card} card card object to check
- * @param {String} str subtype to check for
+ * @param {String} subtype subtype to check for
  * @returns {Boolean} true if card object contains the subtype, otherwise false
  */
-function CheckSubType(card, str) {
+function CheckSubType(card, subtype) {
   if (card) {
-    if (typeof card.subTypes === "undefined") return false;
-    for (var i = 0; i < card.subTypes.length; i++) {
-      if (card.subTypes[i] == str) {
-        LogDebug(
-          '"' + GetTitle(card) + '" has subtype "' + card.subTypes[i] + '"'
-        );
-        return true;
-      }
-    }
+	//from effects (assumes automatic)
+	var callbackName = "modifySubTypes";
+    var triggerList = ChoicesActiveTriggers(callbackName);
+    for (var i = 0; i < triggerList.length; i++) {
+      var mod = triggerList[i].card[callbackName].Resolve.call(
+        triggerList[i].card,
+        card
+      );
+	  if (typeof mod.add != 'undefined') {
+		if (mod.add.includes(subtype)) return true;
+	  }
+	  if (typeof mod.remove != 'undefined') {
+		if (mod.remove.includes(subtype)) return false;
+	  }
+	}
+	//from card definition
+    if (typeof card.subTypes != "undefined") {
+		if (card.subTypes.includes(subtype)) return true;
+	}
   }
-  LogDebug('Lacking subtype (requires "' + str + '")');
   return false;
 }
 
