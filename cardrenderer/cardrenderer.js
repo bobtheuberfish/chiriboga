@@ -282,7 +282,8 @@ var CardRenderer = {
       back,
       glow,
       strengthInfo = { texture: null, num: 0, ice: false, cost: null },
-      textStyle
+      strengthTextStyle,
+	  typeTextStyle
     ) {
       this.app = app;
       this.card = card; //the actual game card
@@ -352,6 +353,12 @@ var CardRenderer = {
         uMD.r
       );
 
+	  //text for type/subtype (currently assumes ice only)
+	  this.typeText = new PIXI.Text("", typeTextStyle);
+	  this.typeText.anchor.set(1,0.5);
+      this.sprite.addChild(this.typeText);
+	  this.typeText.rotation = 1.5*Math.PI;
+
       //icon to show if known even though facedown:
       this.knownSprite = new PIXI.Sprite(back.known);
       this.sprite.addChild(this.knownSprite);
@@ -362,7 +369,7 @@ var CardRenderer = {
       this.strengthText = null;
       if (strengthInfo.texture != null) {
         this.strengthSprite = new PIXI.Sprite(strengthInfo.texture);
-        this.strengthText = new PIXI.Text(strengthInfo.num, textStyle);
+        this.strengthText = new PIXI.Text(strengthInfo.num, strengthTextStyle);
         this.strengthText.text = strengthInfo.num;
         this.sprite.addChild(this.strengthSprite);
         this.strengthSprite.addChild(this.strengthText);
@@ -454,7 +461,7 @@ var CardRenderer = {
           this.printedCost = this.card.installCost;
 
         this.costSprite = new PIXI.Sprite(strengthInfo.cost);
-        this.costText = new PIXI.Text(strengthInfo.num, textStyle);
+        this.costText = new PIXI.Text(strengthInfo.num, strengthTextStyle);
         this.costText.text = this.printedCost;
         this.sprite.addChild(this.costSprite);
         this.costSprite.addChild(this.costText);
@@ -768,6 +775,9 @@ var CardRenderer = {
             hAD.h,
             hAD.r
           );
+		  
+		  this.typeText.x = -55;
+		  this.typeText.y = -150;
         } //zoomed or being approached/encountered
         else {
           //correct sprite positioning
@@ -829,6 +839,9 @@ var CardRenderer = {
 
           this.sprite.anchor.set(0.5, 0.5);
           this.glowSprite.texture = this.glowTextures.zoomed;
+		
+		  this.typeText.x = -130;
+		  this.typeText.y = -150;
         }
         //show visible effect for broken subroutines when relevant
         if (typeof this.brokenSprites !== "undefined") {
@@ -1072,16 +1085,6 @@ var CardRenderer = {
       }, this);
     }
 
-    //Clone will create a separate card but reuse the texture data
-    Clone() {
-      return new CardRenderer.Card(
-        this.app,
-        this.frontTexture,
-        this.backTexture,
-        this.glowTextures
-      );
-    }
-
     //FaceDown will change the sprite to show the card back
     FaceDown() {
       this.faceUp = false;
@@ -1301,6 +1304,13 @@ var CardRenderer = {
         fontWeight: "bold",
         fill: "#ffffff",
         stroke: "#000000",
+        strokeThickness: 10,
+      });
+      this.typeStyle = new PIXI.TextStyle({
+        fontFamily: "PlayBoldNisei",
+        fontSize: 13,
+        fill: "#000000",
+        stroke: "#DBDBDB",
         strokeThickness: 10,
       });
       this.tutorialStyle = new PIXI.TextStyle({
@@ -1769,7 +1779,8 @@ var CardRenderer = {
         back,
         glow,
         strengthInfo,
-        this.counterStyle
+        this.counterStyle,
+		this.typeStyle,
       );
     }
 
