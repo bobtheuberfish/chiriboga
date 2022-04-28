@@ -1446,6 +1446,13 @@ cardSet[31022] = {
       return 0; //no modification to strength
     },
   },
+  cardUninstalled: {
+	Resolve: function (card) {
+	  if (card == this.chosenCard) {
+		this.chosenCard = null;
+	  }
+	},
+  },
   //When you install this program, choose 1 installed piece of ice
   installed: {
 	Enumerate: function(card) {
@@ -1904,7 +1911,7 @@ cardSet[31025] = {
 		//**AI code (in this case, implemented by setting and returning the preferred option)
 		if (runner.AI) {
 			var cwk = this.SharedSpecialCWK();
-			runner.AI.SortCardsWorthKeeping(cwk);
+			cwk = runner.AI.SortCardsWorthKeeping(cwk);
 			return [ChoicesArrayCards(this.setAsideCards)[0]];
 		}
 		return ChoicesArrayCards(this.setAsideCards);
@@ -1924,6 +1931,94 @@ cardSet[31025] = {
     return true;
   },
   AIDrawTrigger: 2, //priority 2 (moderate)
+};
+cardSet[31026] = {
+  title: 'Rielle "Kit" Peddler: Transhuman',
+  imageFile: "31026.png",
+  elo: 1625,
+  player: runner,
+  faction: "Shaper",
+  cardType: "identity",
+  deckSize: 45,
+  influenceLimit: 10,
+  usedThisTurn: false,
+  runnerTurnBegin: {
+    Resolve: function () {
+      this.usedThisTurn = false;
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  corpTurnBegin: {
+    Resolve: function () {
+      this.usedThisTurn = false;
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  affectedCard:null,
+  cardUninstalled: {
+	Resolve: function (card) {
+	  if (card == this.affectedCard) {
+		this.affectedCard = null;
+	  }
+	},
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  //The first time each turn you encounter a piece of ice, it gains code gate for the remainder of this run.
+  cardEncountered: {
+    Resolve: function (card) {
+		if (!this.usedThisTurn) {
+			this.usedThisTurn = true;
+			this.affectedCard = card;
+		}
+	},
+    automatic: true,
+  },
+  modifySubTypes: {
+    Resolve: function (card) {
+      if (card == this.affectedCard) return { add:"Code Gate" };
+      return {}; //no modification to subtypes
+    },
+    automatic: true,
+    availableWhenInactive: true, //I don't know of any ways for identity to become inactive midrun so not sure what the ruling would be on this
+  },
+  runEnds: {
+    Resolve: function () {
+      this.affectedCard = null;
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  AIModifyIceAI: function(iceAI,startIceIdx) {
+	if (!this.usedThisTurn || iceAI.ice == this.affectedCard) {
+		//If this ice is rezzed and is the next the Runner will encounter, add Code Gate.
+		//It's important to check rezzed here because if it is left unrezzed then the cached run needs to correctly understand the next ice is going 
+		// to be Code Gated and if the ice is rezzed (or no ice in the server are rezzed) then recalculation will include this effect for that instead.
+		//The affectedCard check is also important for mid-encounter
+		var server = GetServer(iceAI.ice);
+		if (server) {
+			var rezzedIceInServer = 0;
+			for (var i=startIceIdx; i>-1; i--) {
+				if (server.ice[i].rezzed) rezzedIceInServer++;
+			}
+			if (iceAI.ice.rezzed || rezzedIceInServer < 1) {
+				//walk inwards from startIceIdx. If this is reached before any other rezzed ice, Code Gate it.
+				for (var i=startIceIdx; i>-1; i--) {
+					if (server.ice[i] == iceAI.ice) {
+						if (!iceAI.subTypes.includes("Code Gate")) iceAI.subTypes.push("Code Gate");
+						return iceAI;
+					}
+					else if (server.ice[i].rezzed) {
+						return iceAI;
+					}
+				}
+			}
+		}
+	}
+	return iceAI;
+  },
 };
 
 //TODO link (e.g. Reina)
