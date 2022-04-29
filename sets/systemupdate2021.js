@@ -2021,6 +2021,32 @@ cardSet[31026] = {
   },
 };
 
+cardSet[31027] = {
+  title: "Diesel",
+  imageFile: "31027.png",
+  elo: 1870,
+  player: runner,
+  faction: "Shaper",
+  influence: 2,
+  cardType: "event",
+  playCost: 0,
+  //Draw 3 cards.
+  Resolve: function (params) {
+    Draw(runner, 3);
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+      //keep if need card draw
+      if (runner.grip.length < 3) return true;
+	  return false;
+  },
+  AIWouldPlay: function() {
+	//prevent wild overdraw (and try to take into account the one this will burn)
+    if (runner.AI._currentOverDraw() + 1 < runner.AI._maxOverDraw()) return true;
+	return false;
+  },
+  AIPlayToDraw: 3, //priority 3 (can't get much better draw than this)
+};
+
 //TODO link (e.g. Reina)
 
 /*

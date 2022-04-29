@@ -1674,6 +1674,8 @@ cardSet[30021] = {
 	  return false;
   },
   AIWouldPlay: function() {
+	//don't burn a click
+	if (runner.clickTracker == 2) return false;
 	//prevent wild overdraw (and try to take into account the one this will burn)
     if (runner.AI._currentOverDraw() + 2 < runner.AI._maxOverDraw()) return true;
 	return false;

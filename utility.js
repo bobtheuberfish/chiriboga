@@ -2721,13 +2721,15 @@ function DeckBuild(
 		glowTextures,
 		strengthTextures
 	  ));
-	  //any other cards (this includes icebreakers)
+	  //any other cards (this currently includes extras of all the previous cards too)
       var otherCards = [];
 	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([
         30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30011, 30012, 30013, 30014, 30015, 30016, 30017, 30018, 30020, 30021, 30022, 30023,
         30024, 30025, 30026, 30027, 30028, 30029, 30030, 30031, 30032, 30033, 30034,
       ]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31003, 31004, 31005, 31006, 31007, 31008, 31009, 31012, 31016, 31017, 31018, 31019, 31020, 31021, 31022, 31023]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([
+	    31003, 31004, 31005, 31006, 31007, 31008, 31009, 31010, 31011, 31012, 31015, 31016, 31017, 31018, 31019, 31020, 31021, 31022, 31023, 31024, 
+		31027]);
 	  influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
