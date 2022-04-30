@@ -1480,6 +1480,7 @@ cardSet[31022] = {
 	},		
     Resolve: function (params) {
 		this.chosenCard = params.card;
+		Log("Runner chose "+GetTitle(this.chosenCard,true)+" in "+ServerName(GetServer(params.card))+" for Femme Fatale");
     },
   },
   //Whenever you encounter the chosen ice, you may pay 1[c] for each subroutine it has. If you do, bypass that ice.
@@ -1924,8 +1925,8 @@ cardSet[31025] = {
     },
   ],
   AIWouldTrigger: function () {
-	//if no cards in stack, no choice
-	if (runner.stack.length < 1) return true;
+	//if no cards in stack, no choice (except if this has no cards either, the choice is no draw!)
+	if (runner.stack.length < 1 && this.setAsideCards.length > 0) return true;
     //don't trigger if there are no cards worth keeping in setAsideCards
 	if (this.SharedSpecialCWK().length < 1) return false;
     return true;
@@ -2047,8 +2048,197 @@ cardSet[31027] = {
   AIPlayToDraw: 3, //priority 3 (can't get much better draw than this)
 };
 
+cardSet[31028] = {
+  title: "Test Run",
+  imageFile: "31028.png",
+  elo: 1595,
+  player: runner,
+  faction: "Shaper",
+  influence: 3,
+  cardType: "event",
+  playCost: 3,
+  lingeringEffectTarget: null,
+  //Search either your stack or your heap for 1 program. (Shuffle your stack if you searched it.)
+  //Install that program, ignoring all costs.
+  //When your turn ends, if that program has not been uninstalled, add it to the top of your stack.
+  Enumerate: function () {
+	var choices = [];
+	var stackChoices = ChoicesArrayInstall(runner.stack, true, function (card) {
+      return (CheckCardType(card, ["program"]));
+    });
+	var stackChoice = { id:0, label:"Search stack", button:"Search stack" };
+	if (stackChoices.length > 0) {
+		choices.push(stackChoice);
+	}
+	var heapChoices = ChoicesArrayInstall(runner.heap, true, function (card) {
+      return (CheckCardType(card, ["program"]));
+    });
+	var heapChoice = { id:1, label:"Search heap", button:"Search heap" };
+	if (heapChoices.length > 0) {
+		choices.push(heapChoice);
+	}
+	//**AI code (in this case, implemented by setting and returning the preferred option)
+	if (runner.AI) {
+		//note: no thought has gone into whether there might be potential choice of hosts so that situation might fail
+		//try heap first
+		var installedRunnerCards = InstalledCards(runner);
+		if (runner.AI._icebreakerInPileNotInHandOrArray(runner.heap,installedRunnerCards)) {
+			return [heapChoice];
+		}
+		//if not, assume stack
+		if (stackChoices.length > 0) return [stackChoice];
+	}
+	return choices;
+  },
+  Resolve: function (params) {
+	var chosenPile = runner.stack;
+	if (params.id == 1) chosenPile = runner.heap;
+	var choices = ChoicesArrayInstall(chosenPile,true,function (card) {
+      return (CheckCardType(card, ["program"]));
+	});
+	//**AI code (in this case, implemented by including only the preferred option)
+	if (runner.AI) {
+		var installedRunnerCards = InstalledCards(runner);
+		var targetCard = runner.AI._icebreakerInPileNotInHandOrArray(chosenPile,installedRunnerCards);
+		for (var i=0; i<choices.length; i++) {
+			if (choices[i].card == targetCard) {
+				choices = [choices[i]];
+				break;
+			}
+		}
+	}
+	DecisionPhase(
+	  runner,
+	  choices,
+	  function(paramsB) {
+		if (chosenPile == runner.stack) {
+			Shuffle(runner.stack);
+			Log("Stack shuffled");
+		}
+		Install(paramsB.card, paramsB.host, true); //true means ignore costs
+		this.lingeringEffectTarget = paramsB.card;
+	  },
+	  "Test Run",
+	  "Test Run",
+	  this,
+	  "install"
+	);
+  },
+  cardUninstalled: {
+	Resolve: function (card) {
+	  if (card == this.lingeringEffectTarget) {
+		this.lingeringEffectTarget = null;
+	  }
+	},
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  runnerDiscardEnds: {
+    Resolve: function () {
+      if (this.lingeringEffectTarget) {
+		var targetTitle = GetTitle(this.lingeringEffectTarget);
+		//MoveCardTriggers will fire cardUninstalled which resets lingeringEffectTarget
+		MoveCard(this.lingeringEffectTarget, runner.stack);
+		Log(targetTitle+" added to top of stack");
+	  }
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	//for now we'll just use this for icebreakers but I guess it could be used for other programs?
+	if (spareMU > 0) {
+	  var targetCard = runner.AI._icebreakerInPileNotInHandOrArray(runner.stack.concat(runner.heap),installedRunnerCards);
+	  if (targetCard) {
+		  return true;
+	  }
+	}
+	return false;
+  },
+  AIIcebreakerTutor: true,
+  AIWastefulToPlay: function() {
+	//playing this last click is wasteful, might as well do it first click next turn
+	//I've made the requirement steeper than just 'not last click' because the cost of playing this might need replacing
+	if (runner.clickTracker < 3) return true;
+	return false;
+  },
+};
+
+//Test Run 
+//1. Stack, heap, cancel
+//2. Program, shuffle
+//3. Install, ignoring all costs
+//4. lingering effect
+//5. if not uninstalled
+//6. add to top of stack
+
 //TODO link (e.g. Reina)
 
+/*
+cardSet[31061] = {
+  title: "License Acquisition",
+  imageFile: "31061.jpg",
+  player: corp,
+  cardType: "agenda",
+  subTypes: ["Expansion"],
+  agendaPoints: 1,
+  advancementRequirement: 3,
+  scored: {
+    Resolve: function () {
+      if (intended.score == this) {
+		//TODO "may", limit to assets/upgrades, and also reveal it first and hence change the button wording (this is copied from Ansel pretty much atm)
+        var choicesA = [];
+        var handOptions = ChoicesHandInstall(corp);
+		var handChoice = {
+            id: 0,
+            label: "Install from HQ",
+            button: "Install from HQ",
+          };
+        if (handOptions.length > 0) choicesA.push(handChoice);
+        var archivesOptions = ChoicesArrayInstall(corp.archives.cards);
+		var archivesChoice = {
+            id: 1,
+            label: "Install from Archives",
+            button: "Install from Archives",
+          };
+        if (archivesOptions.length > 0) choicesA.push(archivesChoice);
+        choicesA.push({ id: 2, label: "Continue", button: "Continue" });
+        function decisionCallbackA(params) {
+          if (params.id < 2) {
+            //i.e. didn't continue
+            var choicesB = handOptions;
+            if (params.id == 1) {
+              choicesB = archivesOptions;
+              Log("Corp chose to install 1 card from Archives");
+            } else Log("Corp chose to install 1 card from HQ");
+            //choose the card to install
+            function decisionCallbackB(params) {
+              if (params.card !== null) Install(params.card, params.server);
+            }
+            DecisionPhase(
+              corp,
+              choicesB,
+              decisionCallbackB,
+              "License Acquisition",
+              "Install",
+              this,
+              "install"
+            );
+          }
+        }
+        DecisionPhase(
+          corp,
+          choicesA,
+          decisionCallbackA,
+          "License Acquisition",
+          "License Acquisition",
+          this
+        );
+      }
+    },
+  },
+};
+*/
 /*
 cardSet[31071] = {
   title: "Hostile Takeover",

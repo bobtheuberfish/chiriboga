@@ -46,13 +46,13 @@ class RunCalculator {
       //not Pharos, if corp has credits assume a general ice
       else if (maxCorpCred > 0 + extraRezCost) {
         result.subTypes = ["Sentry"];
-        result.strength = Math.min(maxCorpCred, 6);
+        result.strength = Math.min(maxCorpCred-extraRezCost, 6);
         result.sr = [];
         if (!assumeWeakerUnknown) {
           if (maxCorpCred < 4 + extraRezCost) result.sr.push([["netDamage"]]);
           else result.sr.push([["netDamage", "netDamage"]]);
         }
-        result.sr.push([["misc_moderate"]]);
+        else result.sr.push([["misc_moderate"]]); //arbitrary weak ice
       }
     }
     if (iceKnown && (ice.rezzed || maxCorpCred >= RezCost(ice))) {

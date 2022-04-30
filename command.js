@@ -198,6 +198,8 @@ function GetAvailability(renderer) {
           if (phaseOptions.trash[j].card == renderer.card) return 2;
         }
       }
+	  //if the card is available with host option(s), drag to choose host
+	  if (typeof validOptions[i].host !== "undefined") return 2;
       //if the card is available with server option(s), drag to choose server
       if (typeof validOptions[i].server !== "undefined") return 2;
 	  //the above case handles Drag to R&D as long as phase.targetServerCardsOnly = true; is set
@@ -390,6 +392,26 @@ function ResolveClick(input) {
     }
     return true; //returning true prevents any remaining code in renderer.OnClick() from firing
   }
+  
+  //maybe clicking to choose a host (cases where dragging could be confusing)
+  if (typeof input.card != 'undefined' && typeof validOptions[0].card != 'undefined' && typeof validOptions[0].host != 'undefined') {
+	var uniqueCard = validOptions[0].card;
+	var choosingHost = true;
+	var choiceIndex = 0;
+	for (var i=1; i<validOptions.length; i++) {
+	  if (typeof validOptions[i].card == 'undefined' || typeof validOptions[i].host == 'undefined' || validOptions[i].card != uniqueCard) {
+		choosingHost = false;
+		break;
+	  } else if (input.card == validOptions[i].host) {
+		choiceIndex = i;
+	  }
+	}
+	if (choosingHost) {
+		ResolveChoice(choiceIndex);
+		return true; //returning true prevents any remaining code in renderer.OnClick() from firing
+	}
+  }
+
   //this card/host/server is not a valid option, do whatever else we need instead
   return false; //returning false fires any remaining code in renderer.OnClick()
 }

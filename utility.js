@@ -1177,10 +1177,11 @@ function MoveCardTriggers(card, locationfrom, locationto) {
   if (locationto !== null) {
     if (
       locationto == corp.archives.cards ||
-      locationto == runner.heap ||
       locationto == corp.HQ.cards ||
       locationto == corp.RnD.cards ||
-      locationto == runner.grip
+      locationto == runner.heap ||
+      locationto == runner.grip ||
+      locationto == runner.stack
     ) {
 	  if (CheckInstalled(card)) {
 		  AutomaticTriggers("cardUninstalled",card);
@@ -1196,9 +1197,10 @@ function MoveCardTriggers(card, locationfrom, locationto) {
       //and any other properties that should be reset
       ResetProperties(card);
       //set facedown if relevant
-      if (locationto == runner.grip) {
+      if (locationto == runner.grip || locationto == runner.stack) {
         card.faceUp = false;
-        if (viewingPlayer != runner) Shuffle(runner.grip);
+        if (locationto == runner.grip && viewingPlayer != runner) 
+		  Shuffle(runner.grip);
       }
       if (locationto == corp.HQ.cards || locationto == corp.RnD.cards) {
         card.rezzed = false;
@@ -2035,13 +2037,18 @@ function ChoicesCardInstall(card, ignoreCreditCost = false) {
  * @method ChoicesArrayInstall
  * @param {Card[]} src array of cards
  * @param {Boolean} ignoreCreditCost to assume install cost is zero (runner only)
+ * @param {function} cardCheck to apply to each card (takes card as input, return true or false)
  * @returns {Params[]} list of cards to choose from (each object has at least .card and .label)
  */
-function ChoicesArrayInstall(src, ignoreCreditCost = false) {
+function ChoicesArrayInstall(src, ignoreCreditCost = false, cardCheck) {
   var ret = [];
   for (var i = 0; i < src.length; i++) {
     var card = src[i];
-    ret = ret.concat(ChoicesCardInstall(card,ignoreCreditCost));
+	var include = true;
+	if (typeof cardCheck == 'function') {
+		include = cardCheck(card);
+	}
+    if (include) ret = ret.concat(ChoicesCardInstall(card,ignoreCreditCost));
   }
   return ret;
 }
@@ -2729,7 +2736,7 @@ function DeckBuild(
       ]);
 	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([
 	    31003, 31004, 31005, 31006, 31007, 31008, 31009, 31010, 31011, 31012, 31015, 31016, 31017, 31018, 31019, 31020, 31021, 31022, 31023, 31024, 
-		31027]);
+		31027, 31028]);
 	  influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded

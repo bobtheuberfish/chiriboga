@@ -940,6 +940,7 @@ cardSet[30011] = {
 	  }
 	  return false;
   },
+  AIIcebreakerTutor: true,
 };
 cardSet[30012] = {
   title: "Tread Lightly",
@@ -966,15 +967,15 @@ cardSet[30012] = {
   },
   //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
   AIRunEventExtraPotential: function(server,potential) {
-	  //use Tread Lightly for high value targets with unrezzed ice (unless Corp is super rich)
-	  if (potential > 1.5) {
-		var unrezzedIceThisServer = 0;
-		for (var i = 0; i < server.ice.length; i++) {
-		  if (!server.ice[i].rezzed) unrezzedIceThisServer++;
-		}
+	  //use Tread Lightly for high value targets or targets with multiple unrezzed ice (unless Corp is super rich)
+	  var unrezzedIceThisServer = 0;
+	  for (var i = 0; i < server.ice.length; i++) {
+		if (!server.ice[i].rezzed) unrezzedIceThisServer++;
+	  }
+	  if (potential > 1.5 || unrezzedIceThisServer > 1) {
         if (AvailableCredits(corp) < 5 + 5 * unrezzedIceThisServer + runner.creditPool) {
 		  //the runner.creditPool part is that the Runner can be more comfortable using it if rich
-		  return 0.01; //greater than zero means 'yes' but we don't want to significantly change the potential
+		  return 0.1 * unrezzedIceThisServer; //slight extra potential for taxing the corp
 		}
 	  }
 	  return 0; //no benefit (don't play)

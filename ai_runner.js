@@ -615,12 +615,17 @@ class RunnerAI {
   }
 
   //returns the first card found fulfilling this description (or an AI if needed, or null if none found)
+  //note that the AI will search first for what it considers to be higher priority cards so the override might not be followed in order
   _icebreakerInPileNotInHandOrArray(pileToCheck,installedRunnerCards) {
     var essentialBreakerTypesNotInHandOrArray =
       this._essentialBreakerTypesNotInHandOrArray(installedRunnerCards);
-    for (var j = 0; j < essentialBreakerTypesNotInHandOrArray.length; j++) {
-      //need one, is there one in deck?
-      for (var k = 0; k < pileToCheck.length; k++) {
+	if (essentialBreakerTypesNotInHandOrArray.length > 1) {
+		//if more than one type, match most important first (the concat avoids modifying original array)
+		pileToCheck = this.SortCardsWorthKeeping(pileToCheck.concat([]));
+	}
+    //need one, is there one in deck?
+    for (var k = 0; k < pileToCheck.length; k++) {
+      for (var j = 0; j < essentialBreakerTypesNotInHandOrArray.length; j++) {
         if (
           CheckSubType(
             pileToCheck[k],
@@ -715,9 +720,10 @@ class RunnerAI {
   SortCardsWorthKeeping(cwkToSort) {
 	if (typeof cwkToSort == 'undefined') cwkToSort = this.cardsWorthKeeping;
     //console.log("Sorting: " + JSON.stringify(cwkToSort));
-    var high = [];
-    var neither = [];
-    var low = [];
+	var splits = [];
+    splits[0] = []; //high
+    splits[1] = []; //neither
+    splits[2] = []; //low
 
     //make an ice list (either from the highest priority server or just all ice)
     var priorityIceList = [];
@@ -749,21 +755,23 @@ class RunnerAI {
         cwkToSort[i],
         priorityIceList
       );
-      if (priority < 0) low.push(cwkToSort[i]);
-      else if (priority > 0) high.unshift(cwkToSort[i]);
-      else neither.push(cwkToSort[i]);
+      if (priority < 0) splits[2].push(cwkToSort[i]);
+      else if (priority > 0) splits[0].unshift(cwkToSort[i]);
+      else splits[1].push(cwkToSort[i]);
     }
 		
-    cwkToSort = high.concat(neither).concat(low);
-
-	//special case: prioritise Decoders (could just do this for 'neither' array?)
+	//special case: prioritise Decoders (probably works best not to move things between high/neither/low)
 	if ( runner.identityCard.title=='Rielle "Kit" Peddler: Transhuman' ) {
-		for (var i = 0; i < cwkToSort.length; i++) {
-			if (typeof cwkToSort[i].subTypes != 'undefined') {
-				if (cwkToSort[i].subTypes.includes('Decoder')) cwkToSort.unshift(cwkToSort.splice(i,1)[0]);
+		for (var j=0; j<3; j++) {
+			for (var i = 0; i < splits[j].length; i++) {
+				if (typeof splits[j][i].subTypes != 'undefined') {
+					if (splits[j][i].subTypes.includes('Decoder')) splits[j].unshift(splits[j].splice(i,1)[0]);
+				}
 			}
 		}
 	}
+
+    cwkToSort = splits[0].concat(splits[1]).concat(splits[2]);
 
     //console.log("Result: " + JSON.stringify(cwkToSort));
 	return cwkToSort;
@@ -1697,7 +1705,7 @@ console.log(this.preferred);
 						}
                       }
                     } else if (
-                      this.cardsWorthKeeping[k].title == "Mutual Favor" &&
+                      this.cardsWorthKeeping[k].AIIcebreakerTutor &&
                       optionList.includes("play")
                     ) {
                       if (FullCheckPlay(this.cardsWorthKeeping[k])) {
