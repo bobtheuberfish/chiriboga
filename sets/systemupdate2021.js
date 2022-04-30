@@ -1247,7 +1247,7 @@ cardSet[31019] = {
 		  if (!server.ice[i].rezzed) unrezzedIceThisServer++;
 		}
 		if (unrezzedIceThisServer == 0) {
-			//scale potential based on extra accesses (0.5 is arbitrary)
+			//scale potential based on extra accesses (0.5 is consistent with other implementations of potential from extra access)
 			return 0.5*runner.AI._additionalHQAccessValue(this);
 		}
 	  }
@@ -2164,13 +2164,49 @@ cardSet[31028] = {
   },
 };
 
-//Test Run 
-//1. Stack, heap, cancel
-//2. Program, shuffle
-//3. Install, ignoring all costs
-//4. lingering effect
-//5. if not uninstalled
-//6. add to top of stack
+cardSet[31029] = {
+  title: "The Maker's Eye",
+  imageFile: "31029.png",
+  elo: 1744,
+  player: runner,
+  faction: "Shaper",
+  influence: 2,
+  cardType: "event",
+  subTypes: ["Run"],
+  playCost: 2,
+  //Run R&D. If successful, access 2 additional cards when you breach R&D.
+  Enumerate: function () {
+    return [{}]; //currently assumes a run on R&D is always possible
+  },
+  Resolve: function (params) {
+    MakeRun(corp.RnD);
+  },
+  breachServer: {
+    Resolve: function () {
+      return 2;
+    },
+  },
+  //indicate bonus to accesses (when active)
+  AIAdditionalAccess: function(server) {
+      if (server != corp.RnD) return 0;
+      return 2;
+  },
+  //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
+  AIRunEventExtraPotential: function(server,potential) {
+	  //use The Maker's Eye only for R&D with no unrezzed ice
+	  if (server == corp.RnD) {
+		var unrezzedIceThisServer = 0;
+		for (var i = 0; i < server.ice.length; i++) {
+		  if (!server.ice[i].rezzed) unrezzedIceThisServer++;
+		}
+		if (unrezzedIceThisServer == 0) {
+			//only play The Maker's Eye if the extra accesses are worthwhile
+			return 0.5*runner.AI._countNewCardsThatWouldBeAccessedInRnD(1+2);
+		}
+	  }
+	  return 0; //no benefit (don't play)
+  },
+};
 
 //TODO link (e.g. Reina)
 

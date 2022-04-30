@@ -2264,10 +2264,10 @@ cardSet[30028] = {
 		if (unrezzedIceThisServer == 0) {
 			//only play Jailbreak if the extra accesses are worthwhile
 			if (server == corp.HQ) {
-				return 0.5*runner.AI._additionalHQAccessValue(this);
+				return 0.5*runner.AI._additionalHQAccessValue(this);  //0.5 is consistent with other implementations of potential from extra access
 			}
 			else if (server == corp.RnD) {
-				return 0.5*runner.AI._countNewCardsThatWouldBeAccessedInRnD(1+1);
+				return 0.5*runner.AI._countNewCardsThatWouldBeAccessedInRnD(1+1); //0.5 is consistent with other implementations of potential from extra access
 			}
 			return 0;
 		}

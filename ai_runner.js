@@ -1524,8 +1524,9 @@ console.log(this.preferred);
               }
               //extra potential per additional access value (but no extra potential if none to start with)
 			  if (this.serverList[i].potential > 0) {
+			    //passive effects only (extra potential from extra accesses due to run events is handled via AIRunEventExtraPotential)
 				var additionalHQAccessValue = this._additionalHQAccessValue(null); //null means even without a Run event/ability
-				this.serverList[i].potential += additionalHQAccessValue*0.5; 
+				this.serverList[i].potential += additionalHQAccessValue*0.5; //0.5 is consistent with other implementations of potential from extra access
 			  }
               //if there's just one card and it's unknown then there must be some potential
               if (

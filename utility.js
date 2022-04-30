@@ -2736,7 +2736,7 @@ function DeckBuild(
       ]);
 	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([
 	    31003, 31004, 31005, 31006, 31007, 31008, 31009, 31010, 31011, 31012, 31015, 31016, 31017, 31018, 31019, 31020, 31021, 31022, 31023, 31024, 
-		31027, 31028]);
+		31027, 31028, 31029]);
 	  influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
