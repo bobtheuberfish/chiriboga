@@ -2208,6 +2208,147 @@ cardSet[31029] = {
   },
 };
 
+cardSet[31030] = {
+  title: "Atman",
+  imageFile: "31030.png",
+  elo: 1723,
+  player: runner,
+  faction: "Shaper",
+  influence: 3,
+  cardType: "program",
+  subTypes: ["Icebreaker", "AI"],
+  memoryCost: 1,
+  installCost: 3,
+  strength: 0,
+  strengthBoost: 0, //from other card effects
+  power: 0, //from Atman's ability
+  //When you install this program, you may pay X credits to place X power counters on it
+  installed: {
+	Enumerate: function(card) {
+      if (card == this) {
+		var maxcred = AvailableCredits(runner, "using", this);
+		var choices = [];
+		for (var i=0; i<=maxcred; i++) {
+			choices.push({id:i, label:""+i});
+		}
+		//**AI code (in this case, implemented by including only the preferred option)
+		if (runner.AI) {
+			var htsi = this.AISharedHTSI();
+			var X = Strength(htsi) - Strength(this);
+			if (X <= maxcred) {
+				return [{id:X, label:""+X}];
+			}
+		}
+		return choices;
+	  }
+	  return [];
+	},		
+    Resolve: function (params) {
+		AddCounters(this, "power", params.id);
+    },
+  },
+  //This program gets +1 strength for each hosted power counter, and it can only interface with ice of exactly equal strength.
+  modifyStrength: {
+    Resolve: function (card) {
+      if (card == this) return Counters(this, "power") + this.strengthBoost;
+      return 0; //no modification to strength
+    },
+  },
+  onlyInterfaceEqualStrength:true,
+  //Interface -> 1[c]: Break 1 subroutine.
+  abilities: [
+    {
+      text: "Break 1 subroutine.",
+      Enumerate: function () {
+        if (!CheckEncounter()) return [];
+        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckStrength(this)) return []; //the must-be-equal check is done in CheckStrength because this.onlyInterfaceEqualStrength is true
+        return ChoicesEncounteredSubroutines();
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          1,
+          "using",
+          this,
+          function () {
+            Break(params.subroutine);
+          },
+          this
+        );
+      },
+    },
+  ],
+  encounterEnds: {
+    Resolve: function () {
+      this.strengthBoost = 0;
+    },
+    automatic: true,
+  },
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	if (cardStrength == iceStrength) {
+		//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+		result = result.concat(
+			runner.AI.rc.ImplementIcebreaker(
+			  point,
+			  this,
+			  cardStrength,
+			  iceAI,
+			  iceStrength,
+			  [], //empty iceSubTypes will just break any subtypes
+			  Infinity, //up str is not an option
+			  0,
+			  1,
+			  1,
+			  creditsLeft
+			)
+		); //cost to str, amt to str, cost to brk, amt to brk	
+	}
+	return result;
+  },
+  AISharedHTSI: function() {
+	  //get highest potential server
+	  var hps = null;
+	  var hpp = 0;
+	  for (var i = 0; i < runner.AI.cachedPotentials.length; i++) {
+		  if (runner.AI.cachedPotentials[i].potential > hpp) {
+			  hpp = runner.AI.cachedPotentials[i].potential;
+			  hps = runner.AI.cachedPotentials[i].server;
+		  }
+	  }
+	  if (!hps) return -1;
+	  //start with list of all PlayerCanLook(runner,iceCard) in server
+	  var pcli = [];
+	  for (var i=0; i<hps.ice.length; i++) {
+		  if (PlayerCanLook(runner,hps.ice[i])) pcli.push(hps.ice[i]);
+	  }
+	  //get highest runner.AI._iceThreatScore(iceCard) of that list
+	  var hts = 0;
+	  var htsi = null;
+	  for (var i=0; i<pcli.length; i++) {
+		  var thists = runner.AI._iceThreatScore(pcli[i],[this]);
+		  //the 1 min here is arbitrary but basically don't waste on ice that isn't much threat
+		  if (thists > 1 && thists > hts) {
+			  hts = thists;
+			  htsi = pcli[i];
+		  }
+	  }
+	  return htsi;
+  },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	  var htsi = this.AISharedHTSI();
+	  if (!htsi) return -1;
+	  if (AvailableCredits(runner) < InstallCost(this) + Strength(htsi) - Strength(this)) return -1;
+	  return 0; //do install
+  },
+  AIWastefulToInstall: function() {
+	  if (!this.AISharedHTSI()) return true;
+	  return false;
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*

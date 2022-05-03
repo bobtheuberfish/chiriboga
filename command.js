@@ -836,12 +836,24 @@ function MakeChoice() {
   for (var i = 0; i < validOptions.length; i++) {
     if (typeof validOptions[i].button !== "undefined") continue; //already rendered as a button
 
-    modalText +=
-      '<p onclick="ResolveChoice(' +
-      i +
-      ');">' +
-      Iconify(validOptions[i].label) +
-      "</p>\n";
+	if (validOptions[i].label == ''+parseInt(validOptions[i].label)) {
+		//special case, numbers in a grid
+		modalText +=
+		  '<span onclick="ResolveChoice(' +
+		  i +
+		  ');">' +
+		  Iconify(validOptions[i].label) +
+		  "</span>\n";
+	}
+	else {		
+		//normal list
+		modalText +=
+		  '<p onclick="ResolveChoice(' +
+		  i +
+		  ');">' +
+		  Iconify(validOptions[i].label) +
+		  "</p>\n";
+	}
   }
   $("#modalcontent").html(modalText);
 }

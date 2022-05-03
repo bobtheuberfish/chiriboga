@@ -185,7 +185,7 @@ class RunCalculator {
   }
 
   //helper for IceAct (return array for concatenation)
-  //empty iceSubTypes will just break any subtypes for now
+  //empty iceSubTypes will just break any subtypes
   //credits are spent, not lost
   ImplementIcebreaker(
     point,

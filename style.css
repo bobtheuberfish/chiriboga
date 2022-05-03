@@ -331,7 +331,9 @@ canvas {
 		color:#7C9396;
 }
 
-.modal-content p {
+.modal-content p,
+.modal-content span
+ {
 	 	font-weight: 550;
 		color:#7C9396;
 		-webkit-touch-callout: none; /* iOS Safari */
@@ -343,15 +345,34 @@ canvas {
 	                                  supported by Chrome and Opera */
 }
 
-.modal-content p:hover {
+.modal-content span {
+	padding:20px;
+	line-height: 4;
+	font-size: 120%;
+}
+
+.modal-content p:hover,
+.modal-content span:hover
+ {
     text-decoration: underline;
 		cursor: pointer;
 }
 
-.modal-content p:active {
+.modal-content p:active,
+.modal-content span:active,
+ {
 		text-decoration: none;
 		background-color: black;
 		cursor: pointer;
+}
+
+.modal-content span:hover {
+	background-color: #FFFFFF33;
+	border-radius: 10px;
+}
+.modal-content span:active {
+	background-color: #FFFFFFBB;
+	border-radius: 10px;
 }
 
 .modal-content-inactive {
@@ -365,7 +386,9 @@ canvas {
     border: 1px solid #7C9396;
 		color:#7C9396;
 }
-.modal-content-inactive p {
+.modal-content-inactive p,
+.modal-content-inactive span 
+{
 	 	font-weight: 550;
 		color:#7C9396;
 }

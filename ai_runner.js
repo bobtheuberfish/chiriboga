@@ -114,10 +114,10 @@ class RunnerAI {
 
   //check if a matching type breaker is installed (or AI)
   //returns the matching breaker or null if none found
-  _matchingBreakerInstalled(iceCard) {
+  _matchingBreakerInstalled(iceCard,excludeIcebreakers=[]) {
     var installedRunnerCards = InstalledCards(runner);
     for (var i = 0; i < installedRunnerCards.length; i++) {
-      if (CheckSubType(installedRunnerCards[i], "Icebreaker")) {
+      if (!excludeIcebreakers.includes(installedRunnerCards[i]) && CheckSubType(installedRunnerCards[i], "Icebreaker")) {
         if (BreakerMatchesIce(installedRunnerCards[i], iceCard)) return installedRunnerCards[i];
       }
     }
@@ -196,19 +196,19 @@ class RunnerAI {
   }
   
   //get an approximate measure of ice threat
-  _iceThreatScore(iceCard) {
+  _iceThreatScore(iceCard,excludeIcebreakers=[]) {
 	  var ret = 3; //most common ice printed rez cost
 	  if (PlayerCanLook(runner,iceCard)) {
 		ret=iceCard.rezCost;
 		//no threat if cannot be rezzed
         if (!iceCard.rezzed && !CheckCredits(RezCost(iceCard), corp, "rezzing", iceCard)) ret = 0;
 		//reduce threat if a matching breaker is installed
-		if (this._matchingBreakerInstalled(iceCard)) ret *= 0.2; //the 0.2 is arbitrary
+		if (this._matchingBreakerInstalled(iceCard,excludeIcebreakers)) ret *= 0.2; //the 0.2 is arbitrary
 	  } else {
 	    //reduce threat if corp is poor and ice is unrezzed
 	    if (!iceCard.rezzed && ret > corp.creditPool) ret=corp.creditPool;
 	  }
-	  //for now, assume hosted cards nullify this ice (TODO Magnet changes this, as does Femme chosen. Consider also other similar Chiriboga functions)
+	  //for now, assume hosted cards nullify this ice (TODO Magnet changes this, as does Atman power, and Femme chosen. Consider also other similar Chiriboga functions)
 	  if (typeof iceCard.hostedCards !== "undefined") {
 		if (iceCard.hostedCards.length > 0) ret = 0;
 	  }  

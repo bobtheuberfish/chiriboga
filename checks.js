@@ -240,6 +240,12 @@ function CheckStrength(card) {
 
   var cardStrength = Strength(card);
   var iceStrength = Strength(attackedServer.ice[approachIce]);
+  if (card.onlyInterfaceEqualStrength) {
+	if (cardStrength > iceStrength) {
+      LogDebug('"' + GetTitle(card) + '" has too much strength');
+      return false;
+	}
+  }
   if (cardStrength >= iceStrength) {
     LogDebug('"' + GetTitle(card) + '" has sufficient strength');
     return true;
