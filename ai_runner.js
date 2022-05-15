@@ -87,9 +87,14 @@ class RunnerAI {
       return true;
     if (
       CheckSubType(card, "AI") &&
+	  this._essentialBreakerTypesNotInHandOrArray(InstalledCards(runner)).length == 0
+	  //this used to check if there was already an AI but there are various AIs e.g. Atman 
+	  //so put specific wasteful code on the card itself
+	  /*
       (this._essentialBreakerTypesNotInHandOrArray(InstalledCards(runner))
-        .length == 0 ||
+        .length == 0) ||
         this._installedCardExistsWithSubType("AI"))
+		*/
     )
       return true;
 	if (typeof card.AIWastefulToInstall == 'function') {
@@ -112,14 +117,34 @@ class RunnerAI {
     return false;
   }
 
+  //check if a breaker matches ice, including strength check for fixed-strength breakers
+  _breakerMatchesIce(breakerCard, iceCard) {
+	  if (breakerCard.AIFixedStrength) {
+		  var strToCompare = 3; //common strength
+		  if (PlayerCanLook(runner,iceCard)) strToCompare = Strength(iceCard);
+		  if (Strength(breakerCard) < strToCompare) return false;
+	  }
+	  var ret = BreakerMatchesIce(breakerCard, iceCard);
+	  return ret;
+  }
+
   //check if a matching type breaker is installed (or AI)
   //returns the matching breaker or null if none found
   _matchingBreakerInstalled(iceCard,excludeIcebreakers=[]) {
-    var installedRunnerCards = InstalledCards(runner);
-    for (var i = 0; i < installedRunnerCards.length; i++) {
-      if (!excludeIcebreakers.includes(installedRunnerCards[i]) && CheckSubType(installedRunnerCards[i], "Icebreaker")) {
-        if (BreakerMatchesIce(installedRunnerCards[i], iceCard)) return installedRunnerCards[i];
-      }
+    var possibleBreakers = ActiveCards(runner);
+    for (var i = 0; i < possibleBreakers.length; i++) {
+	  var breakerCard = possibleBreakers[i];
+      if (!excludeIcebreakers.includes(breakerCard)) {
+		//some cards can act like a matching breaker is installed
+		if (typeof breakerCard.AIMatchingBreakerInstalled == 'function') {
+			var aiMatchingBreaker = breakerCard.AIMatchingBreakerInstalled.call(breakerCard, iceCard);
+			if (aiMatchingBreaker) return aiMatchingBreaker;
+		}
+		//the on-card AIMatchingBreakerInstalled function takes precedence over the basic subtype check
+		else if (CheckSubType(breakerCard, "Icebreaker")) {
+			if (this._breakerMatchesIce(breakerCard, iceCard)) return breakerCard;
+        }
+	  }
     }
     return null;
   }
@@ -194,36 +219,107 @@ class RunnerAI {
 	  if (ret < 0) ret = 0;
 	  return ret;
   }
+
+  //Helper functions for saving and restoring state for AI calculation
+  IceEncounterSaveState() {
+	var stored = {};
+	stored.encountering = encountering;
+	stored.attackedServer = attackedServer;
+	stored.approachIce = approachIce;
+	return stored;
+  }
+  //returns true if state was modified
+  IceEncounterModifyState(iceCard) {
+	var ics = GetServer(iceCard);
+	if (!ics) return false;
+	encountering = true;
+	attackedServer = ics;
+	approachIce = ics.ice.indexOf(iceCard);
+	return true;
+  }
+  IceEncounterRestoreState(stored) {
+	encountering = stored.encountering;
+	attackedServer = stored.attackedServer;
+	approachIce = stored.approachIce;
+  }
   
   //get an approximate measure of ice threat
-  _iceThreatScore(iceCard,excludeIcebreakers=[]) {
+  _iceThreatScore(iceCard,excludeIcebreakers=[],infiniteCorpCredits=false) {
 	  var ret = 3; //most common ice printed rez cost
 	  if (PlayerCanLook(runner,iceCard)) {
 		ret=iceCard.rezCost;
 		//no threat if cannot be rezzed
-        if (!iceCard.rezzed && !CheckCredits(RezCost(iceCard), corp, "rezzing", iceCard)) ret = 0;
+        if (!infiniteCorpCredits) {
+			if (!iceCard.rezzed && !CheckCredits(RezCost(iceCard), corp, "rezzing", iceCard)) ret = 0;
+		}
 		//reduce threat if a matching breaker is installed
 		if (this._matchingBreakerInstalled(iceCard,excludeIcebreakers)) ret *= 0.2; //the 0.2 is arbitrary
 	  } else {
 	    //reduce threat if corp is poor and ice is unrezzed
-	    if (!iceCard.rezzed && ret > corp.creditPool) ret=corp.creditPool;
+		if (!infiniteCorpCredits) {
+			if (!iceCard.rezzed && ret > corp.creditPool) ret=corp.creditPool;
+		}
 	  }
-	  //for now, assume hosted cards nullify this ice (TODO Magnet changes this, as does Atman power, and Femme chosen. Consider also other similar Chiriboga functions)
-	  if (typeof iceCard.hostedCards !== "undefined") {
-		if (iceCard.hostedCards.length > 0) ret = 0;
-	  }  
 	  return ret;
   }
-  
+
+  //get highest threat ice (e.g. for target)
+  _highestThreatScoreIce(excludeIcebreakers=[],minimumRezCost=-1) {
+	  //get highest potential server
+	  var hps = null;
+	  var hpp = 0;
+	  for (var i = 0; i < this.cachedPotentials.length; i++) {
+		  if (this.cachedPotentials[i].potential > hpp) {
+			  hpp = this.cachedPotentials[i].potential;
+			  hps = this.cachedPotentials[i].server;
+		  }
+	  }
+	  //start with list of all PlayerCanLook(runner,iceCard)
+	  var pcli = [];
+	  if (hps) {
+		//in highest-potential server
+		for (var i=0; i<hps.ice.length; i++) {
+		  if (PlayerCanLook(runner,hps.ice[i])) pcli.push(hps.ice[i]);
+		}	  
+	  } else {
+	    //or all servers, if no server has highest potential
+		for (var i=0; i<corp.HQ.ice.length; i++) {
+		  if (PlayerCanLook(runner,corp.HQ.ice[i])) pcli.push(corp.HQ.ice[i]);
+		}	  
+		for (var i=0; i<corp.RnD.ice.length; i++) {
+		  if (PlayerCanLook(runner,corp.RnD.ice[i])) pcli.push(corp.RnD.ice[i]);
+		}
+		for (var i=0; i<corp.archives.ice.length; i++) {
+		  if (PlayerCanLook(runner,corp.archives.ice[i])) pcli.push(corp.archives.ice[i]);
+		}
+		for (var j=0; j<corp.remoteServers.length; j++) {
+			for (var i=0; i<corp.remoteServers[j].ice.length; i++) {
+			  if (PlayerCanLook(runner,corp.remoteServers[j].ice[i])) pcli.push(corp.remoteServers[j].ice[i]);
+			}
+		}
+	  }
+	  //get highest this._iceThreatScore(iceCard) of that list
+	  var hts = 0;
+	  var htsi = null;
+	  var htsis = 0;
+	  for (var i=0; i<pcli.length; i++) {
+		  var thists = this._iceThreatScore(pcli[i],excludeIcebreakers);
+		  //the 1 min here is arbitrary but basically don't waste on ice that isn't much threat
+		  //break ties with strength
+		  if ( thists > 1 && (thists > hts || Strength(pcli[i]) > htsis) && RezCost(pcli[i]) >= minimumRezCost ) {
+			  hts = thists;
+			  htsi = pcli[i];
+			  htsis = Strength(htsi);
+		  }
+	  }
+	  return htsi;
+  }
+
   //get a rough score for ice comparison (taking into account server potential)
   _iceComparisonScore(iceCard) {
 	  var ret = 0;
-	  var estimatedValue = 3; //most common ice printed rez cost
-	  if (PlayerCanLook(runner,iceCard)) estimatedValue=iceCard.rezCost;
-	  var server = GetServer(iceCard);
-	  ret = runner.AI._getCachedPotential(server) * estimatedValue;
-	  if (typeof iceCard.hostedCards !== "undefined")
-		ret -= iceCard.hostedCards.length; //assume hosted cards weaken it
+	  //the true here means don't diminish ice strength if corp can't afford it
+	  ret = this._getCachedPotential(GetServer(iceCard)) * this._iceThreatScore(iceCard,[],true);
 	  return ret;
   }
   
@@ -450,10 +546,10 @@ class RunnerAI {
   _cachedOrBestRun(server, startIceIdx) {
 	  if (!this.cachedBestPath || this.cachedPathServer !== server) { //need to recalculate
 		//ideally complete runs
-		this._calculateBestCompleteRun(server, 0, 0, 0, 0, startIceIdx);  //0 means no credit/click/damage offset
+		this._calculateBestCompleteRun(server, 0, 0, 0, 0, null, startIceIdx);  //0 means no credit/click/damage offset, null means no bonus breaker
 		//but if not, use an exit strategy (incomplete run)
 		if (!this.cachedBestPath) {
-		  this._calculateBestExitStrategy(server, 0, 0, 0, 0, startIceIdx);  //0 means no credit/click/damage offset
+		  this._calculateBestExitStrategy(server, 0, 0, 0, 0, null, startIceIdx);  //0 means no credit/click/damage offset, null means no bonus breaker
 		}
 	  } else {
 		  //remove ice before this one
@@ -470,7 +566,8 @@ class RunnerAI {
 	otherCreditOffset,
     clickOffset,
     damageOffset,
-    startIceIdx
+	bonusBreaker,
+    startIceIdx,
   ) {
     return this._calculateRunPath(
       server,
@@ -479,7 +576,8 @@ class RunnerAI {
       clickOffset,
       damageOffset,
       false,
-      startIceIdx
+	  bonusBreaker,
+      startIceIdx,
     ); //false means don't include incomplete runs
   }
   _calculateBestExitStrategy(
@@ -488,7 +586,8 @@ class RunnerAI {
 	otherCreditOffset,
     clickOffset,
     damageOffset,
-    startIceIdx
+	bonusBreaker,
+    startIceIdx,
   ) {
     return this._calculateRunPath(
       server,
@@ -497,7 +596,8 @@ class RunnerAI {
       clickOffset,
       damageOffset,
       true,
-      startIceIdx
+	  bonusBreaker,
+      startIceIdx,
     ); //true means include incomplete runs
   }
 
@@ -509,7 +609,8 @@ class RunnerAI {
     clickOffset,
     damageOffset,
     incomplete,
-    startIceIdx
+	bonusBreaker,
+    startIceIdx,
   ) {
 	//console.error("crp "+ServerName(server)+(incomplete?" incomplete":" complete"));
     var clicks = runner.clickTracker + clickOffset;
@@ -531,7 +632,8 @@ class RunnerAI {
       damageLimit,
       tagLimit,
       incomplete,
-      startIceIdx
+	  bonusBreaker,
+      startIceIdx,
     );
     this.cachedBestPath = null; //by default assume no paths were found
     this.cachedComplete = !incomplete;
@@ -680,8 +782,10 @@ class RunnerAI {
         for (var j = 0; j < atLeastOne.length; j++) {
           if (CheckSubType(card, atLeastOne[j])) keep = true;
         }
-        //or AI or other special breaker (e.g. Botulus, Tranquilizer)
-        if (CheckSubType(card, "AI") || card.AISpecialBreaker) {
+        //or AI or other special breaker (e.g. Botulus, Tranquilizer) or various-type Icebreaker (e.g. Chameleon)
+        if ( CheckSubType(card, "AI") || card.AISpecialBreaker || 
+		  (CheckSubType(card, "Icebreaker") && !CheckSubType(card, "Decoder") && !CheckSubType(card, "Fracter") && !CheckSubType(card, "Killer"))
+		  ) {
           //keep unless all breaker types are already present in grip/programs
           if (
             this._essentialBreakerTypesNotInHandOrArray(installedRunnerCards)
@@ -705,7 +809,7 @@ class RunnerAI {
     for (var i = 0; i < priorityIceList.length; i++) {
       var iceCard = priorityIceList[i];
       if (PlayerCanLook(runner, iceCard)) {
-        if (BreakerMatchesIce(card, iceCard)) {
+        if (this._breakerMatchesIce(card, iceCard)) {
           //console.log("Matching breaker is " + card.title);
           if (!this._matchingBreakerInstalled(iceCard)) return 1;
           //high
@@ -716,16 +820,8 @@ class RunnerAI {
     return 0; //neither by default
   }
 
-  //recommend do this right after calculating run costs and priorities
-  SortCardsWorthKeeping(cwkToSort) {
-	if (typeof cwkToSort == 'undefined') cwkToSort = this.cardsWorthKeeping;
-    //console.log("Sorting: " + JSON.stringify(cwkToSort));
-	var splits = [];
-    splits[0] = []; //high
-    splits[1] = []; //neither
-    splits[2] = []; //low
-
-    //make an ice list (either from the highest priority server or just all ice)
+  //ice list (either from the highest priority server or just all ice)
+  _priorityIceList() {
     var priorityIceList = [];
     if (this.cachedPotentials.length > 0) {
       //which server is highest priority?
@@ -747,6 +843,19 @@ class RunnerAI {
           priorityIceList.push(installedCards[i]);
       }
     }
+	return priorityIceList;
+  }
+
+  //recommend do this right after calculating run costs and priorities
+  SortCardsWorthKeeping(cwkToSort) {
+	if (typeof cwkToSort == 'undefined') cwkToSort = this.cardsWorthKeeping;
+    //console.log("Sorting: " + JSON.stringify(cwkToSort));
+	var splits = [];
+    splits[0] = []; //high
+    splits[1] = []; //neither
+    splits[2] = []; //low
+
+    var priorityIceList = this._priorityIceList();
     //console.log("Priority ice: " + JSON.stringify(priorityIceList));
 
     //loop through pushing cards as high (unshift), neither or low (push) priority
@@ -778,8 +887,9 @@ class RunnerAI {
   }
   
   //planning check for complete run. Returns bestpath
+  //bonus breaker is a not-installed card that will be included as a breaker in the run calculation i.e. hypothetical
   //if foresight is true, the run calculation will exchange clicks for credits/cards
-  _commonRunCalculationChecks(server,runEventCardToUse,foresight) {
+  _commonRunCalculationChecks(server,runEventCardToUse,bonusBreaker,foresight) {
 	var poolCreditOffset = 0;
 	var extraCredits = 0;
 	var clickOffset = -1; //assume 1 click will be used to initiate the run
@@ -787,7 +897,7 @@ class RunnerAI {
 	if (foresight) { //i.e. run a click later, do prep first
 		//just some arbitrary numbers now, basically numbers that might be possible
         poolCreditOffset += 3; //could look at more options depending on what's in hand etc...
-        clickOffset += -1; //use an extra click for prep
+        clickOffset -= 1; //use an extra click for prep
         damageOffset += 3; //...but for now this at least allows a bit of planning
 	}
 	//triggered card abilities that modify the bonus credits (e.g. Ken Tenma)
@@ -795,6 +905,19 @@ class RunnerAI {
     for (var i = 0; i < activeCards.length; i++) {
 	    if (typeof activeCards[i].AIRunPoolCreditOffset == 'function') {
 			poolCreditOffset += activeCards[i].AIRunPoolCreditOffset.call(activeCards[i],server,runEventCardToUse);
+		}
+	}
+	//if a bonus breaker is defined, a click is needed to install it, and a card slot (reduce max damage by 1)
+	if (bonusBreaker) {
+		//for now we assume pool credit is used to install/tutor the card
+		poolCreditOffset -= bonusBreaker.cost;
+		//assume two clicks needed to install it and prep (somewhat arbitrary but reduces the chance of install without run)
+		clickOffset -= 2;
+		//take into account one less card in grip
+		damageOffset -= 1;
+		//since this is a hypothetical install we may need to temporarily modify some things
+		if (typeof bonusBreaker.card.AIPrepareHypotheticalForRC == "function") {
+			bonusBreaker.card.AIPrepareHypotheticalForRC.call(bonusBreaker.card,bonusBreaker.host);
 		}
 	}
 	//if a run event is being used, a click is needed to play it, and a card slot (reduce max damage by 1)	
@@ -819,7 +942,7 @@ class RunnerAI {
 	}	
 	//do the run calculation
 	if (debugging) console.log("RC for "+ServerName(server)+":");	  
-	var bestpath = this._calculateBestCompleteRun(server, poolCreditOffset, extraCredits, clickOffset, damageOffset);
+	var bestpath = this._calculateBestCompleteRun(server, poolCreditOffset, extraCredits, clickOffset, damageOffset, bonusBreaker);
 	//restore from temporary changes
     if (madeTemporaryChanges) {
 		if (typeof runEventCardToUse.AIRunEventRestore == 'function') {
@@ -827,6 +950,12 @@ class RunnerAI {
 		}
 		else {
 			console.error(runEventCardToUse.title+" has AIRunEventModify but is missing AIRunEventRestore");
+		}
+	}
+	//and from hypothetical icebreaker
+	if (bonusBreaker) {
+		if (typeof bonusBreaker.card.AIRestoreHypotheticalFromRC == "function") {
+			bonusBreaker.card.AIRestoreHypotheticalFromRC.call(bonusBreaker.card);
 		}
 	}
 	//return the result
@@ -1014,6 +1143,7 @@ console.log(this.preferred);
     if (optionList.length == 1) return 0;
 
     //*** DECISIONMAKING LOGIC HERE ***
+	this.runsReady = false;
 
     //used for checks
     var cardToPlay = null;
@@ -1629,9 +1759,124 @@ console.log(this.preferred);
           potential: this.serverList[i].potential,
         }); //store potential for other use (costs are cached in _calculateRunPath)
         //console.log(this.cachedPotentials[this.cachedPotentials.length-1].server.serverName+": "+this.cachedPotentials[this.cachedPotentials.length-1].potential);
+			
+		//consider icebreakers that could be installed to improve run cost
+		//bonusBreaker is an object containing card, tutor, host, and cost
+		this.serverList[i].bonusBreaker = null; //by default don't pre-install a breaker
+        if (runner.clickTracker > 1) {
+			//start by preparing a list of unique affordable breakers to consider
+			var uniqueAffordableBreakers = []; // as {card, tutor, host}
+			var dontCheckAgain = []; //titles we've already checked
+			//from cards worth keeping in hand
+			if (optionList.includes("install")) {
+			  for (var k = 0; k < this.cardsWorthKeeping.length; k++) {
+				if ( CheckSubType(this.cardsWorthKeeping[k], "Icebreaker") || this.cardsWorthKeeping[k].AISpecialBreaker ) {
+				  var alreadyInListOrDontCheck = false;
+				  for (var l = 0; l < uniqueAffordableBreakers.length; l++) {
+					if (uniqueAffordableBreakers[l].card.title == this.cardsWorthKeeping[k].title) {
+					  alreadyInListOrDontCheck = true;
+					  break;
+					}
+				  }
+				  if (!alreadyInListOrDontCheck) {
+					for (var l = 0; l < dontCheckAgain.length; l++) {
+					  if (dontCheckAgain[l] == this.cardsWorthKeeping[k].title) {
+						alreadyInListOrDontCheck = true;
+						break;
+					  }
+					}
+				  }
+				  dontCheckAgain.push(this.cardsWorthKeeping[k].title);
+				  if (!alreadyInListOrDontCheck && CheckInstall(this.cardsWorthKeeping[k])) {
+					//check costs, mu, etc.
+				    var choices = ChoicesCardInstall(this.cardsWorthKeeping[k]);
+					if (choices.length > 0) {
+					  //make sure a preferred choice exists
+					  var preferredInstallChoice = 0;
+					  if (typeof this.cardsWorthKeeping[k].AIPreferredInstallChoice == 'function') preferredInstallChoice = this.cardsWorthKeeping[k].AIPreferredInstallChoice(choices);
+					  if (preferredInstallChoice > -1) {
+						uniqueAffordableBreakers.push({ card:this.cardsWorthKeeping[k], tutor:null, host:choices[preferredInstallChoice].host, cost:InstallCost(this.cardsWorthKeeping[k]) });
+					  }
+					}
+				  }
+				}
+			  }
+			}
+			//and from affordable unique tutors
+			//currently only checks the tutor cost, not additional costs such as install (we require an extra click to kind of approximate this)
+			if (optionList.includes("play") && (runner.clickTracker > 2)) {
+			  var installedRunnerCards = InstalledCards(runner);
+			  for (var k = 0; k < this.cardsWorthKeeping.length; k++) {
+				if (typeof this.cardsWorthKeeping[k].AIIcebreakerTutor == "function") {
+					if (FullCheckPlay(this.cardsWorthKeeping[k])) {
+						var tutorableIcebreakers = this.cardsWorthKeeping[k].AIIcebreakerTutor.call(this.cardsWorthKeeping[k],installedRunnerCards);
+						for (var j = 0; j < tutorableIcebreakers.length; j++) {
+						  var alreadyInListOrDontCheck = false;
+						  for (var l = 0; l < uniqueAffordableBreakers.length; l++) {
+							if (uniqueAffordableBreakers[l].card.title == this.tutorableIcebreakers[j].title) {
+							  alreadyInListOrDontCheck = true;
+							  break;
+							}
+						  }
+						  if (!alreadyInListOrDontCheck) {
+							for (var l = 0; l < dontCheckAgain.length; l++) {
+							  if (dontCheckAgain[l] == this.tutorableIcebreakers[j].title) {
+								alreadyInListOrDontCheck = true;
+								break;
+							  }
+							}
+						  }
+						  dontCheckAgain.push(this.tutorableIcebreakers[j].title);
+						  if (!alreadyInListOrDontCheck && CheckInstall(this.tutorableIcebreakers[j])) {
+							//check costs, mu, etc.
+							var choices = ChoicesCardInstall(this.tutorableIcebreakers[j], true); //true ignores credit cost
+							if (choices.length > 0) {
+							  //make sure a preferred choice exists
+							  var preferredInstallChoice = 0;
+							  if (typeof this.tutorableIcebreakers[j].AIPreferredInstallChoice == 'function') preferredInstallChoice = this.tutorableIcebreakers[j].AIPreferredInstallChoice(choices);
+							  if (preferredInstallChoice > -1) {
+								//should probably use PlayCost here but it isn't implemented yet
+								uniqueAffordableBreakers.push({ card:this.tutorableIcebreakers[j], tutor:this.cardsWorthKeeping[k], host:choices[preferredInstallChoice].host, cost:this.cardsWorthKeeping[k].playCost });
+							  }
+							}
+						  }
+						}
+					}
+				}
+			  }
+			}
+			//rank the unique icebreakers (by matches with ice that have no matching breaker installed * ELO)
+			for (var k = 0; k < uniqueAffordableBreakers.length; k++) {
+			  uniqueAffordableBreakers[k].matchingUnmatchedIce = 0;
+			  uniqueAffordableBreakers[k].rank = 0;
+			}
+            for (var j = 0; j < server.ice.length; j++) {
+              var iceCard = server.ice[j];
+              if (PlayerCanLook(runner, iceCard)) {
+                if (!this._matchingBreakerInstalled(iceCard)) {
+				  for (var k = 0; k < uniqueAffordableBreakers.length; k++) {
+					if (this._breakerMatchesIce(uniqueAffordableBreakers[k].card, iceCard) || uniqueAffordableBreakers[k].AISpecialBreaker) {
+					  uniqueAffordableBreakers[k].matchingUnmatchedIce++;
+					  uniqueAffordableBreakers[k].rank = uniqueAffordableBreakers[k].matchingUnmatchedIce * uniqueAffordableBreakers[k].card.elo;
+					}
+				  }
+				}
+			  }
+			}
+			//console.log("Unique affordable breakers:");
+			//console.log(JSON.stringify(uniqueAffordableBreakers));
+			//set best ranked option as this server's choice for run calculation
+			var bestRank = 0;
+			for (var k = 0; k < uniqueAffordableBreakers.length; k++) {
+			  if (uniqueAffordableBreakers[k].rank > bestRank) {
+				bestRank = uniqueAffordableBreakers[k].rank;
+				this.serverList[i].bonusBreaker = uniqueAffordableBreakers[k];
+			  }
+			}		
+        }
 
         //and calculate best path
-		var bestpath = this._commonRunCalculationChecks(this.serverList[i].server,this.serverList[i].useRunEvent,false); //the false is for foresight, i.e. run now not later
+		var bestpath = this._commonRunCalculationChecks(this.serverList[i].server,this.serverList[i].useRunEvent,this.serverList[i].bonusBreaker,false); //the false is for foresight, i.e. run now not later
         this.serverList[i].bestpath = bestpath;
 		this.serverList[i].bestcost = Infinity;
         if (bestpath && bestpath.length > 0) {
@@ -1668,61 +1913,17 @@ console.log(this.preferred);
         ) {
           var server = this.serverList[i].server;
           //recalculate paths
-          var bestpath = this._commonRunCalculationChecks(server,this.serverList[i].useRunEvent,true); //the true is for foresight, i.e. prep first
+          var bestpath = this._commonRunCalculationChecks(server,this.serverList[i].useRunEvent,this.serverList[i].bonusBreaker,true); //the true is for foresight, i.e. prep first
           if (bestpath) {
             this.serverList = []; //don't run this click
             this._log("Gotta do some prep");
             break;
           }
-          //maybe a compatible breaker would help
-          if (runner.clickTracker > 1) {
-            for (var j = 0; j < server.ice.length; j++) {
-              var iceCard = server.ice[j];
-              if (PlayerCanLook(runner, iceCard)) {
-                if (!this._matchingBreakerInstalled(iceCard)) {
-                  for (var k = 0; k < this.cardsWorthKeeping.length; k++) {
-					var isSpecialBreaker = false;
-					if (this.cardsWorthKeeping[k].AISpecialBreaker) isSpecialBreaker=true;
-                    if (
-                      ( CheckSubType(this.cardsWorthKeeping[k], "Icebreaker") || isSpecialBreaker ) &&
-                      optionList.includes("install")
-                    ) {
-                      if (
-                        BreakerMatchesIce(this.cardsWorthKeeping[k], iceCard) || isSpecialBreaker
-                      ) {
-						var choices = ChoicesCardInstall(this.cardsWorthKeeping[k]);
-                        if (
-                          choices.length >
-                          0
-                        ) {
-						  var preferredInstallChoice = 0;
-						  if (typeof this.cardsWorthKeeping[k].AIPreferredInstallChoice == 'function') preferredInstallChoice = this.cardsWorthKeeping[k].AIPreferredInstallChoice(choices);
-						  if (preferredInstallChoice > -1) {
-							  return this._returnPreference(optionList, "install", {
-								cardToInstall: this.cardsWorthKeeping[k],
-								hostToInstallTo: choices[preferredInstallChoice].host,
-							  });
-						  }
-						}
-                      }
-                    } else if (
-                      this.cardsWorthKeeping[k].AIIcebreakerTutor &&
-                      optionList.includes("play")
-                    ) {
-                      if (FullCheckPlay(this.cardsWorthKeeping[k])) {
-                        return this._returnPreference(optionList, "play", {
-                          cardToPlay: this.cardsWorthKeeping[k],
-                        });
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
+		  //the planning to potential install a breaker first was here but has now been moved above to be included in run calculations (similar to run events)
+		  //previously the AI did not install a breaker if the run was already possible. Now, it should be able to plan for more efficiency
         }
       }
-
+	  
       //use the server run-estimate information to sort _cardsInHandWorthKeeping
       this.cardsWorthKeeping = this.SortCardsWorthKeeping();
 
@@ -1773,26 +1974,59 @@ console.log(this.preferred);
               }
             }
           }
-		} else if (
-		  priorityEcon &&
-		  this.serverList[0].potential < 1.5 &&
-		  runner.clickTracker > 1
-		) {
-          //the values are arbitrary but basically potential is low and might ruin economy 
-          this._log("Favouring econ");
-          this.serverList = [];
-        } else if (
-          this.serverList[0].potential < 1.1 &&
-          this.serverList[0].bestcost > 1.0 &&
-          this.cardsWorthKeeping.length > 0
-        ) {
-          //the values are arbitrary but basically potential is low and cost is not negligible
-          this._log("Favouring setup");
-          this.serverList = [];
-        }
+		} else if (!this.serverList[0].bonusBreaker) {
+			if (
+			  priorityEcon &&
+			  this.serverList[0].potential < 1.5 &&
+			  runner.clickTracker > 1
+			) {
+			  //the values are arbitrary but basically potential is low and might ruin economy 
+			  this._log("Favouring econ");
+			  this.serverList = [];
+			} else if (
+			  this.serverList[0].potential < 1.1 &&
+			  this.serverList[0].bestcost > 1.0 &&
+			  this.cardsWorthKeeping.length > 0
+			) {
+			  //the values are arbitrary but basically potential is low and cost is not negligible
+			  this._log("Favouring setup (potential "+ this.serverList[0].potential+", cost "+this.serverList[0].bestcost+")");
+			  this.serverList = [];
+			}
+		}
       }
 
+	  this.runsReady = true;
+
       if (this.serverList.length > 0) {
+	    //if it will improve run cost, install relevant breaker
+		if (this.serverList[0].bonusBreaker) {
+		  this._log("Checking run cost of "+ServerName(this.serverList[0].server)+" without "+this.serverList[0].bonusBreaker.card.title);
+		  var bestpath = this._commonRunCalculationChecks(this.serverList[0].server,this.serverList[0].useRunEvent,null,false); //calculate run without it (false means no foresight)
+		  if (bestpath && bestpath.length > 0) {
+			var costWithoutBonusBreaker = Infinity;
+            if (typeof bestpath[bestpath.length - 1].cost !== "undefined") //end point of path has total cost
+              costWithoutBonusBreaker = bestpath[bestpath.length - 1].cost;
+            else costWithoutBonusBreaker = this.rc.PathCost(bestpath);
+			this._log("With: "+this.serverList[0].bestcost+", Without: "+costWithoutBonusBreaker);			
+			if (costWithoutBonusBreaker <= this.serverList[0].bestcost) {
+				this.serverList[0].bestcost = costWithoutBonusBreaker;
+				this.serverList[0].bestpath = bestpath;
+				this.serverList[0].bonusBreaker = null;
+			}
+		  }
+		  //if we still want to commit to this breaker, let's install it (via tutor if relevant)
+		  if (this.serverList[0].bonusBreaker) {
+			if (this.serverList[0].bonusBreaker.tutor) return this._returnPreference(optionList, "play", {
+              cardToPlay: this.serverList[0].bonusBreaker.tutor,
+			  //currently relying on the tutor AI to make the best choice here (rather than setting nextPrefs)
+            });
+		    else return this._returnPreference(optionList, "install", {
+			  cardToInstall: this.serverList[0].bonusBreaker.card,
+			  hostToInstallTo: this.serverList[0].bonusBreaker.host,
+		    });
+		  }
+		}
+	  
         this._log(
           "Best server to run is " +
             this.serverList[0].server.serverName +

@@ -1084,7 +1084,7 @@ function Render() {
   } else cardRenderer.UpdateGlow(null, 0);
   
   //render choices made for card abilities
-  cardRenderer.RenderChosens();
+  cardRenderer.RenderChosens(cardRenderer.wordStyle);
   
   //update overridden type text
   var stTriggerList = ChoicesActiveTriggers("modifySubTypes");

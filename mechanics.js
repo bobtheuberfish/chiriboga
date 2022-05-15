@@ -81,7 +81,7 @@ function Rez(card) {
     if (GetApproachEncounterIce() == card) {
       //update run calculation now that the ice is known
       //ideally complete run
-      if (!runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, 0, approachIce))
+      if (!runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, 0, null, approachIce)) //null means no bonus breaker
       //but if not, use an exit strategy (incomplete run)
       runner.AI._calculateBestExitStrategy(
         attackedServer,
@@ -89,6 +89,7 @@ function Rez(card) {
         0,
         0,
         0,
+		null, //no bonus breaker
         approachIce
       );
     }

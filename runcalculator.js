@@ -13,6 +13,8 @@ class RunCalculator {
       iceAIs: [],
     };
     this.reason = "error"; //for reporting
+	
+	this.bonusBreaker = null; //for hypothetical calculations
   }
 
   //known ice list
@@ -46,7 +48,7 @@ class RunCalculator {
       //not Pharos, if corp has credits assume a general ice
       else if (maxCorpCred > 0 + extraRezCost) {
         result.subTypes = ["Sentry"];
-        result.strength = Math.min(maxCorpCred-extraRezCost, 6);
+        result.strength = Math.min(0.6*(maxCorpCred-extraRezCost), 6); //the 0.6 is somewhat arbitrary, test and tweak
         result.sr = [];
         if (!assumeWeakerUnknown) {
           if (maxCorpCred < 4 + extraRezCost) result.sr.push([["netDamage"]]);
@@ -58,7 +60,12 @@ class RunCalculator {
     if (iceKnown && (ice.rezzed || maxCorpCred >= RezCost(ice))) {
       //ice is known, calculate specifics
       //start with basic details
+	  //we need to pretend it's an encounter
+	  var stored = runner.AI.IceEncounterSaveState();
+	  runner.AI.IceEncounterModifyState(ice);
       result.strength = Strength(ice);
+	  //then restore reality
+	  runner.AI.IceEncounterRestoreState(stored);
       result.sr = [];
       result.subTypes = [].concat(ice.subTypes);
 
@@ -345,6 +352,11 @@ class RunCalculator {
         var iceact = this.IceAct(activeCards[i], iceAI, point, server);
         potential_result = potential_result.concat(iceact);
       }
+	  
+	  //and a bonus card, if specified
+	  if (this.bonusBreaker) {
+		potential_result = potential_result.concat(this.IceAct(this.bonusBreaker.card, iceAI, point, server));
+	  }
 
       //only include less than max cost
       for (var i = 0; i < potential_result.length; i++) {
@@ -732,10 +744,13 @@ class RunCalculator {
     damageLimit,
     tagLimit,
     incomplete,
-    startIceIdx
+	bonusBreaker,
+    startIceIdx,
   ) {
     //console.log("Calculating "+(incomplete ? "incomplete" : "complete")+" run");
     if (typeof startIceIdx == "undefined") startIceIdx = server.ice.length - 1;
+	if (typeof bonusBreaker == "undefined") bonusBreaker = null;
+	this.bonusBreaker = bonusBreaker;
 
     var installedRunnerCards = InstalledCards(runner);
 
@@ -858,7 +873,7 @@ class RunCalculator {
 
       this.precalculated.iceAIs = [];
       var unknownIce = 0; //accumulate during the next loop (used to limit risk-estimation)
-      var maxCorpCred = AvailableCredits(corp);
+      var maxCorpCred = AvailableCredits(corp);	  
       for (var i = startIceIdx; i > -1; i--) {
         if (unknownIce == 0)
           this.precalculated.iceAIs[i] = this.IceAI(
@@ -1049,10 +1064,10 @@ class RunCalculator {
 
 	//incomplete path not found, try again permitting more tags
 	if (this.paths.length == 0 && incomplete && tagLimit != Infinity) {
-		var infiniteTagPath = this.Calculate(server,clicks,poolCredits,otherCredits,damageLimit,Infinity,true,startIceIdx);
+		var infiniteTagPath = this.Calculate(server,clicks,poolCredits,otherCredits,damageLimit,Infinity,true,bonusBreaker,startIceIdx);
 		if (infiniteTagPath.length > 0) return infiniteTagPath;
 		//failing that, permit damage (this may lose the game but should reduce chance of error)
-		return this.Calculate(server,clicks,poolCredits,otherCredits,Infinity,Infinity,true,startIceIdx);
+		return this.Calculate(server,clicks,poolCredits,otherCredits,Infinity,Infinity,true,bonusBreaker,startIceIdx);
 	}
 
     return this.paths;

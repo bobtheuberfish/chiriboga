@@ -77,6 +77,24 @@ cardSet[31001] = {
 	}
 	return result;
   },
+  AIMatchingBreakerInstalled: function (iceCard) {
+	//returns a matching breaker installed, or null
+	//in this case, true if it's a Barrier, if it's the only Barrier in the server, has only one subroutine, and the ability hasn't been used this turn
+	if (this.usedThisTurn) return null;
+	if (CheckSubType(iceCard, "Barrier")) {
+		if (iceCard.subroutines.length > 1) return null;
+		var server = GetServer(iceCard);
+		if (server) {
+			for (var i=0; i<server.ice.length; i++) {
+				if (server.ice[i] != iceCard) {
+					if (CheckSubType(server.ice[i], "Barrier")) return null;
+				}
+			}
+		}
+		return true;
+	}
+	return null;
+  },
 };
 
 cardSet[31002] = {
@@ -1463,16 +1481,13 @@ cardSet[31022] = {
         });
 		//**AI code (in this case, implemented by setting and returning the preferred option)
 		if (choices.length > 0 && runner.AI != null) {
-			var targetChoice = choices[0];
-			var hts = runner.AI._iceThreatScore(targetChoice.card) * runner.AI._getCachedPotential(GetServer(targetChoice.card)); //highest threat score
-			for (var i=1; i<choices.length; i++) {
-				var threat = runner.AI._iceThreatScore(choices[i].card) * runner.AI._getCachedPotential(GetServer(choices[i].card));
-				if (threat > hts) {
-					hts = threat;
-					targetChoice = choices[i];
-				}
+		  var htsi = runner.AI._highestThreatScoreIce();
+		  if (htsi)  {
+			//find it in the choices list
+			for (var i = 0; i < choices.length; i++) {
+				if (htsi == choices[i].card) return [choices[i]];
 			}
-			return [targetChoice];
+		  }
 		}
 		return choices;
 	  }
@@ -1574,7 +1589,15 @@ cardSet[31022] = {
     },
     automatic: true,
   },
+  //acts like an icebreaker but doesn't have that subtype (or can be used on any subtype of ice)
   AISpecialBreaker:true,
+  //for when not currently installed, hypothesise
+  AIPrepareHypotheticalForRC:function(preferredHost) {
+	this.chosenCard = runner.AI._highestThreatScoreIce();
+  },
+  AIRestoreHypotheticalFromRC:function() {
+	this.chosenCard = null;
+  },
   AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
@@ -1605,6 +1628,12 @@ cardSet[31022] = {
 		return [{runner_credits_spent:numsr, effects:[], persistents:persistents}];
 	}
 	return [];
+  },
+  AIMatchingBreakerInstalled: function (iceCard) {
+	//returns a matching breaker installed, or null
+	if (CheckSubType(iceCard, "Sentry")) return this;
+	if (iceCard == this.chosenCard) return this;
+	return null;
   },
 };
 
@@ -2020,6 +2049,22 @@ cardSet[31026] = {
 	}
 	return iceAI;
   },
+  AIMatchingBreakerInstalled: function (iceCard) {
+	//returns a matching breaker installed, or null
+	//true if a Decoder is installed, iceCard is outermost ice, and the ability hasn't been used this turn
+	if (this.usedThisTurn) return null;
+	var server = GetServer(iceCard);
+	if (!server) return null;
+	if (server.ice.indexOf(iceCard) !== server.length-1) return null;
+	//pretend the ice is code gate (restore afterwards)
+	var wasntCodeGate = !iceCard.subTypes.includes("Code Gate");
+	if (wasntCodeGate) iceCard.subTypes.push("Code Gate");
+	var matchingBreaker = null;
+	matchingBreaker = runner.AI._matchingBreakerInstalled(iceCard,[this]);
+	if (wasntCodeGate) iceCard.subTypes.splice(iceCard.subTypes.indexOf("Code Gate"),1);
+	if (matchingBreaker) return matchingBreaker;
+	return null;
+  },
 };
 
 cardSet[31027] = {
@@ -2155,7 +2200,10 @@ cardSet[31028] = {
 	}
 	return false;
   },
-  AIIcebreakerTutor: true,
+  //get list of icebreakers that AI might tutor by this
+  AIIcebreakerTutor: function(installedRunnerCards) {
+	  return runner.AI._icebreakerInPileNotInHandOrArray(runner.stack.concat(runner.heap),installedRunnerCards);
+  },
   AIWastefulToPlay: function() {
 	//playing this last click is wasteful, might as well do it first click next turn
 	//I've made the requirement steeper than just 'not last click' because the cost of playing this might need replacing
@@ -2220,9 +2268,17 @@ cardSet[31030] = {
   memoryCost: 1,
   installCost: 3,
   strength: 0,
-  strengthBoost: 0, //from other card effects
   power: 0, //from Atman's ability
   //When you install this program, you may pay X credits to place X power counters on it
+  AISharedPreferredX: function(htsi) {
+	//for Atman the strength match is important so we need to take into account potential encounter effects
+	//so we store encounter state, pretend we're encountering the ice, check strength, then restore state
+	var stored = runner.AI.IceEncounterSaveState();
+	runner.AI.IceEncounterModifyState(htsi);
+	var X = Strength(htsi) - Strength(this);
+	runner.AI.IceEncounterRestoreState(stored);
+	return X;
+  },
   installed: {
 	Enumerate: function(card) {
       if (card == this) {
@@ -2233,8 +2289,8 @@ cardSet[31030] = {
 		}
 		//**AI code (in this case, implemented by including only the preferred option)
 		if (runner.AI) {
-			var htsi = this.AISharedHTSI();
-			var X = Strength(htsi) - Strength(this);
+			var htsi = runner.AI._highestThreatScoreIce([this]);
+			var X = this.AISharedPreferredX(htsi);
 			if (X <= maxcred) {
 				return [{id:X, label:""+X}];
 			}
@@ -2244,13 +2300,13 @@ cardSet[31030] = {
 	  return [];
 	},		
     Resolve: function (params) {
-		AddCounters(this, "power", params.id);
+		AddCounters(this, "power", params.id);		
     },
   },
   //This program gets +1 strength for each hosted power counter, and it can only interface with ice of exactly equal strength.
   modifyStrength: {
     Resolve: function (card) {
-      if (card == this) return Counters(this, "power") + this.strengthBoost;
+      if (card == this) return Counters(this, "power");
       return 0; //no modification to strength
     },
   },
@@ -2279,11 +2335,20 @@ cardSet[31030] = {
       },
     },
   ],
-  encounterEnds: {
-    Resolve: function () {
-      this.strengthBoost = 0;
-    },
-    automatic: true,
+  //for when not currently installed, hypothesise
+  AIPrepareHypotheticalForRC:function(preferredHost) {
+	var htsi = runner.AI._highestThreatScoreIce([this]);
+	if (htsi) {
+		var X = this.AISharedPreferredX(htsi);
+		if (AvailableCredits(runner) >= InstallCost(this) + X) {
+			this.power = X;
+			this.modifyStrength.availableWhenInactive=true;
+		}
+	}
+  },
+  AIRestoreHypotheticalFromRC:function() {
+	this.power = 0;
+	this.modifyStrength.availableWhenInactive=false;
   },
   AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	if (cardStrength == iceStrength) {
@@ -2306,46 +2371,216 @@ cardSet[31030] = {
 	}
 	return result;
   },
-  AISharedHTSI: function() {
-	  //get highest potential server
-	  var hps = null;
-	  var hpp = 0;
-	  for (var i = 0; i < runner.AI.cachedPotentials.length; i++) {
-		  if (runner.AI.cachedPotentials[i].potential > hpp) {
-			  hpp = runner.AI.cachedPotentials[i].potential;
-			  hps = runner.AI.cachedPotentials[i].server;
-		  }
-	  }
-	  if (!hps) return -1;
-	  //start with list of all PlayerCanLook(runner,iceCard) in server
-	  var pcli = [];
-	  for (var i=0; i<hps.ice.length; i++) {
-		  if (PlayerCanLook(runner,hps.ice[i])) pcli.push(hps.ice[i]);
-	  }
-	  //get highest runner.AI._iceThreatScore(iceCard) of that list
-	  var hts = 0;
-	  var htsi = null;
-	  for (var i=0; i<pcli.length; i++) {
-		  var thists = runner.AI._iceThreatScore(pcli[i],[this]);
-		  //the 1 min here is arbitrary but basically don't waste on ice that isn't much threat
-		  if (thists > 1 && thists > hts) {
-			  hts = thists;
-			  htsi = pcli[i];
-		  }
-	  }
-	  return htsi;
-  },
   AIPreferredInstallChoice: function (
     choices //outputs the preferred index from the provided choices list (return -1 to not install)
   ) {
-	  var htsi = this.AISharedHTSI();
-	  if (!htsi) return -1;
-	  if (AvailableCredits(runner) < InstallCost(this) + Strength(htsi) - Strength(this)) return -1;
+	  var htsi = runner.AI._highestThreatScoreIce([this]);
+	  if (!htsi) return -1; //don't install
+	  var X = this.AISharedPreferredX(htsi);
+	  if (AvailableCredits(runner) < InstallCost(this) + X) return -1;
 	  return 0; //do install
   },
   AIWastefulToInstall: function() {
-	  if (!this.AISharedHTSI()) return true;
+	  if (!runner.AI._highestThreatScoreIce([this])) return true;
 	  return false;
+  },
+  AIMatchingBreakerInstalled: function (iceCard) {
+	//returns a matching breaker installed, or null
+	//for Atman the strength match is important so we need to take into account potential encounter effects
+	//so we store encounter state, pretend we're encountering the ice, check strength, then restore state
+	var strengthMatches = false;
+	var stored = runner.AI.IceEncounterSaveState();
+	//state will not be modified if there is an issue (e.g. server not found)
+	//in which case can't continue with strength check because can't pretend encounter with no server yet
+	if (!runner.AI.IceEncounterModifyState(iceCard)) return null;
+	strengthMatches = CheckStrength(this);
+	runner.AI.IceEncounterRestoreState(stored);
+	if (strengthMatches) return this;
+	return null;
+  },
+};
+
+cardSet[31031] = {
+  title: "Chameleon",
+  imageFile: "31031.png",
+  elo: 1588,
+  player: runner,
+  faction: "Shaper",
+  influence: 3,
+  cardType: "program",
+  subTypes: ["Icebreaker"],
+  memoryCost: 1,
+  installCost: 2,
+  strength: 3,
+  chosenWord: '',
+  //override check for interface indicator to be correct
+  BreakerMatchesIce: function(iceCard) {
+	if (CheckSubType(iceCard, this.chosenWord)) return true;
+	//if not installed, the check is hypothetical
+	if (runner.AI && !CheckInstalled(this)) {
+	  if (CheckSubType(iceCard, this.AISharedPreferredWord())) return true;
+	}
+	return false;
+  },
+  AISharedPreferredWord: function() {
+	//start by making a list of all known ice (in the priority server, if relevant)
+	var priorityIceList = runner.AI._priorityIceList();
+	var knownIce = [];
+	var installedCorpCards = InstalledCards(corp);
+	for (var i=0; i<priorityIceList.length; i++) {
+		if (PlayerCanLook(runner,priorityIceList[i])) {
+			knownIce.push(priorityIceList[i]);
+		}
+	}
+	//compare to threat after install with various options
+	var options = ['Sentry','Code Gate','Barrier'];
+	//having Code Gate first is good when playing as Kit
+	if (runner.identityCard.title == 'Rielle "Kit" Peddler: Transhuman' && !runner.identityCard.usedThisTurn) {
+		options = ['Code Gate','Sentry','Barrier'];
+	}
+	//remove options that there are already specialised breakers for
+    var installedRunnerCards = InstalledCards(runner);
+	for (var j=2; j>-1; j--) {
+      for (var i = 0; i < installedRunnerCards.length; i++) {
+		var stToCheck = 'Decoder';
+		if (options[j] == 'Sentry') stToCheck = 'Killer';
+		else if (options[j] == 'Barrier') stToCheck = 'Fracter';
+        if (CheckSubType(installedRunnerCards[i], stToCheck)) {
+		  options.splice(j, 1);
+		  break;
+		} else if (installedRunnerCards[i].title == "Chameleon" && installedRunnerCards[i].chosenWord == options[j]) {
+		  options.splice(j, 1);
+		  break;
+		}
+	  }
+    }
+	if (options.length < 1) return '';
+	//now consider options
+	var bestOption = options[0];
+	var bestThreat = 0;
+	for (var j=0; j<options.length; j++) {
+		var totalThreatThisOption=0;
+		for (var i=0; i<knownIce.length; i++) {
+			if (CheckSubType(knownIce[i],options[j])) totalThreatThisOption += runner.AI._iceThreatScore(knownIce[i],[this]);
+		}
+		if (totalThreatThisOption > bestThreat) {
+			bestOption = options[j];
+			bestThreat = totalThreatThisOption;
+		}	
+	}
+	return bestOption;
+  },
+  //When you install this program, choose barrier, code gate, or sentry.
+  installed: {
+	Enumerate: function(card) {
+      if (card == this) {
+		//**AI code (in this case, implemented by including only the preferred option)
+		if (runner.AI) {
+			var bestOption = this.AISharedPreferredWord();
+			if (bestOption == '') return [];
+			return [{id:0, label:bestOption.toLowerCase(), button:bestOption}];
+		}
+		return [
+		  {id:0, label:'barrier', button:'Barrier'},
+		  {id:1, label:'code gate', button:'Code Gate'},
+		  {id:2, label:'sentry', button:'Sentry'},
+		];
+	  }
+	  return [];
+	},		
+    Resolve: function (params) {
+		this.chosenWord = params.button;
+		Log("Runner chose "+this.chosenWord+" for Chameleon");
+    },
+  },
+  //When your discard phase ends, add this program to your grip.
+  runnerDiscardEnds: {
+    Resolve: function () {
+      MoveCard(this,runner.grip);
+	  Log("Chameleon added to grip");
+    },
+    automatic: true,
+  },
+  //Interface -> 1[c]: Break 1 subroutine on a piece of ice that has the chosen subtype.
+  abilities: [
+    {
+      text: "Break 1 subroutine on a piece of ice that has the chosen subtype.",
+      Enumerate: function () {
+        if (!CheckEncounter()) return [];
+        if (!CheckSubType(attackedServer.ice[approachIce], this.chosenWord)) return [];
+        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckStrength(this)) return [];
+        return ChoicesEncounteredSubroutines();
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          1,
+          "using",
+          this,
+          function () {
+            Break(params.subroutine);
+          },
+          this
+        );
+      },
+    },
+  ],
+  AIFixedStrength: true,
+  //for when not currently installed, hypothesise
+  AIPrepareHypotheticalForRC:function(preferredHost) {
+	this.chosenWord=this.AISharedPreferredWord();
+  },
+  AIRestoreHypotheticalFromRC:function() {
+	this.chosenWord='';
+  },
+  AIMatchingBreakerInstalled: function (iceCard) {
+	//returns a matching breaker installed, or null
+	//in this case, must match type and sufficient strength to interface
+	if (CheckSubType(iceCard, this.chosenWord)) {
+		//for Chameleon the strength check is important so we need to take into account potential encounter effects
+		//so we store encounter state, pretend we're encountering the ice, check strength, then restore state
+		var sufficientStrength = false;
+		var stored = runner.AI.IceEncounterSaveState();
+		runner.AI.IceEncounterModifyState(iceCard);
+		sufficientStrength = CheckStrength(this);
+		runner.AI.IceEncounterRestoreState(stored);
+		if (sufficientStrength) return this;
+	}
+	return null;
+  },
+  AIWastefulToInstall: function() {
+	//installing this last click is wasteful, might as well do it first click next turn
+	//I've made the requirement steeper than just 'not last click' because the cost of installing this might need replacing
+	if (runner.clickTracker < 3) return true;
+	//installing this when all basic breaker types are already installed is wasteful
+	if (this.AISharedPreferredWord() == '') return true;	
+	//installing this when it wouldn't improve the desired run is wasteful
+	if (runner.AI.runsReady) {
+		if (runner.AI.serverList.length < 1) return true;
+		if (!runner.AI.serverList[0].bonusBreaker) return true;
+		if (runner.AI.serverList[0].bonusBreaker.card != this) return true;
+	}
+	return false;
+  },
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+	result = result.concat(
+		runner.AI.rc.ImplementIcebreaker(
+		  point,
+		  this,
+		  cardStrength,
+		  iceAI,
+		  iceStrength,
+		  [this.chosenWord],
+		  Infinity, //up str is not an option
+		  0,
+		  1,
+		  1,
+		  creditsLeft
+		)
+	); //cost to str, amt to str, cost to brk, amt to brk	
+	return result;
   },
 };
 

@@ -222,29 +222,26 @@ cardSet[30004] = {
   AIPreferredInstallChoice: function (
     choices //outputs the preferred index from the provided choices list (return -1 to not install)
   ) {
-    var bestScore = 0;
-    var bestIndex = -1;
-    for (var i = 0; i < choices.length; i++) {
-      var thisScore = 0;
-      var iceCard = choices[i].host;
-      if (iceCard.rezzed) {
-        //don't Botulus unrezzed ice
-        var server = GetServer(iceCard);
-        thisScore =
-          server.ice.length *
-          runner.AI._getCachedPotential(server) *
-          iceCard.rezCost;
-        if (typeof iceCard.hostedCards !== "undefined")
-          thisScore -= iceCard.hostedCards.length;
-        if (thisScore > bestScore) {
-          bestScore = thisScore;
-          bestIndex = i;
-        }
-      }
-    }
-    return bestIndex;
+	  var htsi = runner.AI._highestThreatScoreIce([this]);
+	  if (htsi)  {
+		//find it in the choices list
+		for (var i = 0; i < choices.length; i++) {
+			if (htsi == choices[i].host) return i;
+		}
+	  }
+	  return -1; //don't install
   },
+  //acts like an icebreaker but doesn't have that subtype (or can be used on any subtype of ice)
   AISpecialBreaker:true,
+  //for when not currently installed, hypothesise
+  AIPrepareHypotheticalForRC:function(preferredHost) {
+	this.host = preferredHost;
+	this.virus=1;
+  },
+  AIRestoreHypotheticalFromRC:function() {
+	this.host = null;
+	this.virus=0;
+  },
   AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     if (this.host == iceAI.ice) {
@@ -258,6 +255,11 @@ cardSet[30004] = {
         }
     }
 	return result;
+  },
+  AIMatchingBreakerInstalled: function (iceCard) {
+	//returns a matching breaker installed, or null
+	if (iceCard == this.host) return this;
+	return null;
   },
 };
 cardSet[30005] = {
@@ -940,7 +942,10 @@ cardSet[30011] = {
 	  }
 	  return false;
   },
-  AIIcebreakerTutor: true,
+  //get list of icebreakers that AI might tutor by this
+  AIIcebreakerTutor: function(installedRunnerCards) {
+	  return runner.AI._icebreakerInPileNotInHandOrArray(runner.stack,installedRunnerCards);
+  },
 };
 cardSet[30012] = {
   title: "Tread Lightly",
@@ -1375,31 +1380,24 @@ cardSet[30017] = {
   AIPreferredInstallChoice: function (
     choices //outputs the preferred index from the provided choices list (return -1 to not install)
   ) {
-    //don't install unless there is a rezzed piece of ice with more than 3 RezCost in a server with some potential
-    var bestScore = 0;
-    var bestIndex = -1;
-    for (var i = 0; i < choices.length; i++) {
-      var thisScore = 0;
-      var iceCard = choices[i].host;
-      if (iceCard.rezzed) {
-        //don't Tranquilizer unrezzed ice
-        var currentRezCost = RezCost(iceCard);
-        if (currentRezCost > 3) {
-          //don't Tranquilizer cheap ice
-          var server = GetServer(iceCard);
-          thisScore = runner.AI._getCachedPotential(server) * currentRezCost;
-          if (typeof iceCard.hostedCards !== "undefined")
-            thisScore -= iceCard.hostedCards.length;
-          if (thisScore > bestScore) {
-            bestScore = thisScore;
-            bestIndex = i;
-          }
-        }
-      }
-    }
-    return bestIndex;
+	  var htsi = runner.AI._highestThreatScoreIce([this],4); //only target ice with 4 or greater rez cost
+	  if (htsi)  {
+		//find it in the choices list
+		for (var i = 0; i < choices.length; i++) {
+			if (htsi == choices[i].host) return i;
+		}
+	  }
+	  return -1; //don't install
   },
+  //acts like an icebreaker but doesn't have that subtype (or can be used on any subtype of ice)
   AISpecialBreaker:true,
+  AIMatchingBreakerInstalled: function (iceCard) {
+	//returns a matching breaker installed, or null
+	if (iceCard == this.host) return this;
+	//I know Tranquilizer isn't technically a breaker but we'll treat it like one
+	//so we don't keep installing other stuff to get past it
+	return null;
+  },
 };
 cardSet[30018] = {
   title: "Red Team",
@@ -2458,6 +2456,14 @@ cardSet[30032] = {
 	}
 	return result;
   },
+  AIWastefulToInstall: function() {
+	  for (var j = 0; j < runner.rig.programs.length; j++) {
+		if (runner.rig.programs[j].title == "Mayfly") {
+		  return true; //already a Mayfly installed
+		}
+	  }
+	  return false;
+  },
 };
 cardSet[30033] = {
   title: "Smartware Distributor",
@@ -3259,6 +3265,7 @@ cardSet[30042] = {
 			0,
             0,
             0,
+			null, //no bonus breaker
             approachIce
         )) {
           //no complete run path, don't bother paying the fee
