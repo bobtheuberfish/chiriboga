@@ -1313,6 +1313,13 @@ var CardRenderer = {
         stroke: "#DBDBDB",
         strokeThickness: 10,
       });
+      this.wordStyle = new PIXI.TextStyle({
+        fontFamily: "PlayBoldNisei",
+        fontSize: 26,
+        fill: "#000000",
+        stroke: "#DBDBDB",
+        strokeThickness: 3,
+      });
       this.tutorialStyle = new PIXI.TextStyle({
 		fontFamily: "PlayBoldNisei",
         fill: "white",
@@ -1410,8 +1417,6 @@ var CardRenderer = {
 
       this.subroutineTexture = PIXI.Texture.fromImage("images/subroutine.png");
       this.subroutineChoices = []; //clickable subroutines - create when needed
-	  
-	  this.chosens = []; //indicators for "choose a" abilities
 
       this.showFPS = false;
       this.framerates = []; //to calculate a periodic average
@@ -1858,7 +1863,7 @@ var CardRenderer = {
       emitter.playOnceAndDestroy();
     }
 
-	RenderChosens() {
+	RenderChosens(chosenTextStyle) {
 		var allCards = AllCards();
 		for (var i=0; i<allCards.length; i++) {
 			var src = allCards[i];
@@ -1900,10 +1905,26 @@ var CardRenderer = {
 				}
 				src.renderer.chosenSprite.visible = true;
 			}
+			else if (src.chosenWord) {
+				//first, create the text if needed
+				if (typeof src.renderer.chosenText == 'undefined') {
+					src.renderer.chosenText = new PIXI.Text("", chosenTextStyle);
+					src.renderer.chosenText.anchor.set(0.5,2.5);
+					src.renderer.sprite.addChild(src.renderer.chosenText);
+				}
+				//then update word choice
+				src.renderer.chosenText.text = src.chosenWord;
+				src.renderer.chosenText.visible = true;
+			}
 			else if (src.renderer.chosenSprite) {
 				//no longer chosen, hide the icon
 				src.renderer.chosenSprite.target = null;
 				src.renderer.chosenSprite.visible = false;
+			}
+			else if (src.renderer.chosenText) {
+				//no longer chosen, hide the text
+				src.renderer.chosenText.text = "";
+				src.renderer.chosenText.visible = false;
 			}
 		}
 	}
