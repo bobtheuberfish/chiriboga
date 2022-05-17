@@ -723,12 +723,22 @@ phases.corpActionStart = CreatePhaseFromTemplate(
   null
 );
 
-//Take action (should only ever be here if there is at least one click remaining, but CheckActionClicks(corp,1) just in case)
+//Take action
 phases.corpActionMain = {
   player: corp,
   title: "Corporation's Action Phase",
   identifier: "Corp 2.2",
   Enumerate: {
+    gain: function () {
+      if (CheckActionClicks(corp, 1)) {
+        return [{}];
+      } else return [];
+    },
+    draw: function () {
+      if (CheckActionClicks(corp, 1)) {
+        return [{}];
+      } else return [];
+    },
     install: function () {
       if (CheckActionClicks(corp, 1)) {
         var ret = ChoicesHandInstall(corp);
@@ -805,6 +815,11 @@ phases.corpActionMain = {
         if (CheckPurge()) return [{}];
       }
       return [];
+    },
+    n: function () {
+      if (!CheckActionClicks(corp, 1)) {
+        return [{}];
+      } else return [];
     },
   },
   Resolve: {
@@ -901,6 +916,9 @@ phases.corpActionMain = {
       IncrementPhase();
       Purge();
     },
+	n: function() {
+	  IncrementPhase();
+	},
   },
   text: {
     draw: "[click]: Draw a card",
