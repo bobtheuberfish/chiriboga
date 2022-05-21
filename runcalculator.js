@@ -205,7 +205,8 @@ class RunCalculator {
     amtToUpStr,
     costToBreak,
     amtToBreak,
-    creditsLeft
+    creditsLeft,
+	persistStrMod = false,
   ) {
     var result = [];
     var typeMatches = false;
@@ -239,7 +240,7 @@ class RunCalculator {
     } //need to up strength
     else {
       if (creditsLeft >= costToUpStr) {
-        var modifyresult = this.StrModify(card, card, point, amtToUpStr);
+        var modifyresult = this.StrModify(card, card, point, amtToUpStr, persistStrMod);
         modifyresult.runner_credits_spent += costToUpStr;
         result.push(modifyresult);
       }

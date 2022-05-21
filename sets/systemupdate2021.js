@@ -2687,6 +2687,107 @@ cardSet[31032] = {
   AISpecialBreaker:true,
 };
 
+cardSet[31033] = {
+  title: "Gordian Blade",
+  imageFile: "31033.png",
+  elo: 1665,
+  player: runner,
+  faction: "Shaper",
+  influence: 3,
+  cardType: "program",
+  subTypes: ["Icebreaker", "Decoder"],
+  memoryCost: 1,
+  installCost: 4,
+  strength: 2,
+  strengthBoost: 0,
+  modifyStrength: {
+    Resolve: function (card) {
+      if (card == this) return this.strengthBoost;
+      return 0; //no modification to strength
+    },
+  },
+  runEnds: {
+    Resolve: function (card) {
+      this.strengthBoost = 0;
+    },
+    automatic: true,
+  },
+  abilities: [
+    {
+      text: "Break code gate subroutine.",
+      Enumerate: function () {
+        if (!CheckEncounter()) return [];
+        if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate")) return [];
+        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckStrength(this)) return [];
+        return ChoicesEncounteredSubroutines();
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          1,
+          "using",
+          this,
+          function () {
+            Break(params.subroutine);
+          },
+          this
+        );
+      },
+    },
+    {
+      text: "+1 strength for the remainder of this run.",
+      Enumerate: function () {
+        if (!CheckEncounter()) return []; //technically you can +1 strength outside encounters but I'm putting this here for interface usability
+        if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
+        if (!CheckUnbrokenSubroutines()) return []; //as above
+        if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate")) return []; //as above
+        if (!CheckCredits(1, runner, "using", this)) return [];
+        return [{}];
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          1,
+          "using",
+          this,
+          function () {
+            BoostStrength(this, 1);
+          },
+          this
+        );
+      },
+    },
+  ],
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    result = result.concat(
+        runner.AI.rc.ImplementIcebreaker(
+          point,
+          this,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Code Gate"],
+          1,
+          1,
+          1,
+          1,
+          creditsLeft,
+		  true, //persist str mod
+        )
+    ); //cost to str, amt to str, cost to brk, amt to brk	
+	return result;
+  },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*

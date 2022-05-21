@@ -2681,7 +2681,7 @@ function DeckBuild(
 	  //decoders
 	  var decoderCards = [];
 	  if (setIdentifiers.includes('sg')) decoderCards = decoderCards.concat([30005, 30026]);
-	  if (setIdentifiers.includes('su21')) decoderCards = decoderCards.concat([31021]);
+	  if (setIdentifiers.includes('su21')) decoderCards = decoderCards.concat([31021,31033]);
 	  var numDecoders = RandomRange(1, 2);
 	  if (identityCard.title == 'Rielle "Kit" Peddler: Transhuman') numDecoders = RandomRange(2, 3); //special case
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
