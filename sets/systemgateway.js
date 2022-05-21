@@ -222,7 +222,8 @@ cardSet[30004] = {
   AIPreferredInstallChoice: function (
     choices //outputs the preferred index from the provided choices list (return -1 to not install)
   ) {
-	  var htsi = runner.AI._highestThreatScoreIce([this]);
+	  //only target ice that don't already have a special breaker hosted
+	  var htsi = runner.AI._highestThreatScoreIce([this].concat(runner.AI._iceHostingSpecialBreakers()));
 	  if (htsi)  {
 		//find it in the choices list
 		for (var i = 0; i < choices.length; i++) {
@@ -383,6 +384,13 @@ cardSet[30005] = {
     ); //cost to str, amt to str, cost to brk, amt to brk
 	return result;
   },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
+  },
 };
 cardSet[30006] = {
   title: "Cleaver",
@@ -502,6 +510,13 @@ cardSet[30006] = {
         )
     ); //cost to str, amt to str, cost to brk, amt to brk
 	return result;
+  },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
   },
 };
 cardSet[30007] = {
@@ -1225,6 +1240,13 @@ cardSet[30015] = {
     ); //cost to str, amt to str, cost to brk, amt to brk
 	return result;
   },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click (unless discounted)
+	if (runner.clickTracker < 2 && !this.madeSuccessfulRunThisTurn) return -1; //don't install
+    return 0; //do install
+  },
 };
 cardSet[30016] = {
   title: "Marjanah",
@@ -1343,6 +1365,13 @@ cardSet[30016] = {
     ); //cost to str, amt to str, cost to brk, amt to brk
 	return result;
   },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
+  },
 };
 cardSet[30017] = {
   title: "Tranquilizer",
@@ -1380,7 +1409,8 @@ cardSet[30017] = {
   AIPreferredInstallChoice: function (
     choices //outputs the preferred index from the provided choices list (return -1 to not install)
   ) {
-	  var htsi = runner.AI._highestThreatScoreIce([this],4); //only target ice with 4 or greater rez cost
+	  //only target ice with 4 or greater rez cost that don't already have a special breaker hosted
+	  var htsi = runner.AI._highestThreatScoreIce([this].concat(runner.AI._iceHostingSpecialBreakers()),4);
 	  if (htsi)  {
 		//find it in the choices list
 		for (var i = 0; i < choices.length; i++) {
@@ -2053,6 +2083,13 @@ cardSet[30025] = {
     ); //cost to str, amt to str, cost to brk, amt to brk
 	return result;
   },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
+  },
 };
 cardSet[30026] = {
   title: "Unity",
@@ -2155,6 +2192,13 @@ cardSet[30026] = {
         )
     ); //cost to str, amt to str, cost to brk, amt to brk
 	return result;
+  },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
   },
 };
 cardSet[30027] = {
@@ -2464,6 +2508,13 @@ cardSet[30032] = {
 	  }
 	  return false;
   },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
+  },
 };
 cardSet[30033] = {
   title: "Smartware Distributor",
@@ -2521,6 +2572,13 @@ cardSet[30033] = {
 	  return 1; //priority 1 (yes install but there are better options)
   },
   AIEconomyTrigger: 1, //priority 1 (yes trigger but there are better options)
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
+  },
 };
 cardSet[30034] = {
   title: "Verbal Plasticity",

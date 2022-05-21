@@ -243,6 +243,25 @@ class RunnerAI {
 	approachIce = stored.approachIce;
   }
   
+  //get an array of ice which have special breakers hosted
+  _iceHostingSpecialBreakers() {
+	  var ret = [];
+      var installedCards = InstalledCards(corp);
+      for (var i = 0; i < installedCards.length; i++) {
+        if (installedCards[i].cardType == "ice") {
+			if (typeof installedCards[i].hostedCards !== "undefined") {
+				for (var j=0; j<installedCards[i].hostedCards.length; j++) {
+					if (installedCards[i].hostedCards[j].AISpecialBreaker) {
+						ret.push(installedCards[i]);
+						break;
+					}
+				}
+			}
+		}
+      }
+	  return ret;
+  }
+  
   //get an approximate measure of ice threat
   _iceThreatScore(iceCard,excludeIcebreakers=[],infiniteCorpCredits=false) {
 	  var ret = 3; //most common ice printed rez cost
@@ -263,9 +282,18 @@ class RunnerAI {
 	  return ret;
   }
 
-  //get highest threat ice (e.g. for target)
-  _highestThreatScoreIce(excludeIcebreakers=[],minimumRezCost=-1) {
-	  //get highest potential server
+  //get highest threat score ice, preferably excluding ice from excludeCards but permitting if no other option
+  _highestThreatScoreIcePermitExcludedIce(excludeCards=[],minimumRezCost=-1) {
+	  var htsi = this._highestThreatScoreIce(excludeCards);
+	  //if no target found, try without that exclusion
+	  if (!htsi) {
+		htsi = this._highestThreatScoreIce();
+	  }
+	  return htsi;
+  }
+  
+  //get highest-potential server
+  _highestPotentialServer() {
 	  var hps = null;
 	  var hpp = 0;
 	  for (var i = 0; i < this.cachedPotentials.length; i++) {
@@ -274,6 +302,14 @@ class RunnerAI {
 			  hps = this.cachedPotentials[i].server;
 		  }
 	  }
+	  return hps;
+  }
+
+  //get highest threat ice (e.g. for target)
+  //exclusion list will exclude both ice and icebreakers
+  _highestThreatScoreIce(excludeCards=[],minimumRezCost=-1) {
+	  //get highest potential server
+	  var hps = this._highestPotentialServer();
 	  //start with list of all PlayerCanLook(runner,iceCard)
 	  var pcli = [];
 	  if (hps) {
@@ -303,13 +339,15 @@ class RunnerAI {
 	  var htsi = null;
 	  var htsis = 0;
 	  for (var i=0; i<pcli.length; i++) {
-		  var thists = this._iceThreatScore(pcli[i],excludeIcebreakers);
-		  //the 1 min here is arbitrary but basically don't waste on ice that isn't much threat
-		  //break ties with strength
-		  if ( thists > 1 && (thists > hts || Strength(pcli[i]) > htsis) && RezCost(pcli[i]) >= minimumRezCost ) {
-			  hts = thists;
-			  htsi = pcli[i];
-			  htsis = Strength(htsi);
+		  if (!excludeCards.includes(pcli[i])) {
+			  var thists = this._iceThreatScore(pcli[i],excludeCards);
+			  //the 1 min here is arbitrary but basically don't waste on ice that isn't much threat
+			  //break ties with strength
+			  if ( thists > 1 && (thists > hts || Strength(pcli[i]) > htsis) && RezCost(pcli[i]) >= minimumRezCost ) {
+				  hts = thists;
+				  htsi = pcli[i];
+				  htsis = Strength(htsi);
+			  }
 		  }
 	  }
 	  return htsi;
@@ -794,7 +832,10 @@ class RunnerAI {
             keep = true;
         }
       }
-      if (keep) ret.push(card);
+      if (keep) {
+		  //don't include duplicates (for now? maybe sometimes keeping two or more is critical?)
+		  if (!this._copyOfCardExistsIn(card.title, ret)) ret.push(card);
+	  }
     }
     return ret;
   }

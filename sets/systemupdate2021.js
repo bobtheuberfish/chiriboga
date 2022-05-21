@@ -433,6 +433,13 @@ cardSet[31006] = {
     ); //cost to str, amt to str, cost to brk, amt to brk	
 	return result;
   },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
+  },
 };
 
 cardSet[31007] = {
@@ -583,6 +590,13 @@ cardSet[31008] = {
         )
     ); //cost to str, amt to str, cost to brk, amt to brk	
 	return result;
+  },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
   },
 };
 
@@ -1442,6 +1456,13 @@ cardSet[31021] = {
 	}
 	return result;
   },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
+  },
 };
 
 cardSet[31022] = {
@@ -1481,7 +1502,8 @@ cardSet[31022] = {
         });
 		//**AI code (in this case, implemented by setting and returning the preferred option)
 		if (choices.length > 0 && runner.AI != null) {
-		  var htsi = runner.AI._highestThreatScoreIce();
+		  //preferably target ice that don't already have a special breaker hosted
+		  var htsi = runner.AI._highestThreatScoreIcePermitExcludedIce(runner.AI._iceHostingSpecialBreakers());
 		  if (htsi)  {
 			//find it in the choices list
 			for (var i = 0; i < choices.length; i++) {
@@ -1593,7 +1615,7 @@ cardSet[31022] = {
   AISpecialBreaker:true,
   //for when not currently installed, hypothesise
   AIPrepareHypotheticalForRC:function(preferredHost) {
-	this.chosenCard = runner.AI._highestThreatScoreIce();
+	this.chosenCard = runner.AI._highestThreatScoreIcePermitExcludedIce(runner.AI._iceHostingSpecialBreakers());
   },
   AIRestoreHypotheticalFromRC:function() {
 	this.chosenCard = null;
@@ -1634,6 +1656,13 @@ cardSet[31022] = {
 	if (CheckSubType(iceCard, "Sentry")) return this;
 	if (iceCard == this.chosenCard) return this;
 	return null;
+  },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+    return 0; //do install
   },
 };
 
@@ -1721,6 +1750,15 @@ cardSet[31023] = {
 	  return false;
   },
   AILimitPerDeck: 2,
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+	//don't install if there's no desire to run HQ
+	if (runner.AI._highestPotentialServer() != corp.HQ) return -1; //don't install
+    return 0; //do install
+  },
 };
 
 cardSet[31024] = {
@@ -2008,7 +2046,7 @@ cardSet[31026] = {
   },
   modifySubTypes: {
     Resolve: function (card) {
-      if (card == this.affectedCard) return { add:"Code Gate" };
+      if (card == this.affectedCard) return { add:["Code Gate"] };
       return {}; //no modification to subtypes
     },
     automatic: true,
@@ -2374,10 +2412,11 @@ cardSet[31030] = {
   AIPreferredInstallChoice: function (
     choices //outputs the preferred index from the provided choices list (return -1 to not install)
   ) {
+	  if (runner.clickTracker < 2) return -1; //don't install if this is last click
 	  var htsi = runner.AI._highestThreatScoreIce([this]);
 	  if (!htsi) return -1; //don't install
 	  var X = this.AISharedPreferredX(htsi);
-	  if (AvailableCredits(runner) < InstallCost(this) + X) return -1;
+	  if (AvailableCredits(runner) < InstallCost(this) + X) return -1; //don't install
 	  return 0; //do install
   },
   AIWastefulToInstall: function() {
@@ -2550,18 +2589,28 @@ cardSet[31031] = {
 	return null;
   },
   AIWastefulToInstall: function() {
-	//installing this last click is wasteful, might as well do it first click next turn
-	//I've made the requirement steeper than just 'not last click' because the cost of installing this might need replacing
-	if (runner.clickTracker < 3) return true;
 	//installing this when all basic breaker types are already installed is wasteful
 	if (this.AISharedPreferredWord() == '') return true;	
-	//installing this when it wouldn't improve the desired run is wasteful
-	if (runner.AI.runsReady) {
-		if (runner.AI.serverList.length < 1) return true;
-		if (!runner.AI.serverList[0].bonusBreaker) return true;
-		if (runner.AI.serverList[0].bonusBreaker.card != this) return true;
-	}
 	return false;
+  },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//avoid installing this last click, might as well do it first click next turn
+	//I've made the requirement steeper than just 'not last click' because the cost of installing this might need replacing
+	if (runner.clickTracker < 3) return -1; //don't install
+	//don't install this when all basic breaker types are already installed
+	if (this.AISharedPreferredWord() == '') return -1; //don't install
+	//don't install if this wouldn't improve the desired run
+	if (runner.AI.runsReady) {
+		if (runner.AI.serverList.length < 1) return -1; //don't install
+		if (!runner.AI.serverList[0].bonusBreaker) return -1; //don't install
+		if (runner.AI.serverList[0].bonusBreaker.card != this) return -1; //don't install
+	}
+	//don't install this when best potential is lowish
+	//this should be up to date (potentials are cached before bonus breakers are assessed)
+	if (runner.AI._getCachedPotential(runner.AI._highestPotentialServer()) < 1.5) return -1; //don't install
+	return 0; //do install
   },
   AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
@@ -2582,6 +2631,60 @@ cardSet[31031] = {
 	); //cost to str, amt to str, cost to brk, amt to brk	
 	return result;
   },
+};
+
+cardSet[31032] = {
+  title: "Egret",
+  imageFile: "31032.png",
+  elo: 1464,
+  player: runner,
+  faction: "Shaper",
+  influence: 2,
+  cardType: "program",
+  installCost: 2,
+  memoryCost: 1,
+  //Install only on a rezzed piece of ice.
+  installOnlyOn: function (card) {
+    if (!CheckCardType(card, ["ice"])) return false;
+	if (!card.rezzed) return false;
+    return true;
+  },
+  //Host ice gains barrier, code gate, and sentry
+  modifySubTypes: {
+    Resolve: function (card) {
+      if (card == this.host) return { add:["Barrier","Code Gate","Sentry"] };
+      return {}; //no modification to subtypes
+    },
+    automatic: true,
+  },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	  var iceToExclude = [];
+	  var installedCards = InstalledCards(corp);
+	  for (var i=0; i<installedCards.length; i++) {
+		  var iceCard = installedCards[i];
+		  if (CheckCardType(iceCard, ["ice"])) {
+			//only consider unrezzed ice that doesn't already have a matching breaker installed
+			//(could maybe also require that this cause an already-installed breaker to match, but this might be sufficient)
+			if (!iceCard.rezzed || runner.AI._matchingBreakerInstalled(iceCard,[this])) {
+				iceToExclude.push(iceCard);
+			}
+		  }
+	  }
+
+	  //only target ice that don't already have a special breaker hosted
+	  var htsi = runner.AI._highestThreatScoreIce([this].concat(runner.AI._iceHostingSpecialBreakers()).concat(iceToExclude));
+	  if (htsi)  {
+		//find it in the choices list
+		for (var i = 0; i < choices.length; i++) {
+			if (htsi == choices[i].host) return i;
+		}
+	  }
+	  return -1; //don't install
+  },
+  //acts like an icebreaker but doesn't have that subtype (or can be used on any subtype of ice)
+  AISpecialBreaker:true,
 };
 
 //TODO link (e.g. Reina)
