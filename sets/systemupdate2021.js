@@ -2309,12 +2309,28 @@ cardSet[31030] = {
   power: 0, //from Atman's ability
   //When you install this program, you may pay X credits to place X power counters on it
   AISharedPreferredX: function(htsi) {
-	//for Atman the strength match is important so we need to take into account potential encounter effects
-	//so we store encounter state, pretend we're encountering the ice, check strength, then restore state
-	var stored = runner.AI.IceEncounterSaveState();
-	runner.AI.IceEncounterModifyState(htsi);
-	var X = Strength(htsi) - Strength(this);
-	runner.AI.IceEncounterRestoreState(stored);
+	var X = 0;
+	if (htsi) {
+		//for Atman the strength match is important so we need to take into account potential encounter effects
+		//so we store encounter state, pretend we're encountering the ice, check strength, then restore state
+		var stored = runner.AI.IceEncounterSaveState();
+		runner.AI.IceEncounterModifyState(htsi);
+		var X = Strength(htsi) - Strength(this);
+		runner.AI.IceEncounterRestoreState(stored);
+	} else {
+		//ice are unknown, choose the strength needed for RC to consider it valid
+		var outermostUnknownIceInHighestPotentialServer = null;
+		var hps = runner.AI._highestPotentialServer();
+		if (hps) {
+			for (var i=hps.ice.length-1; i>-1; i--) {
+				if (!PlayerCanLook(runner,hps.ice[i])) {
+					var iceAI = runner.AI.rc.IceAI(hps.ice[i], AvailableCredits(corp));
+					X = iceAI.strength - Strength(this);
+					break;
+				}
+			}
+		}
+	}
 	return X;
   },
   installed: {
@@ -2785,6 +2801,36 @@ cardSet[31033] = {
 	//don't install if this is last click
 	if (runner.clickTracker < 2) return -1; //don't install
     return 0; //do install
+  },
+};
+
+cardSet[31034] = {
+  title: "Paricia",
+  imageFile: "31034.png",
+  elo: 1575,
+  player: runner,
+  faction: "Shaper",
+  influence: 1,
+  cardType: "program",
+  memoryCost: 1,
+  installCost: 0,
+  recurringCredits: 2,
+  //You can spend hosted credits to pay trash costs of assets
+  canUseCredits: function (doing, card) {
+	if (!card) return false;
+	if (!CheckCardType(card, ["asset"])) return false;
+    if (doing == "paying trash costs") return true;
+    return false;
+  },
+  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+	  //extra costs of install have already been considered, so yes install it
+	  return 1; //yes
+  },
+  AIReducesTrashCost: function(card) {
+	if (!CheckCardType(card, ["asset"])) return 0; //no reduction to trash cost
+	var cardTC = TrashCost(card);
+    if (cardTC < this.credits) return cardTC; //reduction by full trash cost
+	return this.credits; //reduction by however many credits remain
   },
 };
 
