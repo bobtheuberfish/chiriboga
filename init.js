@@ -560,7 +560,7 @@ function Render() {
   fieldZoom = 1.0;
   var interfaceScale = 1.0;
   //calculate field height from total height of runner + spacer + corp
-  var totalFieldHeight = runnerLargestHeight - 150 + largestServerHeight;
+  var totalFieldHeight = runnerLargestHeight + largestServerHeight; //there was also a -150 but that leads to overlap between tall server and certain rig heights
   if (totalFieldHeight < 700) totalFieldHeight = 700; //this is approximately 1 layer of ice
   var fieldHeightRatio = totalFieldHeight / h;
   //calculate field width from corp field (assumes this will be wider than runner field)

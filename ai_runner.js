@@ -1006,6 +1006,8 @@ class RunnerAI {
   _commonCardToInstallChecks(cardToInstall) {
 	  if (cardToInstall) {
 		this._log("maybe by installing "+cardToInstall.title+"?");
+		//don't install resources when tagged
+		if (cardToInstall.cardType == "resource" && runner.tags > 0) return false;
 		var canBeInstalled = true;
 		var choices = ChoicesCardInstall(cardToInstall);
 		if (!CheckInstall(cardToInstall)) canBeInstalled = false;
@@ -2459,8 +2461,8 @@ console.log(this.preferred);
             cardToPlay: card,
           });
         }
-      } else if (optionList.includes("install")) {
-        //install
+      } else if (optionList.includes("install") && (card.cardType !== "resource" || runner.tags == 0)) {
+        //install (except resources if tagged, this check is also done for non-worth-keeping cards below, and in _commonCardToInstallChecks)
         var canBeInstalled = true;
 		var installDestination = null; //directly to rig (no host)
         var choices = ChoicesCardInstall(card);
@@ -2488,7 +2490,8 @@ console.log(this.preferred);
     if (this.cardsWorthKeeping.length < 1) {
       for (var i = 0; i < runner.grip.length; i++) {
         var card = runner.grip[i];
-        if (card.cardType !== "event") {
+		//there is a general check here to not install resources if tagged (and in the worthkeeping version above, and in _commonCardToInstallChecks)
+        if (card.cardType !== "event" && (card.cardType !== "resource" || runner.tags == 0)) {
 		  //non-event (i.e. install)
           if (
             optionList.includes("install") &&

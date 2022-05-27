@@ -1759,6 +1759,10 @@ cardSet[31023] = {
 	if (runner.AI._highestPotentialServer() != corp.HQ) return -1; //don't install
     return 0; //do install
   },
+  AIOkToTrash: function() {
+	  //install over this program if running archives is no longer better than running HQ directly
+	  return (!(runner.AI._getCachedCost(corp.archives) < runner.AI._getCachedCost(corp.HQ)));
+  },
 };
 
 cardSet[31024] = {
@@ -1845,7 +1849,7 @@ cardSet[31024] = {
   },
   AIBreachReplacementValue: 1, //priority 1 (yes replace but there are better options)
   AIWorthKeeping: function (installedRunnerCards, spareMU) {
-	  //keep if need money and not wasteful (i.e. there is not already too many installed) and a run into R&D is possible
+	  //keep if need money and not wasteful (i.e. there is not already too many installed)
 	  if (!this.AIWastefulToInstall()) {
 		  if (Credits(runner) < 5) return true;
 	  }
@@ -2453,6 +2457,18 @@ cardSet[31030] = {
 	if (strengthMatches) return this;
 	return null;
   },
+  AIOkToTrash: function() {
+	//install over this program if there is no longer a known ice installed which this matches
+    var installedCorpCards = InstalledCards(corp);
+    for (var i = 0; i < installedCorpCards.length; i++) {
+	  if (PlayerCanLook(runner, installedCorpCards[i])) {
+		  if (CheckCardType(installedCorpCards[i], ["ice"])) {
+			if (this.AIMatchingBreakerInstalled(installedCorpCards[i])) return false; //still useful
+		  }
+	  }
+	}
+	return true; //no matching ice found, trash this
+  },
 };
 
 cardSet[31031] = {
@@ -2680,8 +2696,8 @@ cardSet[31032] = {
 	  var installedCards = InstalledCards(corp);
 	  for (var i=0; i<installedCards.length; i++) {
 		  var iceCard = installedCards[i];
-		  if (CheckCardType(iceCard, ["ice"])) {
-			//only consider unrezzed ice that doesn't already have a matching breaker installed
+		  if (CheckCardType(iceCard, ["ice"]) && PlayerCanLook(runner, iceCard)) {
+			//only consider unrezzed ice that is known (don't cheat) and doesn't already have a matching breaker installed
 			//(could maybe also require that this cause an already-installed breaker to match, but this might be sufficient)
 			if (!iceCard.rezzed || runner.AI._matchingBreakerInstalled(iceCard,[this])) {
 				iceToExclude.push(iceCard);
@@ -2701,6 +2717,16 @@ cardSet[31032] = {
   },
   //acts like an icebreaker but doesn't have that subtype (or can be used on any subtype of ice)
   AISpecialBreaker:true,
+  AIOkToTrash: function() {
+	//install over this program if a matching breaker exists without Egret's help
+	//temporarily disable the subtype modification for this check
+	var storedModifySubTypes = this.modifySubTypes;
+    this.modifySubTypes = { Resolve: function (card) { return {}; }, automatic: true }; //automatically do nothing ;)
+    var ret = runner.AI._matchingBreakerInstalled(this.host,[this]);
+	//restore function before returning
+	this.modifySubTypes = storedModifySubTypes;
+	return ret;
+  },
 };
 
 cardSet[31033] = {
@@ -2831,6 +2857,178 @@ cardSet[31034] = {
 	var cardTC = TrashCost(card);
     if (cardTC < this.credits) return cardTC; //reduction by full trash cost
 	return this.credits; //reduction by however many credits remain
+  },
+};
+
+cardSet[31035] = {
+  title: "Aesop's Pawnshop",
+  imageFile: "31035.png",
+  elo: 1850,
+  player: runner,
+  faction: "Shaper",
+  influence: 2,
+  cardType: "resource",
+  subTypes: ["Connection","Location"],
+  installCost: 1,
+  unique: true,
+  //When your turn begins, you may trash 1 of your other installed cards. If you do, gain 3 credits.
+  runnerTurnBegin: {
+    Enumerate: function () {
+		var installedRunnerCards = InstalledCards(runner);
+		if (installedRunnerCards.length > 0) {
+			if (installedRunnerCards.length > 1 || installedRunnerCards[0] != this) return [{}];
+		}
+		return [];
+    },
+    Resolve: function () {	
+	  //1 of your installed cards
+	  var choices = ChoicesInstalledCards(runner);
+      for (var i=choices.length-1; i>-1; i--) {
+		  if (choices[i].card == this) {
+			  //other
+			  choices.splice(i,1);
+		  }
+	  }
+	  if (choices.length > 0) {
+	    //may
+		var continueChoice = {
+		  id: choices.length,
+		  label: "Continue without trashing",
+		  button: "Continue without trashing",
+		};
+		choices.push(continueChoice);
+        DecisionPhase(
+          runner,
+          choices,
+          function (params) {
+			if (params.card) {
+			  Trash(
+				params.card,
+				false, //cannot be prevented (I mean, I guess you could but you wouldn't gain 3 credits so...)
+				function () {
+				  GainCredits(runner,3);
+				},
+				this
+			  );
+			}
+			else Log("Runner chose not to trash a card for Aesop's Pawnshop");
+          },
+          "Aesop's Pawnshop",
+          "Aesop's Pawnshop",
+          this,
+          "trash"
+        );
+	    //**AI code
+	    if (runner.AI != null) {
+		  var choice = continueChoice;
+		  for (var i=0; i<choices.length-1; i++) {
+			  if (this.AISharedWouldTrash(choices[i].card)) {
+				  choice = choices[i];
+				  break;
+			  }
+		  }
+		  runner.AI.preferred = { title: "Aesop's Pawnshop", option: choice };
+	    }
+	  }
+    },
+    text: "Aesop's Pawnshop",
+  },
+  AISharedWouldTrash: function(card) {
+	//some cards have predefined trash-me rules
+	if (typeof card.AIOkToTrash == 'function') {
+		if (card.AIOkToTrash.call(card)) return true;
+	}
+	//zero-cost cards with a copy in hand are effectively an Easy Mark	
+	var copyInHand = runner.AI._copyOfCardExistsIn(card.title, runner.grip);
+	if (copyInHand) {
+		if (InstallCost(copyInHand) < 1) {
+			if (!card.credits || (card.recurringCredits && card.credits == card.recurringCredits) && !card.virus) return true;
+		}
+	}
+	//some simple per-card rules (these might not be ideal, test and tweak)
+	//Cookbook: no virus programs left in grip or stack (ignores Retrieval/Test Run ideas)
+	if (card.title == "Cookbook") {
+		var gripOrStack = runner.grip.concat(runner.stack);
+		var virusProgramsInGripOrStack = 0;
+		for (var i=0; i<gripOrStack.length; i++) {
+		  if (CheckCardType(gripOrStack[i], ["program"]) && CheckSubType(gripOrStack[i], "Virus")) {
+			  virusProgramsInGripOrStack++;
+			  break;
+		  }
+		}
+ 		if (virusProgramsInGripOrStack < 1) return true;
+	}
+	//Docklands Pass: HQ too constantly to run frequently (unless Sneakdoor installed)
+	else if (card.title == "Docklands Pass") {
+		if (corp.HQ.ice.length > 3) {
+			if (!runner.AI._copyOfCardExistsIn("Sneakdoor Beta", runner.rig.programs)) return true;
+		}
+	}
+	//Red Team: less than 4 credits left
+	else if (card.title == "Red Team") {
+		if (card.credits < 4) return true;
+	}
+	//DZMZ Optimizer: spare MU and less than 3 programs left in stack and grip (ignores Retrieval/Test Run ideas)
+	else if (card.title == "DZMZ Optimizer") {
+		if (runner.AI._spareMemoryUnits(InstalledCards(runner)) > 0) {
+			var gripOrStack = runner.grip.concat(runner.stack);
+			var programsInGripOrStack = 0;
+			for (var i=0; i<gripOrStack.length; i++) {
+			  if (CheckCardType(gripOrStack[i], ["program"])) {
+				  programsInGripOrStack++;
+			  }
+			}
+			if (programsInGripOrStack < 3) return true;
+		}
+	}
+	//Telework Contract: less than 4 credits left
+	else if (card.title == "Telework Contract") {
+		if (card.credits < 4) return true;
+	}
+	//Security Testing: less open servers than these installed
+	else if (card.title == "Security Testing") {
+		var numInstalled = 0;
+		for (var j = 0; j < runner.rig.resources.length; j++) {
+		  if (runner.rig.resources[j].title == "Security Testing") {
+			numInstalled++;
+		  }
+		}
+		if (numInstalled > runner.AI._unprotectedServers().length) return true;
+	}
+	return false; //don't trash this for Aesop's
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if not wasteful (i.e. there is not already an Aesop's installed) and a card is worth trashing with it
+	  if (!this.AIWastefulToInstall()) {
+		//check if cards worth trashing are installed
+		for (var i=0; i<installedRunnerCards.length; i++) {
+			if (this.AISharedWouldTrash(installedRunnerCards[i])) return true;
+		}
+	  }
+	  return false;
+  },
+  AIWastefulToInstall: function() {
+	  for (var j = 0; j < runner.rig.programs.length; j++) {
+		if (runner.rig.programs[j].title == this.title) {
+		  return true; //already one installed
+		}
+	  }
+	  return false;
+  },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//only install if this is last click, and there are valid targets
+	if (runner.clickTracker > 1) return -1; //don't install
+	//check if cards worth trashing are installed
+	var installedRunnerCards = InstalledCards(runner);
+	for (var i=0; i<installedRunnerCards.length; i++) {
+		if (this.AISharedWouldTrash(installedRunnerCards[i])) return 0; //do install
+	}
+    return -1; //don't install
+  },
+  AIEconomyInstall: function() {
+	  return 2; //priority 2 (moderate)
   },
 };
 

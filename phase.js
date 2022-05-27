@@ -1784,6 +1784,7 @@ function DecisionPhase(
       cancelCallback.call(context);
     };
   }
+  if (context) decisionPhase.context = context; //cardrenderer can use this to show the activating card
   ChangePhase(decisionPhase);
   return decisionPhase;
 }
