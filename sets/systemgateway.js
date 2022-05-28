@@ -3708,8 +3708,10 @@ cardSet[30050] = {
   //If you do, end the run.
   //"The Runner approaches the server at step 4 of a run, and it is the final deciding factor for determining the success of a run." (see also run timing in FAQ)
   AIWouldTrigger: function () {
-    //don't trigger if there are no other cards in this server
     var thisServer = GetServer(this);
+	//don't trigger if there is an ambush intalled in server
+	if (corp.AI._isAmbush(thisServer)) return false; //don't trigger
+    //don't trigger if there are no other cards in this server
     var cardsInServer = 0;
     if (typeof thisServer.cards !== "undefined")
       cardsInServer += thisServer.cards.length;

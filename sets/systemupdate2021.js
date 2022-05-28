@@ -3088,6 +3088,51 @@ cardSet[31036] = {
   AIDrawTrigger: 1, //priority 1 (yes trigger but there are better options)
 };
 
+cardSet[31037] = {
+  title: "Dirty Laundry",
+  imageFile: "31037.png",
+  elo: 1865,
+  player: runner,
+  faction: "Neutral",
+  influence: 0,
+  cardType: "event",
+  subTypes: ["Run"],
+  playCost: 2,
+  //Run any server.
+  Enumerate: function () {
+    return ChoicesExistingServers();
+  },
+  runWasSuccessful: false,
+  Resolve: function (params) {
+	this.runWasSuccessful = false;
+    MakeRun(params.server);
+  },
+  runSuccessful: {
+    Resolve: function () {
+      this.runWasSuccessful = true;
+    },
+	automatic:true,
+  },
+  runEnds: {
+    Enumerate: function () {
+      if (this.runWasSuccessful) return [{}];
+      return [];
+    },
+    Resolve: function (params) {
+      GainCredits(runner, 5);
+    },
+  },
+  //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
+  AIRunEventExtraPotential: function(server,potential) {
+	//use Dirty Laundry only if there are no unrezzed ice and no unrezzed cards in root
+	var cardsThisServer = server.ice.concat(server.root);
+	for (var i=0; i<cardsThisServer.length; i++) {
+	  if (!cardsThisServer[i].rezzed) return 0; //no benefit (don't play)
+	}
+	return 0.5; //consistent with 3 credits from Red Team	  
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*

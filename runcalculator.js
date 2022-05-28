@@ -787,17 +787,17 @@ class RunCalculator {
 			  knownCardsInServer.push(server.root[i]);
 			else {
 			  var advancement = Counters(server.root[i], "advancement");
-			  if (advancement > 0) {
-				/* commented this section because the runner was being too cautious
-							//might be Clearinghouse, in which case need to be able to pay trashcost
-							approachCredits += 3;
-							//maybe can pay with Carnivore?
-							var carn = runnerAI._copyOfCardExistsIn('Carnivore',runner.rig.hardware);
-							if (carn)
-							{
-								if (!carn.usedThisTurn) approachCredits -= 3;
-							}
-							*/
+			  if (advancement > 4 && corp.identityCard.faction == "Weyland Consortium") {
+				//might be Clearinghouse, in which case need to be able to pay trashcost
+				approachCredits += 3;
+				//maybe can pay with Carnivore?
+				var carn = runnerAI._copyOfCardExistsIn('Carnivore',runner.rig.hardware);
+				if (carn)
+				{
+					if (!carn.usedThisTurn) approachCredits -= 3;
+				}
+			  }
+			  else if (advancement > 0) {
 				//might be Urtica, in which case might do net damage (no need to trash it)
 				var approachEffect = [];
 				for (var j = 0; j < 2 + advancement; j++) {
