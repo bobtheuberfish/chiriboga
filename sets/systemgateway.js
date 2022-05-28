@@ -2611,6 +2611,9 @@ cardSet[30034] = {
     automatic: true,
     availableWhenInactive: true,
   },
+  AIDrawInstall: function() {
+	  return 1; //priority 1 (yes install but there are better options)
+  },
 };
 cardSet[30035] = {
   title: "Haas-Bioroid: Precision Design",

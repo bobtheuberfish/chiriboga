@@ -3032,6 +3032,62 @@ cardSet[31035] = {
   },
 };
 
+cardSet[31036] = {
+  title: "Professional Contacts",
+  imageFile: "31036.png",
+  elo: 1807,
+  player: runner,
+  faction: "Shaper",
+  influence: 2,
+  cardType: "resource",
+  subTypes: ["Connection"],
+  installCost: 5,
+  //[click]: Gain 1[c] and draw 1 card.
+  abilities: [
+    {
+      text: "Gain 1[c] and draw 1 card",
+      Enumerate: function () {
+        if (!CheckActionClicks(runner, 1)) return [];
+        return [{}];
+      },
+      Resolve: function (params) {
+        SpendClicks(runner, 1);
+        GainCredits(runner, 1);
+		Draw(runner, 1);
+      },
+    },
+  ],
+  AIWouldTrigger: function () {
+    //don't draw wastefully
+	if (runner.AI._currentOverDraw() >= runner.AI._maxOverDraw()) return false;
+    return true;
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if not wasteful (i.e. there is not already one installed)
+	  if (!this.AIWastefulToInstall()) return true;
+	  return false;
+  },
+  AIWastefulToInstall: function() {
+	  for (var j = 0; j < runner.rig.programs.length; j++) {
+		if (runner.rig.programs[j].title == this.title) {
+		  return true; //already one installed
+		}
+	  }
+	  return false;
+  },
+  /*
+  //not really an economy install (big tempo hit...)
+  AIEconomyInstall: function() {
+	  return 1; //priority 1 (yes install but there are better options)
+  },
+  */
+  AIDrawInstall: function() {
+	  return 1; //priority 1 (yes install but there are better options)
+  },
+  AIEconomyTrigger: 1, //priority 1 (yes trigger but there are better options)
+  AIDrawTrigger: 1, //priority 1 (yes trigger but there are better options)
+};
+
 //TODO link (e.g. Reina)
 
 /*

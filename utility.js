@@ -2646,6 +2646,8 @@ function DeckBuild(
 	  //RUNNER deckbuilding
 	  var runnerFaction = identityCard.faction;
 	  var influenceUsed = 0;
+	  var infMult = 1.0;
+	  if (identityCard.title == 'Rielle "Kit" Peddler: Transhuman') infMult = 0.5; //account for lower max inf
 	  //consoles
 	  var consoleCards = [];
 	  if (setIdentifiers.includes('sg')) consoleCards = consoleCards.concat([30003, 30023, 30014]);
@@ -2712,20 +2714,40 @@ function DeckBuild(
 		glowTextures,
 		strengthTextures
 	  ));
-	  //economy
-	  var economyCards = []; //only includes cards that would fairly certainly provide credits (including recurring credits)
-	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30007, 30018, 30020, 30027, 30029, 30030, 30033]);
-	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31010, 31011, 31015, 31024, 31034, 31035]);
+	  //credit economy
+	  var creditEconomyCards = []; //only includes cards that would fairly certainly provide credits (including recurring credits)
+	  if (setIdentifiers.includes('sg')) creditEconomyCards = creditEconomyCards.concat([30007, 30018, 30020, 30027, 30029, 30030, 30033]);
+	  if (setIdentifiers.includes('su21')) creditEconomyCards = creditEconomyCards.concat([31010, 31011, 31015, 31024, 31034, 31035]);
 	  var influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
 	  );
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
-		economyCards,
+		creditEconomyCards,
 		destination,
 		destination.length + RandomRange(9, 11),
-		9 - influenceUsed,
+		infMult*5 - influenceUsed,
+		0,
+		false,
+		cardBack,
+		glowTextures,
+		strengthTextures
+	  ));
+	  //draw economy (or tutors/retrieval)
+	  var drawEconomyCards = [];
+	  if (setIdentifiers.includes('sg')) drawEconomyCards = drawEconomyCards.concat([30002,30011,30021,30034]);
+	  if (setIdentifiers.includes('su21')) drawEconomyCards = drawEconomyCards.concat([31004,31027,31028,31036]);
+	  var influenceUsed = CountInfluence(
+		identityCard,
+		cardsAdded
+	  );
+	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
+		identityCard,
+		drawEconomyCards,
+		destination,
+		destination.length + RandomRange(4, 5),
+		infMult*9 - influenceUsed,
 		0,
 		false,
 		cardBack,
@@ -2740,7 +2762,7 @@ function DeckBuild(
       ]);
 	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([
 	    31003, 31004, 31005, 31006, 31007, 31008, 31009, 31010, 31011, 31012, 31015, 31016, 31017, 31018, 31019, 31020, 31021, 31022, 31023, 31024, 
-		31027, 31028, 31029, 31030, 31031, 31032, 31033, 31034, 31035,
+		31027, 31028, 31029, 31030, 31031, 31032, 31033, 31034, 31035, 31036
 	  ]);
 	  influenceUsed = CountInfluence(
 		identityCard,

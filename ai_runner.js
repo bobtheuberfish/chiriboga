@@ -404,7 +404,6 @@ class RunnerAI {
 
     //teach the AI about cards (in order of priority, best first or better order of play)
     this.economyPlay = ["Sure Gamble", "Creative Commission", "Wildcat Strike"]; //cards which can be played to gain credits
-    this.drawInstall = ["Verbal Plasticity"]; //cards which can be installed to draw cards
 	//cards which can be installed to increase maximum hand size
 	this.maxHandIncreasers = ["T400 Memory Diamond"];
 
@@ -2271,32 +2270,34 @@ console.log(this.preferred);
 			
 		  //a card that could be installed?
 		  if (optionList.includes("install")) {
-			for (var i = 0; i < this.drawInstall.length; i++) {
-			  //if this.drawInstall[i] is found in hand, and can be installed, install it
-			  cardToInstall = this._copyOfCardExistsIn(
-				this.drawInstall[i],
-				runner.grip
-			  );
-			  if (cardToInstall) {
-				if (!this._wastefulToInstall(cardToInstall)) {
-				  this._log("I'd like to install "+cardToInstall.title);
-				  var canBeInstalled = true;
-				  if (!CheckInstall(cardToInstall)) canBeInstalled = false;
-				  //this doesn't check costs
-				  else if (ChoicesCardInstall(cardToInstall).length < 1)
-					canBeInstalled = false; //this checks credits, mu, available hosts, etc.
-				  if (canBeInstalled) {
-					this._log("and I could install it");
-					return this._returnPreference(optionList, "install", {
-					  cardToInstall: cardToInstall,
-					  hostToInstallTo: null,
-					}); //assumes unhosted cards for now
+			//find highest priority draw install card
+			cardToInstall=null;
+			var cardPriority=0;
+			for (var i = 0; i < runner.grip.length; i++) {
+				var thisPriority = 0;
+				if (typeof runner.grip[i].AIDrawInstall == 'function') {
+				  thisPriority = runner.grip[i].AIDrawInstall.call(runner.grip[i]);
+				  if (thisPriority > cardPriority) {
+					if (this._commonCardToInstallChecks(runner.grip[i])) {
+					  var installThis = true; //if no specific rules have been defined then just install it whenever you can
+					  if (typeof(runner.grip[i].AIWouldInstall) == 'function') installThis = runner.grip[i].AIWouldInstall.call(runner.grip[i]);
+					  if (installThis) {					
+						cardToInstall=runner.grip[i];
+						cardPriority=thisPriority;
+					  }
+					}
 				  }
 				}
-			  }
+			}
+			if (cardToInstall) {
+			  this._log("there is a card I would install for draw");
+			  return this._returnPreference(optionList, "install", {
+				cardToInstall: cardToInstall,
+				hostToInstallTo: null,
+			  }); //assumes unhosted cards for now
 			}
 		  }
-
+		  
 		  //or maybe an event card?
 		  if (optionList.includes("play")) {
 			//find highest priority draw card
