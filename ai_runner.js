@@ -967,7 +967,6 @@ class RunnerAI {
 			extraCredits += runEventCardToUse.AIRunEventExtraCredits;
 		}
 		//for now we assume pool credit is used to play the card
-		//TODO take into account Prepaid VoicePAD
 		poolCreditOffset -= runEventCardToUse.playCost;
 		//take into account one less card in grip
 		damageOffset -= 1;
@@ -2101,7 +2100,7 @@ console.log(this.preferred);
 				var ibrCard = runner.grip[i];
 				if (typeof ibrCard.AIInstallBeforeRun == "function") {
 				  if (CheckInstall(ibrCard)) {
-					var ibrPriority = ibrCard.AIInstallBeforeRun.call(ibrCard,this.serverList[0].server,this.serverList[0].potential,runCreditCost,runClickCost);
+					var ibrPriority = ibrCard.AIInstallBeforeRun.call(ibrCard,this.serverList[0].server,this.serverList[0].potential,this.serverList[0].useRunEvent,runCreditCost,runClickCost);
 					if (ibrPriority > brHighestPriority) {
 					  if (!this._wastefulToInstall(ibrCard)) {
 						  if (runCreditCost < AvailableCredits(runner) - InstallCost(ibrCard)) {
@@ -2231,11 +2230,12 @@ console.log(this.preferred);
 	//if not running...
 	this._log("Don't want to run right now");
 
+	var maxOverDraw = this._maxOverDraw();
+	var currentOverDraw = this._currentOverDraw();
+	
 	//is there priority economy to consider?
 	if (!priorityEcon) {
 		//maybe need to draw?
-		var maxOverDraw = this._maxOverDraw();
-		var currentOverDraw = this._currentOverDraw();
 		if (currentOverDraw < maxOverDraw) {
 		  //an ability to trigger?
 		  if (optionList.includes("trigger")) {
@@ -2419,6 +2419,14 @@ console.log(this.preferred);
         }
       }
 	  
+	  //at this point if there is a priority econ card within click-for-credit reach, work towards that
+	  if (priorityEcon && optionList.includes("gain")) {
+		var credDiff = 0;
+		if (CheckCardType(priorityEcon, ["event"])) credDiff = priorityEcon.playCost - AvailableCredits(runner,"playing",priorityEcon);
+		else credDiff = InstallCost(priorityEcon) - AvailableCredits(runner,"installing",priorityEcon);
+		if (credDiff > 0 && credDiff < runner.clickTracker) return optionList.indexOf("gain");
+	  }
+	  
       //or maybe install?
       if (optionList.includes("install")) {
 		//find highest priority econ install card
@@ -2449,43 +2457,46 @@ console.log(this.preferred);
         }
       }
 	}
-    //other cards that may or may not be economy but were considered to be worthwhile
-	this._log("Ok not economy, something else?");
-    for (var i = 0; i < this.cardsWorthKeeping.length; i++) {
-      var card = this.cardsWorthKeeping[i];
-      if (card.cardType == "event" && optionList.includes("play")) {
-        //play
-		var cwkpChoices = FullCheckPlay(card); //returns list of choices or null
-        if (cwkpChoices && !this._wastefulToPlay(card,cwkpChoices)) {
-          this._log("there's a card worth playing");
-          return this._returnPreference(optionList, "play", {
-            cardToPlay: card,
-          });
-        }
-      } else if (optionList.includes("install") && (card.cardType !== "resource" || runner.tags == 0)) {
-        //install (except resources if tagged, this check is also done for non-worth-keeping cards below, and in _commonCardToInstallChecks)
-        var canBeInstalled = true;
-		var installDestination = null; //directly to rig (no host)
-        var choices = ChoicesCardInstall(card);
-        if (!CheckInstall(card)) canBeInstalled = false;
-        //this doesn't check costs
-        else if (choices.length < 1) canBeInstalled = false;
-        //this checks credits, mu, available hosts, etc.
-        else if (typeof card.AIPreferredInstallChoice == "function") {
-		  var apicIndex = card.AIPreferredInstallChoice(choices);
-          if (apicIndex < 0)
-            canBeInstalled = false; //card AI code deemed it unworthy
-		  else installDestination = choices[apicIndex].host;
-        }
-        if (canBeInstalled && !this._wastefulToInstall(card)) {
-          this._log("there's one I could install");
-          return this._returnPreference(optionList, "install", {
-            cardToInstall: card,
-            hostToInstallTo: installDestination,
-          });
-        }
-      }
-    }
+    //other cards that are not for economy but were considered to be worthwhile
+	//only do this if there are too many cards in hand or economy isn't required
+	if (!prioritiseEconomy || currentOverDraw > maxOverDraw) {
+		this._log("Ok not economy, something else?");
+		for (var i = 0; i < this.cardsWorthKeeping.length; i++) {
+		  var card = this.cardsWorthKeeping[i];
+		  if (card.cardType == "event" && optionList.includes("play")) {
+			//play
+			var cwkpChoices = FullCheckPlay(card); //returns list of choices or null
+			if (cwkpChoices && !this._wastefulToPlay(card,cwkpChoices)) {
+			  this._log("there's a card worth playing");
+			  return this._returnPreference(optionList, "play", {
+				cardToPlay: card,
+			  });
+			}
+		  } else if (optionList.includes("install") && (card.cardType !== "resource" || runner.tags == 0)) {
+			//install (except resources if tagged, this check is also done for non-worth-keeping cards below, and in _commonCardToInstallChecks)
+			var canBeInstalled = true;
+			var installDestination = null; //directly to rig (no host)
+			var choices = ChoicesCardInstall(card);
+			if (!CheckInstall(card)) canBeInstalled = false;
+			//this doesn't check costs
+			else if (choices.length < 1) canBeInstalled = false;
+			//this checks credits, mu, available hosts, etc.
+			else if (typeof card.AIPreferredInstallChoice == "function") {
+			  var apicIndex = card.AIPreferredInstallChoice(choices);
+			  if (apicIndex < 0)
+				canBeInstalled = false; //card AI code deemed it unworthy
+			  else installDestination = choices[apicIndex].host;
+			}
+			if (canBeInstalled && !this._wastefulToInstall(card)) {
+			  this._log("there's one I could install");
+			  return this._returnPreference(optionList, "install", {
+				cardToInstall: card,
+				hostToInstallTo: installDestination,
+			  });
+			}
+		  }
+		}
+	}
 
     //more reasons to install and play (defined per card, BUT don't install low priority stuff if there are cards-worth-keeping which we can't afford yet)
     if (this.cardsWorthKeeping.length < 1) {

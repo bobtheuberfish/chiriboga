@@ -676,7 +676,7 @@ cardSet[30008] = {
 	*/
   },
   //install before run if the server is central
-  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
 	  if (typeof server.cards !== "undefined") return 1; //yes
 	  return 0; //no
   },
@@ -724,12 +724,12 @@ cardSet[30009] = {
     },
   },
   //require two clicks spare for run, require virus card in hand with AIInstallBeforeRun > 0, and enough spare credits to still run after installing both
-  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
 	  if (runClickCost < runner.clickTracker - 2) {
 		  for (var i=0; i<runner.grip.length; i++) {
 			  if (CheckSubType(runner.grip[i],"Virus")) {
 				if (typeof runner.grip[i].AIInstallBeforeRun == "function") {
-					var virusIBRPriority = runner.grip[i].AIInstallBeforeRun.call(runner.grip[i],server,potential,runCreditCost,runClickCost);
+					var virusIBRPriority = runner.grip[i].AIInstallBeforeRun.call(runner.grip[i],server,potential,useRunEvent,runCreditCost,runClickCost);
 					if (virusIBRPriority > 0) {
 						if ( runCreditCost < AvailableCredits(runner) - InstallCost(this) - InstallCost(runner.grip[i]) ) {
 							return virusIBRPriority + 1; //yes, at higher priority than that virus card
@@ -1048,7 +1048,7 @@ cardSet[30013] = {
       return 1;
   },
   //install before run if the server is HQ and Docklands is in worthkeeping
-  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
 	if (server == corp.HQ) {
 		if (runner.AI.cardsWorthKeeping.includes(this)) return 1; //yes
 	}
@@ -1505,7 +1505,7 @@ cardSet[30018] = {
     },
   ],
   //install before run if this server is central and hasn't been run this turn
-  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
 	  if (typeof server.cards !== "undefined") {
 		var alreadyRunThisTurn = false;
 		if (server == corp.HQ)
@@ -1935,7 +1935,7 @@ cardSet[30024] = {
     },
   ],
   //install before run if the server is R&D and Conduit is in worthkeeping
-  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
 	if (server == corp.RnD) {
 		if (runner.AI.cardsWorthKeeping.includes(this)) return 1; //yes
 	}

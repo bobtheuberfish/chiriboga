@@ -500,7 +500,7 @@ cardSet[31007] = {
 	}
     return 0; //do install
   },
-  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
 	  //extra costs of install have already been considered, so yes install it
 	  return 1; //yes
   },
@@ -687,7 +687,7 @@ cardSet[31011] = {
     if (doing == "paying trash costs") return true;
     return false;
   },
-  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
 	  //extra costs of install have already been considered, so yes install it
 	  return 1; //yes
   },
@@ -715,7 +715,7 @@ cardSet[31012] = {
 	  return 1; //increase cost by 1
     },
   },
-  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
 	  if (!server) return 0; //no server, no need
 	  //install before run if server has unrezzed ice
 	  var serverHasUnrezzedIce = false;
@@ -1726,7 +1726,7 @@ cardSet[31023] = {
 	  return 0; //don't use
   },
   //install before run if the chosen server is HQ and Sneakdoor is in worthkeeping
-  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
 	if (server == corp.HQ) {
 		if (runner.AI.cardsWorthKeeping.includes(this)) return 1; //yes
 	}
@@ -2848,7 +2848,7 @@ cardSet[31034] = {
     if (doing == "paying trash costs") return true;
     return false;
   },
-  AIInstallBeforeRun: function(server,potential,runCreditCost,runClickCost) {
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
 	  //extra costs of install have already been considered, so yes install it
 	  return 1; //yes
   },
@@ -3008,8 +3008,8 @@ cardSet[31035] = {
 	  return false;
   },
   AIWastefulToInstall: function() {
-	  for (var j = 0; j < runner.rig.programs.length; j++) {
-		if (runner.rig.programs[j].title == this.title) {
+	  for (var j = 0; j < runner.rig.resources.length; j++) {
+		if (runner.rig.resources[j].title == this.title) {
 		  return true; //already one installed
 		}
 	  }
@@ -3068,8 +3068,8 @@ cardSet[31036] = {
 	  return false;
   },
   AIWastefulToInstall: function() {
-	  for (var j = 0; j < runner.rig.programs.length; j++) {
-		if (runner.rig.programs[j].title == this.title) {
+	  for (var j = 0; j < runner.rig.resources.length; j++) {
+		if (runner.rig.resources[j].title == this.title) {
 		  return true; //already one installed
 		}
 	  }
@@ -3130,6 +3130,62 @@ cardSet[31037] = {
 	  if (!cardsThisServer[i].rezzed) return 0; //no benefit (don't play)
 	}
 	return 0.5; //consistent with 3 credits from Red Team	  
+  },
+};
+
+cardSet[31038] = {
+  title: "Prepaid VoicePAD",
+  imageFile: "31038.png",
+  elo: 1674,
+  player: runner,
+  faction: "Neutral",
+  influence: 0,
+  cardType: "hardware",
+  subTypes: ["Gear"],
+  installCost: 2,
+  recurringCredits: 1,
+  credits: 0,
+  //You can spend hosted credits to play events
+  canUseCredits: function (doing, card) {
+	if (!card) return false;
+    if (doing == "playing") {
+		if (CheckCardType(card, ["event"])) return true;
+	}
+    return false;
+  },
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
+	  //only if the run will be initiated with an event card
+	  if (useRunEvent) {
+		  //extra costs of install have already been considered, so yes install it
+		  return 1; //yes
+	  }
+	  return 0; //no
+  },
+  AIEconomyInstall: function() {
+	  //more event cards means more value
+	  //priority is between 0 (don't install right now) and 3 (probably the best option)
+	  //in this case we'll limit to 2 (moderate) because it doesn't provide burst econ
+	  var eventCardsInGripWithPlayCost = 0;
+	  for (var i=0; i<runner.grip.length; i++) {
+		if (CheckCardType(runner.grip[i], ["event"])) {
+			if (runner.grip[i].playCost > 0) eventCardsInGripWithPlayCost++;
+		}
+	  }
+	  return Math.min(eventCardsInGripWithPlayCost,2);
+  },
+  AIRunPoolCreditOffset: function(server,runEventCardToUse) {
+	  if (runEventCardToUse && runEventCardToUse.playCost > 0) return this.credits; //bonus credits
+	  return 0; //no bonus credit
+  },
+  AIWastefulToInstall: function() {
+	  var numInstalledAlready = 0;
+	  for (var j = 0; j < runner.rig.hardware.length; j++) {
+		if (runner.rig.hardware[j].title == this.title) {
+		  numInstalledAlready++;
+		}
+	  }
+	  if (numInstalledAlready > 1) return true; //almost all event cards have play cost of 2 credits or less
+	  return false;
   },
 };
 

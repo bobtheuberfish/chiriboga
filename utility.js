@@ -774,6 +774,7 @@ function PlayerWin(player, msgstr) {
     requireHumanInput: true,
   };
   winPhase.Enumerate["play again"] = function () {
+	if (debugging && runner.AI && corp.AI) alert("Game completed");
     return [{}];
   };
   winPhase.Resolve["play again"] = function () {
@@ -2717,7 +2718,7 @@ function DeckBuild(
 	  //credit economy
 	  var creditEconomyCards = []; //only includes cards that would fairly certainly provide credits (including recurring credits)
 	  if (setIdentifiers.includes('sg')) creditEconomyCards = creditEconomyCards.concat([30007, 30018, 30020, 30027, 30029, 30030, 30033]);
-	  if (setIdentifiers.includes('su21')) creditEconomyCards = creditEconomyCards.concat([31010, 31011, 31015, 31024, 31034, 31035, 31037]);
+	  if (setIdentifiers.includes('su21')) creditEconomyCards = creditEconomyCards.concat([31010, 31011, 31015, 31024, 31034, 31035, 31037, 31038]);
 	  var influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
@@ -2762,7 +2763,7 @@ function DeckBuild(
       ]);
 	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([
 	    31003, 31004, 31005, 31006, 31007, 31008, 31009, 31010, 31011, 31012, 31015, 31016, 31017, 31018, 31019, 31020, 31021, 31022, 31023, 31024, 
-		31027, 31028, 31029, 31030, 31031, 31032, 31033, 31034, 31035, 31036, 31037,
+		31027, 31028, 31029, 31030, 31031, 31032, 31033, 31034, 31035, 31036, 31037, 31038
 	  ]);
 	  influenceUsed = CountInfluence(
 		identityCard,
