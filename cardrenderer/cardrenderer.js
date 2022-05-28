@@ -522,6 +522,7 @@ var CardRenderer = {
       this.hover = false;
       this.availability = 0;
       this.UpdateGlow = function () {
+		this.glowSprite.alpha=1;
         this.glowSprite.visible = false;
         this.glowSprite.scale = this.sprite.scale;
         this.availability = GetAvailability(this);
@@ -554,7 +555,12 @@ var CardRenderer = {
             if (pixi_draggingData !== null) this.glowSprite.visible = false;
             else this.glowSprite.tint = parseInt("FFFFFF", 16); //white
           }
-        } else {
+        } else if (currentPhase && currentPhase.context == this.card) {
+			//indicate that an ability on this card is activating
+			this.glowSprite.alpha=0.4;
+			this.glowSprite.visible = true;
+			this.glowSprite.tint = parseInt("D800FF", 16); //purple
+		} else {
           if (pixi_draggingData !== null || OptionsAreOnlyUniqueServers()) {
             //i.e. something is being dragged or a server selection is being made
             var server = null;
