@@ -826,8 +826,8 @@ phases.corpActionMain = {
     draw: function () {
       SetHistoryThumbnail("Corp_back.png", "Draw");
       BasicActionDraw(corp);
-	  //nextPhase will be undefined if the Corp lost by attempting to draw from empty R&D
-      if (typeof nextPhase != 'undefined') IncrementPhase();
+	  //next phase will be undefined if the Corp lost by attempting to draw from empty R&D
+      if (typeof currentPhase.next != 'undefined') IncrementPhase();
     },
     gain: function () {
       SetHistoryThumbnail("credit.png", "Gain");

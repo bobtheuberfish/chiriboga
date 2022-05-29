@@ -1282,7 +1282,7 @@ function Setup() {
 }
 
 function StartGame() {
-  IncrementPhase(); //move to first phase
+  if (!currentPhase) IncrementPhase(); //move to first phase
   if (!skipShuffleAndDraw) {
     
 	TriggeredResponsePhase(runner, "beforeStartingHand", [], function() {
