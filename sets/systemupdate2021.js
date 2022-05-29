@@ -712,7 +712,10 @@ cardSet[31012] = {
   modifyRezCost: {
 	//The rez cost of each piece of ice is increased by 1
     Resolve: function (card) {
-	  return 1; //increase cost by 1
+	  if (CheckCardType(card, ["ice"])) {
+	    return 1; //increase cost by 1
+	  }
+	  return 0; //don't increase rez cost
     },
   },
   AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
@@ -3185,6 +3188,57 @@ cardSet[31038] = {
 		}
 	  }
 	  if (numInstalledAlready > 1) return true; //almost all event cards have play cost of 2 credits or less
+	  return false;
+  },
+};
+
+cardSet[31039] = {
+  title: "Earthrise Hotel",
+  imageFile: "31039.png",
+  elo: 1849,
+  player: runner,
+  faction: "Neutral",
+  influence: 0,
+  cardType: "resource",
+  subTypes: ["Location","Ritzy"],
+  installCost: 4,
+  unique: true,
+  //When you install this resource, load 3 power counters onto it.
+  cardInstalled: {
+    Resolve: function (card) {
+      if (card == this) AddCounters(this, "power", 3);
+    },
+  },
+  //When it is empty, trash it.
+  anyChange: {
+	Resolve: function () {
+	  if (!CheckCounters(this, "power", 1)) Trash(this);
+	},
+  },
+  //When your turn begins 
+  runnerTurnBegin: {
+    Resolve: function () {
+		RemoveCounters(this, "power", 1);
+		Draw(runner, 2);
+    },
+  },
+  /*
+  //not really a draw install (cards aren't drawn till next turn...)
+  AIDrawInstall: function() {
+	  return 1; //priority 1 (yes install but there are better options)
+  },
+  */
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if not wasteful (i.e. there is not already one installed)
+	  if (!this.AIWastefulToInstall()) return true;
+	  return false;
+  },
+  AIWastefulToInstall: function() {
+	  for (var j = 0; j < runner.rig.resources.length; j++) {
+		if (runner.rig.resources[j].title == this.title) {
+		  return true; //already one installed
+		}
+	  }
 	  return false;
   },
 };

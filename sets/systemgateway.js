@@ -4065,7 +4065,7 @@ cardSet[30053] = {
     if (CheckActionClicks(corp, 1)) return true; //might want to rez for the extra card draw
 	else if (corp.AI != null) { //so might the AI
 		if (typeof(this.AITurnsInstalled) !== 'undefined') {
-			if ( CheckClicks(corp, 1) && (this.AITurnsInstalled > 1) ) return true;
+			if ( CheckClicks(1, corp) && (this.AITurnsInstalled > 1) ) return true;
 		}
 	}
     return false;
@@ -4989,7 +4989,7 @@ cardSet[30071] = {
   ],
   RezUsability: function () {
     //only rez if there will be clicks to use it
-    if (CheckClicks(corp, 1)) return true;
+    if (CheckClicks(1, corp)) return true;
     return false;
   },
   //**AI code for installing (return -1 to not install, index in emptyProtectedRemotes to install in a specific server, or emptyProtectedRemotes.length to install in a new server)
