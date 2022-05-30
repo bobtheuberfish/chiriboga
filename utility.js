@@ -2783,6 +2783,7 @@ function DeckBuild(
 	  ));
   } else {
 	  //CORP deckbuilding
+	  var desiredDeckSize = identityCard.deckSize + 4;
 	  
 	  //agendas
 	  var agendaCards = [];
@@ -2792,7 +2793,7 @@ function DeckBuild(
 		identityCard,
 		agendaCards,
 		destination,
-		44, //TODO use deckSize (but build for least agenda density e.g. 44 for 40)
+		desiredDeckSize,
 		cardBack,
 		glowTextures,
 		strengthTextures
@@ -2839,17 +2840,20 @@ function DeckBuild(
 		identityCard,
 		cardsAdded
 	  );
-	  //other cards
+	  //other cards (this currently includes extras of all the previous non-agenda cards too)
 	  var otherCards = [];
-	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30057, 30058, 30061, 30065, 30066]);
+	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([
+	    30037, 30038, 30039, 30040, 30041, 30042, 30045, 30046, 30047, 30048, 30049, 30050, 30053, 30054, 30055, 30056, 30057, 30058, 30061, 30062,
+		30063, 30064, 30065, 30066, 30071, 30072, 30073, 30074, 30075,
+	  ]);
 	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,
 		destination,
-		44,
-		15 - influenceUsed,
-		44,
+		desiredDeckSize,
+		identityCard.influenceLimit - influenceUsed,
+		desiredDeckSize,
 		true,
 		cardBack,
 		glowTextures,

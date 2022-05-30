@@ -226,7 +226,11 @@
 					.normalize("NFD")
 					.replace(/[\u0300-\u036f]/g, "")
 					.toLowerCase();
-				  if (setCardTitle === soughtCardTitle) return i;
+				  if (setCardTitle.length >= soughtCardTitle.length) {
+					if (setCardTitle.substring(0,soughtCardTitle.length) === soughtCardTitle) {
+						return i;
+					}
+				  }
 				}
 			  }
 			  return -1;
@@ -262,7 +266,7 @@
 				  var id = GetCardIdFromTitle(cardTitle);
 				  if (id > -1) {
 					if (cardSet[id].player == deckPlayer) {
-					  $("#contentcontainer").append(
+					  $("#cardcontainer").append(
 						'<div id="cg-' +
 						  uid++ +
 						  '" class="cardgroup" style="float:left;" data-id="' +
@@ -291,7 +295,7 @@
 							'" style="margin-left: -120px; transform:rotate(' +
 							(Math.random() * 10 - 5) +
 							"deg);";
-						$("#contentcontainer")
+						$("#cardcontainer")
 						  .children()
 						  .last()
 						  .append(
@@ -299,7 +303,7 @@
 						  );
 					  }
 					  Math.seedrandom(storedRandomness); //restore unpredictable randomness
-					  $("#contentcontainer").children().last().mousedown(mouseDownCallback);
+					  $("#cardcontainer").children().last().mousedown(mouseDownCallback);
 					  outputLine++;
 					} else {
 					  if (deckPlayer == runner)
@@ -334,7 +338,7 @@
 				else
 				  validityOutput += totalCards + " card (" + totalInfluence + " influence)";
 				if (deckPlayer == corp) {
-				  var agendaMin = 2 * Math.floor(totalCards / 5) + 2;
+				  var agendaMin = 2 * Math.floor(Math.max(totalCards,cardSet[json.identity].deckSize) / 5) + 2;
 				  var agendaMax = agendaMin + 1;
 				  agpstylestr = "";
 				  if (totalAgendaPoints < agendaMin || totalAgendaPoints > agendaMax)
@@ -377,6 +381,8 @@
 			  background:#354149;
 			  background-image: url('images/bg.jpg');
 			  background-size:cover;
+			  padding:0px;
+			  margin:0px;
 			}
 			
 			.button {
@@ -386,19 +392,37 @@
 			.cardgroup {
 				cursor:pointer;
 			}
+			
+			.leftrow {
+				padding-left:30px;
+			}
+			
+			.toprow {
+				padding-top:30px;
+			}
 		</style>
 	</head>
 
 
 	<body onload="Init();">
 		<div id="contentcontainer">
-			<div id="dataentry" style="width:440px; float:left; padding:30px;">
-				<select id="identityselect"></select>
-				<img id="identity" src="images/glow_outline.png">
-				<textarea id="deck" spellcheck="false" cols="30"></textarea><br/>
-				<div id="output"></div><br/>
-				<button id="exittomenu" onclick="window.location.href='index.html';" class="button">Exit to main menu</button>
-				<button id="launch" class="button" onclick="window.location.href=$(this).prop('href');">Launch</a>
+			<div id="dataentry" style="width:400px; float:left; max-height: 100vh; overflow:auto;">
+				<div class="leftrow toprow">
+					<select id="identityselect" style="max-width: 340px;"></select>
+					<img id="identity" src="images/glow_outline.png">
+				</div>
+				<div class="leftrow">
+					<button id="exittomenu" onclick="window.location.href='index.html';" class="button">Exit to main menu</button>
+					<button id="launch" class="button" onclick="window.location.href=$(this).prop('href');">Launch</button>
+				</div>
+				<div id="output" class="leftrow toprow">
+				</div>
+				<div class="leftrow">
+					<textarea id="deck" spellcheck="false" cols="30" style="max-width:340px; min-width:340px;"></textarea><br/>
+				</div>
+				<br/>
+			</div>
+			<div id="cardcontainer" style="max-height: 100vh; overflow:auto;">
 			</div>
 		</div>
 	</body>

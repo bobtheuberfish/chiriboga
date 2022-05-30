@@ -3243,6 +3243,93 @@ cardSet[31039] = {
   },
 };
 
+cardSet[31040] = {
+  title: "Haas-Bioroid: Architects of Tomorrow",
+  imageFile: "31040.png",
+  elo: 1518,
+  player: corp,
+  faction: "Haas-Bioroid",
+  cardType: "identity",
+  deckSize: 45,
+  influenceLimit: 12,
+  subTypes: ["Megacorp"],
+  //The first time each turn the Runner passes a rezzed piece of bioroid ice, you may rez 1 bioroid card, paying 4 credits less.
+  usedThisTurn: false,
+  runnerTurnBegin: {
+    Resolve: function () {
+      this.usedThisTurn = false;
+    },
+    automatic: true,
+  },
+  corpTurnBegin: {
+    Resolve: function () {
+      this.usedThisTurn = false;
+    },
+    automatic: true,
+  },
+  passesIce: {
+	Enumerate: function() {
+		if (this.usedThisTurn) return [];
+		var passedIce = attackedServer.ice[approachIce];
+		if (passedIce.rezzed) {
+			if (CheckSubType(passedIce, "Bioroid")) {
+			  var choices = ChoicesInstalledCards(corp, function (card) {
+			    //any affordable (with discount) rezzable Bioroid cards
+			    if (CheckSubType(card, "Bioroid")) {	
+				  if (CheckRez(card, ["ice", "asset", "upgrade"])) {
+					return CheckCredits(RezCost(card)-4, corp, "rezzing", card);				
+				  }
+			    }
+				return false; //i.e. not an option
+			  });
+			  //for now, corp AI implementation is to always use this ability (unless super rich) but choose target at random
+			  //except if one of the targets is inner to the passed ice and its rez could otherwise not be afforded
+			  if (!corp.AI || corp.creditPool > 25) {
+				  //include option to continue
+				  var continueChoice = { card: null, label: "Continue without rezzing a bioroid", button: "Continue without rezzing a bioroid" };
+				  if (corp.AI) return [continueChoice]; //rich enough to keep the surprise (25 is arbitrary, test and tweak)
+				  choices = [continueChoice].concat(choices);
+			  }
+			  else {
+				var maxSpend = 0;
+				for (var i=0; i<choices.length; i++) {
+				  var thisRC = RezCost(choices[i].card)-4;
+				  if (thisRC > maxSpend) maxSpend = thisRC;
+				}
+				for (var i=0; i<choices.length; i++) {
+				  var iceCard = choices[i].card;
+				  var iceCardServer = GetServer(iceCard);
+				  if (iceCardServer == attackedServer) {
+					if (iceCardServer.ice.indexOf(iceCard) > -1 && iceCardServer.ice.indexOf(iceCard) < approachIce && !CheckCredits(RezCost(iceCard)+maxSpend, corp, "rezzing", iceCard)) {
+						corp.AI._log("I know this one");
+						return [choices[i]];
+					}
+				  }
+				}
+			  }
+			  return choices;
+			}
+		}
+		return [];
+	},
+	Resolve: function (params) {
+	  this.usedThisTurn = true;
+	  if (params.card) {
+        SpendCredits(
+          corp,
+          RezCost(params.card)-4,
+          "rezzing",
+          params.card,
+          function () {
+            Rez(params.card);
+          },
+          this
+        );
+	  }
+	},
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*

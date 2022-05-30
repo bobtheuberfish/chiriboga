@@ -78,7 +78,9 @@ function Rez(card) {
   card.renderer.FaceUp(); //in case Render is not forthcoming
   if (runner.AI != null) {
     runner.AI.LoseInfoAboutHQCards(card);
-    if (GetApproachEncounterIce() == card) {
+	//if this ice is inner compared to existing run position, recalculate run
+	var cardServer = GetServer(card);
+    if (GetApproachEncounterIce() == card || (attackedServer == cardServer && cardServer.ice.indexOf(card) > -1 && cardServer.ice.indexOf(card) < approachIce) ) {
       //update run calculation now that the ice is known
       //ideally complete run
       if (!runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, 0, null, approachIce)) //null means no bonus breaker

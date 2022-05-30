@@ -107,7 +107,7 @@ tutorial[5] = {
 		var rootpositiony = corp.remoteServers[0].root[0].renderer.destinationPosition.y;
 		var notrashmsg = "In this case, we can easily pay the install cost of adding more ice to the server.\n\nChoose Finish Install (trash no more cards).";
         if (corp.remoteServers[0].root.length == 1 || (corp.HQ.cards.length == 1 && corp.HQ.cards[0].title == "Tithe") ) {
-			notrashmsg = "A remote server can contain any number of upgrades in addition to an asset or agend, so there is no need to trash Manegarm Skunkworks.\n\nChoose Finish Install (trash no more cards).";
+			notrashmsg = "A remote server can contain any number of upgrades in addition to an asset or agenda, so there is no need to trash Manegarm Skunkworks.\n\nChoose Finish Install (trash no more cards).";
 			TutorialMessage("Servers can contain any number of upgrades in their root.\n\nWhen installing cards into the root of a server, the Corp may choose to trash any cards already there (by dragging to Archives).");
 		}
 		else {
