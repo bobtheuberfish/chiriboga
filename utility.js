@@ -169,6 +169,7 @@ function DownloadCapturedLog() {
   var corpRemotes = JSON.stringify(corpRemotesEach,true); //the true isn't needed here but will keep it for visual consistency
   var corpScored = JSON.stringify(corp.scoreArea,true);
   extraOutput += "CorpTestField("+corp.identityCard.setNumber+", "+[corpArchivesCards,corpRndCards,corpHQCards,corpArchivesInstalled,corpRnDInstalled,corpHQInstalled,corpRemotes,corpScored].join(', ')+", cardBackTexturesCorp,glowTextures,strengthTextures);\n";
+  extraOutput += ReplicationCode(corp.scoreArea,'corp.scoreArea');
   extraOutput += ReplicationCode(runner.rig.resources,'runner.rig.resources');
   extraOutput += ReplicationCode(runner.rig.hardware,'runner.rig.hardware');
   extraOutput += ReplicationCode(runner.rig.programs,'runner.rig.programs');
@@ -2788,7 +2789,7 @@ function DeckBuild(
 	  //agendas
 	  var agendaCards = [];
 	  if (setIdentifiers.includes('sg')) agendaCards = agendaCards.concat([30060, 30044, 30036, 30067, 30068, 30069, 30070, 30052]);
-	  if (setIdentifiers.includes('su21')) agendaCards = agendaCards.concat([]);
+	  if (setIdentifiers.includes('su21')) agendaCards = agendaCards.concat([31041]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomAgendas(
 		identityCard,
 		agendaCards,

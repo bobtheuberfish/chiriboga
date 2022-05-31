@@ -3330,6 +3330,88 @@ cardSet[31040] = {
   },
 };
 
+cardSet[31041] = {
+  title: "Project Vitruvius",
+  imageFile: "31041.png",
+  elo: 1865,
+  player: corp,
+  faction: "Haas-Bioroid",
+  cardType: "agenda",
+  subTypes: ["Research"],
+  agendaPoints: 2,
+  advancementRequirement: 3,
+  advancement: 0,
+  //When you score this agenda, place 1 agenda counter on it for each hosted advancement counter past 3.
+  scored: {
+    Enumerate: function () {
+      if (intended.score == this) return [{}];
+      return [];
+    },
+    Resolve: function (params) {
+      var advancementOverThree = this.advancement - 3;
+	  if (advancementOverThree > 0) AddCounters(this, "agenda", advancementOverThree);
+    },
+  },
+  //Hosted agenda counter: Add 1 card from Archives to HQ.
+  abilities: [
+    {
+      text: "Add 1 card from Archives to HQ.",
+      Enumerate: function () {
+        if (CheckCounters(this, "agenda", 1)) {
+			//this ability can be used pretty much any time
+			//but for usability we'll restrict it to main phase, approaching HQ, and approaching archives
+			var usabilityUse = false;
+			var choices = ChoicesArrayCards(corp.archives.cards);
+			if (currentPhase.identifier == "Run 4.5" && approachIce < 1) {      
+			  if (attackedServer == corp.archives) {
+				  usabilityUse = true;
+				  //**AI code
+				  if (corp.AI != null) {
+					  var bestRecur = corp.AI._bestRecurToHQOption(choices,corp.archives,false); //archives is under threat, can save for later
+					  if (bestRecur) choices = [bestRecur];
+					  else choices = []; //don't use the ability yet
+				  }
+			  }
+			  if (attackedServer == corp.HQ) {
+				  usabilityUse = true;
+				  //**AI code
+				  if (corp.AI != null) {
+					  var bestRecur = corp.AI._bestRecurToHQOption(choices,corp.HQ,false); //HQ is under threat, can save for later
+					  if (bestRecur) choices = [bestRecur];
+					  else choices = []; //don't use the ability yet
+				  }
+			  }
+			}
+			if (CheckActionClicks(corp, 1)) {
+				usabilityUse = true;
+				//**AI code
+				if (corp.AI != null) {
+					var bestRecur = corp.AI._bestRecurToHQOption(choices,null,false); //no server under threat, can save for later
+					if (bestRecur) choices = [bestRecur];
+					else choices = []; //don't use the ability yet
+				}
+			}
+			if (usabilityUse) return choices;
+		}
+        return [];
+      },
+      Resolve: function (params) {
+		if (params.card) {
+			RemoveCounters(this, "agenda", 1);
+			Log(GetTitle(params.card,true)+" added from Archives to HQ");
+			MoveCard(params.card, corp.HQ.cards);
+        }
+      },
+    },
+  ],
+  AIOverAdvance: true, //load 'em up
+  AIAdvancementLimit: function() {
+	var maxThisTurn = Math.min(corp.AI._clicksLeft(), Credits(corp))+this.advancement;  
+	return Math.max(3,maxThisTurn);
+  },
+  AITriggerWhenCan: true,
+};
+
 //TODO link (e.g. Reina)
 
 /*

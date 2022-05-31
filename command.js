@@ -373,7 +373,30 @@ function ResolveClick(input) {
 			  else if (typeof relevantOptions[j].label != 'undefined') relevantOptions[j].button = relevantOptions[j].label;
 			  else relevantOptions[j].button = "unlabelled";
 		  }
-		  validOptions = relevantOptions;		  
+		  //if labels are the same, label by command instead (if possible)
+		  if (relevantOptions.length > 1) {
+			  var labelsDiffer = false;
+			  var commandsDefined = true;
+			  for (var j=1; j<relevantOptions.length; j++) {
+				  if (relevantOptions[j].button != relevantOptions[0].button) {
+					  labelsDiffer = true;
+				  }
+				  if (typeof relevantOptions[j].command == 'undefined') {
+					  commandsDefined = false;
+				  }
+			  }
+			  //this will also recreate phaseOptions with only these options
+			  if (!labelsDiffer && commandsDefined) {
+				phaseOptions = [];
+				for (var j=0; j<relevantOptions.length; j++) {
+					var cmd = relevantOptions[j].command;
+					relevantOptions[j].button = cmd.charAt(0).toUpperCase() + cmd.slice(1);
+					if (typeof phaseOptions[cmd] == 'undefined') phaseOptions[cmd]=[];
+					phaseOptions[cmd].push(relevantOptions[j]);
+				}
+			  }
+		  }
+		  validOptions = relevantOptions;
 		  MakeChoice();
 		  return true; //returning true prevents any remaining code in renderer.OnClick() from firing
 		  /*
@@ -526,6 +549,10 @@ function EnumeratePhase() {
           if (typeof currentPhase.Enumerate[id] === "function") {
             LogDebug("Enumerating " + id);
             phaseOptions[id] = currentPhase.Enumerate[id]();
+			//label with command in case we need to distinguish later
+			for (var j=0; j<phaseOptions[id].length; j++) {
+				phaseOptions[id][j].command=id;
+			}
           }
         }
 	  }

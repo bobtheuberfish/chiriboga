@@ -264,6 +264,42 @@ class CorpAI {
     return 0; //just arbitrary
   }
 
+  _bestRecurToHQOption(optionList,serverUnderThreat,useNowIfPossible=false) {
+	  if (optionList.length < 1) return null;
+	  var ret = null;
+	  if (typeof serverUnderThreat == 'undefined') serverUnderThreat = null; //no server under threat
+	  //if archives is under threat, only recur agendas (rank by highest points)
+	  if (serverUnderThreat == corp.archives) {
+		var hap = 0;
+		for (var i=0; i<optionList.length; i++) {
+			if (optionList[i].card) {
+				if (optionList[i].card.agendaPoints) {
+					if (optionList[i].card.agendaPoints > hap) {
+						hap = optionList[i].card.agendaPoints;
+						ret = optionList[i];
+					}
+				}
+			}
+		}
+		return ret;
+	  }
+	  //if HQ is under threat and contains agendas, seek to pad with non agenda cards
+	  if (serverUnderThreat == corp.HQ && this._agendasInHand() > 0) useNowIfPossible = true;
+	  var faai = this._fullyAdvanceableAgendaInstalled(corp.HQ.cards.concat(corp.archives.cards));
+	  //look for fast advance cards (if could use to finish an agenda using cards from both HQ and archives)
+	  if (useNowIfPossible || this._fullyAdvanceableAgendaInstalled(corp.HQ.cards.concat(corp.archives.cards))) {
+		  for (var i=0; i<optionList.length; i++) {
+			if (optionList[i].card) {
+			  if (optionList[i].card.AIFastAdvance) return optionList[i];
+			}
+		  }
+	  }
+	  //save the ability for later, if possible
+	  if (!useNowIfPossible) return null;
+	  //for now it's just arbitrary but could potentially add logic here
+	  return optionList[0];
+  }
+
   _agendaPointsInServer(
     server //returns int
   ) {
@@ -292,6 +328,14 @@ class CorpAI {
       }
     }
     return ret;
+  }
+  
+  _agendasInRemoteServers() {
+	  var ret = 0;
+	  for (var i=0; i<corp.remoteServers.length; i++) {
+		  ret += this._agendasInServer(corp.remoteServers[i]);
+	  }
+	  return ret;
   }
   
   _isHVT(card) { //agendas, ambushes, hostiles. 
@@ -1544,6 +1588,12 @@ class CorpAI {
   Phase_Score(optionList) {
     var cardToScore =
       phaseTemplates.corpScorableResponse.Enumerate.score()[0].card; //just use the first available score option (there's unlikely to be more than one)
+	if (cardToScore.AIOverAdvance) {
+		if (typeof cardToScore.AIAdvancementLimit == 'function') {
+			var advLim = cardToScore.AIAdvancementLimit.call(cardToScore);
+			if (cardToScore.advancement < advLim) return -1; //don't score yet
+		}
+	}
     var serverToScoreIn = GetServer(cardToScore);
     //are there things we could rez to benefit?
     if (optionList.indexOf("rez") > -1) {
@@ -1587,17 +1637,18 @@ class CorpAI {
     });
   }
 
-  _potentialAdvancement(card,thisTurn=true) {
+  _potentialAdvancement(card,thisTurn=true,fastAdvanceArray) {
+	  if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards; //source of fast advance cards
 	  var ret = 0;
 	  //basic advance
 	  if (thisTurn) ret += Math.min(this._clicksLeft(), Credits(corp));
 	  else ret += Credits(corp);
 	  //check if any Seamless Launch in hand
-	  var slih = this._copyOfCardExistsIn("Seamless Launch",corp.HQ.cards);
+	  var slih = this._copyOfCardExistsIn("Seamless Launch",fastAdvanceArray);
 	  if (slih) {
 		  if (!thisTurn || !slih.cardsInstalledThisTurn.includes(card)) {
 			//plus one for each Seamless Launch if it can be used
-			ret += this._copiesOfCardIn("Seamless Launch",corp.HQ.cards);
+			ret += this._copiesOfCardIn("Seamless Launch",fastAdvanceArray);
 		  }
 	  }
 	  return ret;
@@ -1607,11 +1658,20 @@ class CorpAI {
 	  return AdvancementRequirement(card) - Counters(card,"advancement");
   }
 
-  _isFullyAdvanceableAgenda(card) { //can be finished and scored this turn
+  _isFullyAdvanceableAgenda(card,fastAdvanceArray) { //can be finished and scored this turn
+    if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards; //source of fast advance cards
 	if (!CheckCardType(card, ["agenda"])) return false;
 	if (!CheckScore(card,true)) return false; //the true means ignore advancement requirement
-	var canFullyAdvance = this._potentialAdvancement(card,true) >= this._advancementRequired(card);
+	var canFullyAdvance = this._potentialAdvancement(card,true,fastAdvanceArray) >= this._advancementRequired(card);
 	return canFullyAdvance;
+  }
+  
+  _fullyAdvanceableAgendaInstalled(fastAdvanceArray) {
+	var installedCards = InstalledCards(corp);
+	for (var i=0; i<installedCards.length; i++) {
+		if (this._isFullyAdvanceableAgenda(installedCards[i],fastAdvanceArray)) return true;
+	}
+	return false;	  
   }
 
   //returns true if the card should be played
@@ -1673,10 +1733,23 @@ class CorpAI {
   Phase_Main(optionList) {
     //for debugging, list server protection including archives
 	this._serverToProtect(false,true);
-	
+
 	var cardToPlay = null; //used for checks
 
 	var sufficientEconomy = this._sufficientEconomy();
+
+	//check for priority triggers
+	if (optionList.includes("trigger")) {
+	  var triggerables = ChoicesTriggerableAbilities(corp);
+	  for (var i = 0; i < triggerables.length; i++) {
+		if (triggerables[i].card.AITriggerWhenCan) {
+		  this._log("there is an active card I would use ability of");
+		  return this._returnPreference(optionList, "trigger", {
+			cardToTrigger: triggerables.card,
+		  });
+		}
+	  }
+	}
 
 	//check for an almost-done agenda, if so prioritise it for advancing
 	var almostDoneAgenda = null;
@@ -1716,31 +1789,6 @@ class CorpAI {
 				return this._returnPreference(optionList, "play", {
 				  cardToPlay: cardToPlay,
 				});
-			}
-		  }
-		}
-		//or trigger right away
-		if (optionList.includes("trigger")) {
-		  var useWhenCanCards = [
-			"Spin Doctor", //it has been rezzed
-		  ];
-		  for (var i = 0; i < useWhenCanCards.length; i++) {
-			var arraysToCheck = [];
-			for (var j=0; j<corp.remoteServers.length; j++) {
-				arraysToCheck = arraysToCheck.concat(corp.remoteServers[j].root);
-			}
-			var cardToTrigger = this._copyOfCardExistsIn(
-			  useWhenCanCards[i],
-			  arraysToCheck
-			);
-			if (cardToTrigger) {
-			  this._log("there is a card with a window of opportunity");
-			  if (cardToTrigger.rezzed) { //for now we will assume it can be triggered
-				this._log("I could trigger it");
-				return this._returnPreference(optionList, "trigger", {
-				  cardToTrigger: cardToTrigger,
-				});
-			  }
 			}
 		  }
 		}
@@ -1892,7 +1940,7 @@ class CorpAI {
       this._log("I am feeling poor");
       return this._bestMainPhaseEconomyOption(optionList);
     }
-
+	
     //even with some wealth, prioritise economy (unless we are super rich, hence the false for 'tight')
     if (!this._sufficientEconomy(false)) {
       var bestEconomyOption = this._bestMainPhaseEconomyOption(optionList);
@@ -2045,6 +2093,7 @@ class CorpAI {
     //call situational subroutine
     if (ret < 0) {
       if (optionList.indexOf("score") > -1) ret = this.Phase_Score(optionList);
+	  if (ret > -1) return ret; //i.e. use score response if requested
       else if (currentPhase.identifier == "Run 4.1")
         ret = optionList.indexOf("success");
       //run success, don't rez anything at the moment

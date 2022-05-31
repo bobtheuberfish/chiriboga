@@ -768,6 +768,7 @@ phases.corpActionMain = {
               "undefined"
             ) {
               if (
+			    !possibleAdvance[i].card.AIOverAdvance &&
                 Counters(possibleAdvance[i].card, "advancement") >=
                 AdvancementRequirement(possibleAdvance[i].card)
               )

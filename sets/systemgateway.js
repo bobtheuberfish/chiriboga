@@ -2636,6 +2636,11 @@ cardSet[30035] = {
   scored: {
     Enumerate: function () {
       var ret = ChoicesArrayCards(corp.archives.cards);
+	  //**AI code
+	  if (corp.AI != null) {
+		  var bestRecur = corp.AI._bestRecurToHQOption(ret,null,true); //no server under threat, use now if possible
+		  if (bestRecur) ret = [bestRecur];
+	  }
       if (ret.length < 1) return [];
       ret.push({ card: null, label: "Continue", button: "Continue" });
       return ret;
@@ -3178,6 +3183,7 @@ cardSet[30040] = {
   Resolve: function (params) {
     PlaceAdvancement(params.card, 2);
   },
+  AIFastAdvance:true, //is a card for fast advancing
 };
 cardSet[30041] = {
   title: "Sprint",
@@ -4070,6 +4076,7 @@ cardSet[30053] = {
 	}
     return false;
   },
+  AITriggerWhenCan: true,
 };
 cardSet[30054] = {
   title: "Funhouse",
