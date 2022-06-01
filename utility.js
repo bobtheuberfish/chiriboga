@@ -2802,7 +2802,7 @@ function DeckBuild(
 	  //economy
 	  var economyCards = []; //(credit economy only)
 	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30037, 30048, 30056, 30064, 30071, 30075]);
-	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([]);
+	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31042]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		economyCards,
@@ -2847,7 +2847,7 @@ function DeckBuild(
 	    30037, 30038, 30039, 30040, 30041, 30042, 30045, 30046, 30047, 30048, 30049, 30050, 30053, 30054, 30055, 30056, 30057, 30058, 30061, 30062,
 		30063, 30064, 30065, 30066, 30071, 30072, 30073, 30074, 30075,
 	  ]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31042]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,

@@ -826,6 +826,7 @@ class CorpAI {
     economyCards.push("Hedge Fund");
     if (this._agendasInHand() < corp.HQ.cards.length - 1)
       economyCards.push("Hansei Review"); //only if there is at least 1 non-agenda card (other than this) in HQ
+    economyCards.push("Marilyn Campaign");
     //if (emptyProtectedRemotes.length > 0 || this._clicksLeft() > 1)
       economyCards.push("Regolith Mining License"); //regolith is only of value if there will be an opportunity to use it? disabled that proviso for now since trash cost is fairly high
     economyCards.push("Nico Campaign");
@@ -1401,7 +1402,7 @@ class CorpAI {
           wouldTriggerThis = card.AIWouldTrigger.call(card);
         if (GetTitle(card) == "Manegarm Skunkworks" || wouldTriggerThis) {
           //make sure we can do it
-          if (CheckRez(card, ["upgrade"])) {
+          if (CheckRez(card, ["upgrade","asset"])) {
             //does not check cost...
             var currentRezCost = RezCost(card); //...so we check that here
             if (CheckCredits(currentRezCost, corp, "rezzing", card))
@@ -1447,7 +1448,8 @@ class CorpAI {
       var rezzableNonIceCards = this._rezzableNonIceCards();
       //list of cards (by title) to rez EOT
       var cardsToRezEOT = [
-        "Nico Campaign",
+        "Marilyn Campaign",
+		"Nico Campaign",
         "Regolith Mining License",
         "Melange Mining Corp.",
         "PAD Campaign",

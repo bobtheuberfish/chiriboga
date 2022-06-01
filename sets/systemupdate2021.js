@@ -3343,14 +3343,13 @@ cardSet[31041] = {
   advancement: 0,
   //When you score this agenda, place 1 agenda counter on it for each hosted advancement counter past 3.
   scored: {
-    Enumerate: function () {
-      if (intended.score == this) return [{}];
-      return [];
-    },
     Resolve: function (params) {
-      var advancementOverThree = this.advancement - 3;
-	  if (advancementOverThree > 0) AddCounters(this, "agenda", advancementOverThree);
+	  if (intended.score == this) {
+		  var advancementOverThree = this.advancement - 3;
+		  if (advancementOverThree > 0) AddCounters(this, "agenda", advancementOverThree);
+	  }
     },
+	automatic:true,
   },
   //Hosted agenda counter: Add 1 card from Archives to HQ.
   abilities: [
@@ -3410,6 +3409,91 @@ cardSet[31041] = {
 	return Math.max(3,maxThisTurn);
   },
   AITriggerWhenCan: true,
+};
+
+cardSet[31042] = {
+  title: "Marilyn Campaign",
+  imageFile: "31042.png",
+  elo: 1802,
+  player: corp,
+  faction: "Haas-Bioroid",
+  influence: 1,
+  cardType: "asset",
+  subTypes: ["Advertisement"],
+  rezCost: 2,
+  trashCost: 3,
+  //When you rez this asset, load 8[c] onto it.
+  cardRezzed: {
+    Resolve: function (card) {
+      if (card == this) LoadCredits(this, 8);
+    },
+  },
+  //When your turn begins, take 2[c] from this asset.
+  corpTurnBegin: {
+	Enumerate: function() {
+		if (!CheckCounters(this,"credits",2)) return []; //won't happen with less than 2 because it doesn't say 'take *up to* ...'
+		return [{}];
+	},
+    Resolve: function (params) {
+      if (CheckCounters(this, "credits", 2)) {
+        //won't happen with less than 2 because it doesn't say 'take *up to* ...'
+        TakeCredits(corp, this, 2); //removes from card, adds to credit pool
+      }
+	  //The "when it is empty" check should probably be in anyChange but they're automatic-only for now
+      if (!CheckCounters(this, "credits", 1)) {
+        //When it is empty, trash it.
+        Trash(this,true); //true means trash can be prevented (important to the functioning of this card)
+      }
+    },
+	//can't be automatic because the trash needs to be redirected
+  },
+  //When this asset would be trashed, you may shuffle it into R&D instead of adding it to Archives. (It is still considered trashed.)
+  redirectTrash:false,
+  trash: {
+	//don't prevent the trash, just save whether we want to activate this
+	Enumerate: function() {
+		//UFAQ: The interrupt ability on Marilyn Campaign is not active while the source card is unrezzed.
+		//We'll interpret that as a requirement that this card be both installed and rezzed. We'll also check for any other deactivation.
+		if (!CheckInstalled(this) || !this.rezzed || !CheckActive(this)) return [];
+		var choices = [
+		  { id:0, label:"Shuffle Marilyn Campaign into R&D", button:"Shuffle into R&D"},
+		  { id:1, label:"Add Marilyn Campaign to Archives", button:"Add to Archives"},
+		];
+		//**AI code
+		if (corp.AI != null) return [choices[0]];
+		return choices;
+	},
+	Resolve: function(params) {
+		if (params.id == 0) this.redirectTrash = true;
+		else this.redirectTrash = false;
+	}
+  },
+  //after trash, move to R&D if required
+  cardTrashed: {
+    Resolve: function (card) {
+      if (card == this && this.redirectTrash) {
+		MoveCard(this,corp.RnD.cards);
+		Shuffle(corp.RnD.cards);
+		this.redirectTrash=false;
+		Log("Marilyn Campaign shuffled into R&D");
+      }
+    },
+	automatic: true,
+	availableWhenInactive: true,
+  },
+  RezUsability: function () {
+	//end of Runner turn
+    if (currentPhase.identifier == "Runner 2.2") return true;
+	//Runner approaching this card
+    if (currentPhase.identifier == "Run 4.5" && approachIce < 1) {
+      if (attackedServer == GetServer(this)) return true;
+    }
+    return false;
+  },
+  //this function causes the AI to consider it for rez on approach
+  AIWouldTrigger: function() {
+	  return true;
+  },
 };
 
 //TODO link (e.g. Reina)
