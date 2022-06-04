@@ -1450,7 +1450,7 @@ cardSet[31021] = {
 		if (iceAI.subTypes.includes("Code Gate")) {
 			//only use trash-breach for worthwhile targets (the 1.5 is arbitrary) with few clicks left
 			if (runner.AI._getCachedPotential(server) > 1.5 && !CheckClicks(2, runner)) {
-				var pointCopy = runner.AI.rc.PointCopy(point);
+				var pointCopy = runner.AI.rc.CopyPoint(point);
 				pointCopy.persistents = pointCopy.persistents.concat([{use:this, target:iceAI.ice, iceIdx:point.iceIdx, action:"bypass", alt:this.abilities[2].alt}]);
 				pointCopy.effects = pointCopy.effects.concat([["misc_serious","misc_serious"]]); //this is arbitrary but basically take it seriously
 				result = result.concat([pointCopy]);
@@ -1642,7 +1642,7 @@ cardSet[31022] = {
     ); //cost to str, amt to str, cost to brk, amt to brk
 	return result;
   },
-  //AIEncounterOptions is a bit of a weird one. At the moment we return an array of objects with .runner_credits_spent, .effects and .persistent
+  //AIEncounterOptions returns an array of objects with .effects and .persistent
   //the runcalculator will add/concatenate these into the point where needed
   AIEncounterOptions: function(iceIdx,iceAI) {
 	//include option to bypass
@@ -1650,7 +1650,11 @@ cardSet[31022] = {
 		var persistents = [{use:this, target:iceAI.ice, iceIdx:iceIdx, action:"bypass", alt:"femme_bypass"}];
 		var numsr = 2; //just an arbitrary default if ice is not known (no cheating!)
 		if (PlayerCanLook(runner, iceAI.ice)) numsr = iceAI.ice.subroutines.length;
-		return [{runner_credits_spent:numsr, effects:[], persistents:persistents}];
+		var credEff = [];
+		for (var i=0; i<numsr; i++) {
+			credEff.push("payCredits");
+		}
+		return [{effects:credEff, persistents:persistents}];
 	}
 	return [];
   },
@@ -3449,12 +3453,12 @@ cardSet[31042] = {
   },
   //When this asset would be trashed, you may shuffle it into R&D instead of adding it to Archives. (It is still considered trashed.)
   redirectTrash:false,
-  trash: {
+  wouldTrash: {
 	//don't prevent the trash, just save whether we want to activate this
-	Enumerate: function() {
+	Enumerate: function(card) {
 		//UFAQ: The interrupt ability on Marilyn Campaign is not active while the source card is unrezzed.
 		//We'll interpret that as a requirement that this card be both installed and rezzed. We'll also check for any other deactivation.
-		if (!CheckInstalled(this) || !this.rezzed || !CheckActive(this)) return [];
+		if (card != this || !CheckInstalled(this) || !this.rezzed || !CheckActive(this)) return [];
 		var choices = [
 		  { id:0, label:"Shuffle Marilyn Campaign into R&D", button:"Shuffle into R&D"},
 		  { id:1, label:"Add Marilyn Campaign to Archives", button:"Add to Archives"},
@@ -3493,6 +3497,83 @@ cardSet[31042] = {
   //this function causes the AI to consider it for rez on approach
   AIWouldTrigger: function() {
 	  return true;
+  },
+};
+
+cardSet[31043] = {
+  title: "Eli 1.0",
+  imageFile: "31043.png",
+  elo: 1871,
+  player: corp,
+  faction: "Haas-Bioroid",
+  influence: 1,
+  cardType: "ice",
+  rezCost: 3,
+  strength: 4,
+  subTypes: ["Barrier", "Bioroid"],
+  //subroutines:
+  //End the run.
+  //End the run.
+  subroutines: [
+    {
+      text: "End the run.",
+      Resolve: function () {
+        EndTheRun();
+      },
+      visual: { y: 89, h: 16 },
+    },
+    {
+      text: "End the run.",
+      Resolve: function () {
+        EndTheRun();
+      },
+      visual: { y: 105, h: 16 },
+    },
+  ],
+  //Lose [click]: Break 1 subroutine on this ice. Only the runner can use this ability.
+  abilities: [
+    {
+      text: "Break 1 subroutine on this ice",
+      Enumerate: function () {
+        if (!CheckClicks(1, runner)) return [];
+        if (activePlayer !== runner) return [];
+        if (!encountering) return [];
+        if (GetApproachEncounterIce() != this) return [];
+        var choices = [];
+        for (var i = 0; i < this.subroutines.length; i++) {
+          var subroutine = this.subroutines[i];
+          if (!subroutine.broken)
+            choices.push({
+              subroutine: subroutine,
+              label: 'Lose [click]: Break "' + subroutine.text + '"',
+            });
+        }
+        return choices;
+      },
+      Resolve: function (params) {
+        SpendClicks(runner, 1);
+        Break(params.subroutine);
+      },
+      opponentOnly: true,
+    },
+  ],
+  activeForOpponent: true,
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+    result.sr = [[["endTheRun"]], [["endTheRun"]]];
+	return result;
+  },
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    if (this == iceAI.ice) {
+        if (clicksLeft > 0) {
+          var breakresult = runner.AI.rc.SrBreak(this, iceAI, point, 1);
+          for (var j = 0; j < breakresult.length; j++) {
+            breakresult[j].runner_clicks_spent += 1;
+          }
+          result = result.concat(breakresult);
+        }
+    }
+	return result;
   },
 };
 

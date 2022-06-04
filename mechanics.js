@@ -146,27 +146,34 @@ function Trash(card, canBePrevented, afterTrashing, context) {
       Trash(intended.trash, false, afterTrashing, context);
     });
   } else {
-    card.host = null;
-    if (runner.AI != null && card.cardLocation == corp.HQ.cards)
-      runner.AI.LoseInfoAboutHQCards(card);
-    //if the currently encountered ice is trashed, it's no longer being encountered
-    if (GetApproachEncounterIce() == card) {
-      encountering = false;
-      subroutine = -1;
-    }
-    //now move it
-    MoveCard(card, PlayerTrashPile(card.player));
-    if (card.player == runner) card.faceUp = true;
-    Log(GetTitle(card, true) + " trashed");
+	var finaliseTrash = function() {
+		card.host = null;
+		if (runner.AI != null && card.cardLocation == corp.HQ.cards)
+		  runner.AI.LoseInfoAboutHQCards(card);
+		//if the currently encountered ice is trashed, it's no longer being encountered
+		if (GetApproachEncounterIce() == card) {
+		  encountering = false;
+		  subroutine = -1;
+		}
+		
+		//now move it
+		MoveCard(card, PlayerTrashPile(card.player));
+		if (card.player == runner) card.faceUp = true;
+		Log(GetTitle(card, true) + " trashed");
 
-    AutomaticTriggers("cardTrashed", card);
+		AutomaticTriggers("cardTrashed", card);
 
-    if (typeof card.hostedCards !== "undefined") {
-      while (card.hostedCards.length > 0) Trash(card.hostedCards[0], false);
-    }
-    if (typeof afterTrashing === "function") {
-      afterTrashing.call(context);
-    }
+		if (typeof card.hostedCards !== "undefined") {
+		  while (card.hostedCards.length > 0) Trash(card.hostedCards[0], false);
+		}
+		if (typeof afterTrashing === "function") {
+		  afterTrashing.call(context);
+		}
+	};
+	//special case: if card has a 'would trash' trigger (a decision needs to be made)
+	//note this will totally break if the card is trashed by an automatic trigger
+	if (card.wouldTrash) TriggeredResponsePhase(playerTurn, "wouldTrash", [card], finaliseTrash);
+	else finaliseTrash();
   }
 }
 
@@ -321,15 +328,16 @@ function Install(
       trash: function (params) {
         var storedServer = GetServerByArray(installDestination); //as above, see below
         var serverIndex = corp.remoteServers.indexOf(storedServer); //to make sure servers aren't destroyed here (see below)
-        Trash(params.card, false);
-        //if this move destroyed a remote server, it shouldn't have (see CR1.5 8.5.9)
-        if (installingCard.player == corp && serverIndex > -1) {
-          if (GetServerByArray(installDestination) == null)
-            corp.remoteServers.splice(serverIndex, 0, storedServer);
-        }
-        currentPhase.Cancel = undefined; //once trashing begins there is no going back
-        delete currentPhase.Cancel; //remove the variable completely
-        Render();
+        Trash(params.card, false, function() {
+			//if this move destroyed a remote server, it shouldn't have (see CR1.5 8.5.9)
+			if (installingCard.player == corp && serverIndex > -1) {
+			  if (GetServerByArray(installDestination) == null)
+				corp.remoteServers.splice(serverIndex, 0, storedServer);
+			}
+			currentPhase.Cancel = undefined; //once trashing begins there is no going back
+			delete currentPhase.Cancel; //remove the variable completely
+			Render();
+		}, context);
       },
       n: function () {
         //card will be installed, callback fires

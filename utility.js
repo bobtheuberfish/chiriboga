@@ -786,8 +786,8 @@ function PlayerWin(player, msgstr) {
   $("#history").children().first().css({ opacity: "1" });
   Log(msgstr);
   Log(winnerMessage);
-  Log("Corp agenda points: " + AgendaPoints(corp));
-  Log("Runner agenda points: " + AgendaPoints(runner));
+  Log("Corp ("+corp.identityCard.title+") agenda points: " + AgendaPoints(corp));
+  Log("Runner ("+runner.identityCard.title+") agenda points: " + AgendaPoints(runner));
   Log("R&D size: " + corp.RnD.cards.length);
   Log("Grip size: " + runner.grip.length);
   console.log("Agendas were stolen from: "+JSON.stringify(agendaStolenLocations)); //for testing/balancing AIs
@@ -2822,7 +2822,7 @@ function DeckBuild(
 	  //ice
 	  var iceCards = [];
 	  if (setIdentifiers.includes('sg')) iceCards = iceCards.concat([30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074]);
-	  if (setIdentifiers.includes('su21')) iceCards = iceCards.concat([]);
+	  if (setIdentifiers.includes('su21')) iceCards = iceCards.concat([31043]);
 	  var numIceCardsToAdd = RandomRange(15, 17);
 	  var iceInfluenceBudget = 9 - influenceUsed;
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(

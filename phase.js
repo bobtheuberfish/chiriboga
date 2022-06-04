@@ -345,8 +345,10 @@ function GlobalTriggersPhaseCommonResolveN(
   //both players triggers have been resolved, finish this pseudophase
   else {
     //now move to next phase (or return to previous)
-    IncrementPhase(skipInit);
-    if (typeof afterOpportunity === "function") afterOpportunity.call(context);
+    IncrementPhase(skipInit);	
+    if (typeof afterOpportunity === "function") {
+		afterOpportunity.call(context);
+	}
   }
 }
 

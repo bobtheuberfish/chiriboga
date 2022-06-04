@@ -75,7 +75,8 @@
  .tagsTaken //called after tags are taken (or given), intended.addTags has the number
  .netDamage //called when net damage is to be given/taken
  .meatDamage //called when meat damage is to be given/taken
- .trash //called when a card is to be trashed
+ .trash //called when a card is to be trashed, providing opportunity to prevent it (change intended.trash to null to prevent it)
+ .wouldTrash //called when trash has not been prevented (Enumerate takes the trashed card as an input, use cardTrashed instead if you need automatic)
  .expose //called when a card is to be exposed
  .steal //called when a card is to be stolen
  .score //called when a card is to be scored

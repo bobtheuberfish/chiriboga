@@ -106,25 +106,6 @@ class RunCalculator {
 	  return false;
   }
   
-  //return a copy of a point
-  //NOTE this does NOT make copies of the object properties, you need to concat when modifying (NOT push)
-  //TODO use this throughout rather than copies of code?
-  PointCopy(
-    point
-  ) {
-    return {
-      iceIdx: point.iceIdx,
-      runner_credits_spent: point.runner_credits_spent,
-      runner_credits_lost: point.runner_credits_lost,
-      runner_clicks_spent: point.runner_clicks_spent,
-      virus_counters_spent: point.virus_counters_spent,
-      card_str_mods: point.card_str_mods,
-	  persistents: point.persistents,
-      sr_broken: point.sr_broken,
-      effects: point.effects,
-    };
-  }
-
   SrBroken(point, srIdx) {
     for (var i = 0; i < point.sr_broken.length; i++) {
       if (point.sr_broken[i].idx == srIdx) return true;
@@ -297,6 +278,109 @@ class RunCalculator {
     return base;
   }
 
+  //create copy of point with encounter effects added, or return null if not valid
+  //iceAI is the ice being moved on from to experience this new encounter (if this is the first encounter, don't include iceAI)
+  //card_str_mods and persistents contain the card_str_mods we want to pass on to this next encounter (i.e. persist)
+  ValidateEncounterPoint(nextIceIdx, point, incomplete, encounter_effects, encounter_persistents, iceAI=null, card_str_mods=[], persistents=[]) {
+	  //some pathways will not be followed e.g. unbroken ETR, misc_serious, or unaffordable payment
+	  var exclude_path = false;
+	  var creditPayment = 0;
+	  var creditLoss = 0;
+	  
+	  //loop through effects in order
+	  for (var j=0; j<encounter_effects.length; j++) {
+		  var eff = encounter_effects[j];
+		  
+		  //recalculate current financial situation (ice specific effects may rely on it)
+		  var poolCreditsLeft = this.basePoolCredits - point.runner_credits_lost - creditLoss;
+		  var otherCreditsLeft = this.baseOtherCredits - point.runner_credits_spent - creditPayment;
+		  var overallCreditsLeft = poolCreditsLeft + otherCreditsLeft;
+		  //take into account pool being affected by excess other spend
+		  if (otherCreditsLeft < 0) poolCreditsLeft += otherCreditsLeft;
+
+		  //apply special per-ice unique conditional effects (from current ice, not encountering new one)
+		  if (iceAI && eff == "iceSpecificEffect") {
+			  var new_effs = iceAI.ice.AIIceSpecificEffect.call(iceAI.ice, poolCreditsLeft);
+			  //remove from encounter_effects and insert instead any effects that are returned
+			  encounter_effects.splice(j, 1, ...new_effs); //remove 1 item at position j and insert all returned items (not compatible with older browsers)
+			  j--; //step back so next item isn't skipped
+		  }
+		  
+		  else if (eff == "endTheRun") {
+			//this path will not lead to a complete run
+			if (!incomplete) exclude_path = true;
+			//the effect applies right away, so no need to process other effects
+			break;
+		  }
+
+		  else if (eff == "misc_serious") {
+			//don't follow this path for a complete run, it's too dangerous
+			//but for incomplete runs, check it because it might be the less dangerous overall path
+			if (!incomplete) exclude_path = true;
+		  }
+		  
+		  //apply payments (exclude path if not affordable)
+		  else if (eff == "payCredits") {
+			  //remove from encounter_effects (will be included in total costs instead)
+			  encounter_effects.splice(j, 1); //remove 1 item at position j
+			  j--; //step back so next item isn't skipped
+			  //Nisei CR 1.5 1.10.3 "spend" and "pay" are synonymous
+			  //i.e. can be spent from credit pool or from other sources
+			  if (overallCreditsLeft > 0) creditPayment++;
+			  else {
+				//i.e. creditPayment >= overallCreditsLeft so can't afford this payment
+				exclude_path = true; //cannot afford this payment, not a possible option
+				break;
+			  }
+		  }
+		  
+		  //apply credit loss
+		  else if (eff == "loseCredits") {
+			  //remove from encounter_effects (will be included in total costs instead)
+			  encounter_effects.splice(j, 1); //remove 1 item at position j
+			  j--; //step back so next item isn't skipped
+			  //credits are lost directly from the credit pool
+			  if (poolCreditsLeft > 0) creditLoss++;
+		  }			  
+	  }
+	  
+	  //now put it all together to create a path branch (if not excluded)
+	  if (!exclude_path) {
+		return {
+		  iceIdx: nextIceIdx,
+		  runner_credits_spent: point.runner_credits_spent + creditPayment,
+		  runner_credits_lost: point.runner_credits_lost + creditLoss,
+		  runner_clicks_spent: point.runner_clicks_spent,
+		  virus_counters_spent: point.virus_counters_spent,
+		  card_str_mods: card_str_mods,
+		  persistents: persistents.concat(encounter_persistents),
+		  sr_broken: [],
+		  effects: point.effects.concat([encounter_effects]),
+		};
+	  }
+	  //not a valid branch
+	  return null;
+  }
+  
+  //create encounter options for next ice
+  //at the moment only effects and persistents
+  EncounterOptions(nextIceIdx, nextIceAI) {
+	  var encounterOptions = [];
+	  //standard from ice
+	  var encounterEffects = nextIceAI.encounterEffects;
+	  for (var i=0; i<encounterEffects.length; i++) {
+		encounterOptions.push({effects:encounterEffects[i], persistents:[]});
+	  }
+	  //special from card effects
+	  var activeCards = this.precalculated.activeCards;
+	  for (var i = 0; i < activeCards.length; i++) {
+		if (typeof activeCards[i].AIEncounterOptions == 'function') {
+		  encounterOptions = encounterOptions.concat(activeCards[i].AIEncounterOptions.call(activeCards[i],nextIceIdx,nextIceAI));
+		}
+	  };
+	  return encounterOptions;
+  }
+
   //helper function for run 'pathfinding'
   Directions(
     server,
@@ -384,7 +468,6 @@ class RunCalculator {
         return -1;
       });
     }
-
     //for each possibility, consider the option of completing the encounter
     for (var k = 0; k < sr_possibilities.length; k++) {
       var sr_effects = []; //the effects that would happen if we continue encounter
@@ -482,111 +565,21 @@ class RunCalculator {
         //clear the point ready for the next encounter
 
 		//encounter options for non-starting ice
-	    //this is done a bit of a weird way so that spend credits and persistents can be hooked in
-	    //it's weird mostly because it just does spend credits, effects, persistents, and nothing else yet
-        var encounterOptions = [{runner_credits_spent:0, effects:[], persistents:[]}];
+        var encounterOptions = [{effects:[], persistents:[]}];
 	    var nextIceAI = this.precalculated.iceAIs[point.iceIdx - 1];
 	    //consider effects of encountering next ice (unless approaching server)
         if (!incomplete) {
-			//incomplete paths jack out before the next ice i.e. no additional effect
+		  //incomplete paths jack out before the next ice i.e. no additional effect
           if (point.iceIdx > 0) {
-			  encounterOptions = [];
-			  //standard from ice
-			  var encounterEffects = nextIceAI.encounterEffects;
-			  for (var i=0; i<encounterEffects.length; i++) {
-				encounterOptions.push({runner_credits_spent:0, effects:encounterEffects[i], persistents:[]});
-			  }
-			  //special from card effects
-			  var activeCards = this.precalculated.activeCards;
-			  for (var i = 0; i < activeCards.length; i++) {
-				if (typeof activeCards[i].AIEncounterOptions == 'function') {
-				  encounterOptions = encounterOptions.concat(activeCards[i].AIEncounterOptions.call(activeCards[i],point.iceIdx - 1,nextIceAI));
-				}
-			  };
+			  encounterOptions = this.EncounterOptions(point.iceIdx - 1,nextIceAI);
 		  }
         }
         for (var i = 0; i < encounterOptions.length; i++) {
           //compute total effects if these options are selected
-		  var encounter_runner_credits_spent = encounterOptions[i].runner_credits_spent;
-          var encounter_effects = encounterOptions[i].effects.concat(sr_effects); //effects of unbroken subroutines combined with effects of encountering next ice
+          var encounter_effects = sr_effects.concat(encounterOptions[i].effects); //effects of unbroken subroutines combined with effects of encountering next ice
 		  var encounter_persistents = encounterOptions[i].persistents;
-
-          //some pathways will not be followed e.g. unbroken ETR, misc_serious, or unaffordable payment
-          var exclude_path = false;
-          var creditPayment = encounter_runner_credits_spent;
-		  var creditLoss = 0;
-		  
-		  //loop through effects in order
-		  for (var j=0; j<encounter_effects.length; j++) {
-			  var eff = encounter_effects[j];
-			  
-			  //recalculate current financial situation (ice specific effects may rely on it)
-			  var poolCreditsLeft = this.basePoolCredits - point.runner_credits_lost - creditLoss;
-			  var otherCreditsLeft = this.baseOtherCredits - point.runner_credits_spent - creditPayment;
-			  var overallCreditsLeft = poolCreditsLeft + otherCreditsLeft;
-			  //take into account pool being affected by excess other spend
-			  if (otherCreditsLeft < 0) poolCreditsLeft += otherCreditsLeft;
-			  
-			  //apply special per-ice unique conditional effects (from current ice, not encountering new one)
-			  if (eff == "iceSpecificEffect") {
-				  var new_effs = iceAI.ice.AIIceSpecificEffect.call(iceAI.ice, poolCreditsLeft);
-				  //remove from encounter_effects and insert instead any effects that are returned
-                  encounter_effects.splice(j, 1, ...new_effs); //remove 1 item at position j and insert all returned items (not compatible with older browsers)
-                  j--; //step back so next item isn't skipped
-			  }
-			  
-			  else if (eff == "endTheRun") {
-				//this path will not lead to a complete run
-				if (!incomplete) exclude_path = true;
-				//the effect applies right away, so no need to process other effects
-				break;
-			  }
-
-			  else if (eff == "misc_serious") {
-				//don't follow this path for a complete run, it's too dangerous
-				//but for incomplete runs, check it because it might be the less dangerous overall path
-				if (!incomplete) exclude_path = true;
-			  }
-			  
-		      //apply payments (exclude path if not affordable)
-			  else if (eff == "payCredits") {
-				  //remove from encounter_effects (will be included in total costs instead)
-                  encounter_effects.splice(j, 1); //remove 1 item at position j
-                  j--; //step back so next item isn't skipped
-				  //Nisei CR 1.5 1.10.3 "spend" and "pay" are synonymous
-				  //i.e. can be spent from credit pool or from other sources
-                  if (overallCreditsLeft > 0) creditPayment++;
-                  else {
-                    //i.e. creditPayment >= overallCreditsLeft so can't afford this payment
-                    exclude_path = true; //cannot afford this payment, not a possible option
-                    break;
-                  }
-			  }
-			  
-			  //apply credit loss
-			  else if (eff == "loseCredits") {
-				  //remove from encounter_effects (will be included in total costs instead)
-                  encounter_effects.splice(j, 1); //remove 1 item at position j
-                  j--; //step back so next item isn't skipped
-				  //credits are lost directly from the credit pool
-                  if (poolCreditsLeft > 0) creditLoss++;
-			  }			  
-		  }
-		  
-		  //now put it all together to create a path branch (if not excluded)
-          if (!exclude_path) {
-            //checked again because exclude may have been set checking a payment or credit pool
-            var next_encounter_point = {
-              iceIdx: point.iceIdx - 1,
-              runner_credits_spent: point.runner_credits_spent + creditPayment,
-			  runner_credits_lost: point.runner_credits_lost + creditLoss,
-              runner_clicks_spent: point.runner_clicks_spent,
-              virus_counters_spent: point.virus_counters_spent,
-              card_str_mods: card_str_mods,
-			  persistents: persistents.concat(encounter_persistents),
-              sr_broken: [],
-              effects: point.effects.concat([encounter_effects]), //sr_effects is already concatenated above
-            };
+		  var next_encounter_point = this.ValidateEncounterPoint(point.iceIdx - 1, point, incomplete, encounter_effects, encounter_persistents, iceAI, card_str_mods, persistents);		  
+          if (next_encounter_point) {
             if (sr_possibilities.length > 1)
               next_encounter_point.alt = sr_possibilities[k]; //if sr choice(s) were made, record
 		  
@@ -731,6 +724,39 @@ class RunCalculator {
 	  otherCredits,
       tagLimit
     );
+  }
+  
+  //Helper to create an empty pathing point
+  EmptyPoint(iceIdx) {
+	  var ret = {
+                iceIdx: iceIdx,
+                runner_credits_spent: 0,
+				runner_credits_lost: 0,
+                runner_clicks_spent: 0,
+                virus_counters_spent: 0,
+                card_str_mods: [],
+				persistents: [],
+                sr_broken: [],
+                effects: [],
+              };
+	  return ret;
+  }
+  
+  //Helper to create a copy of a pathing point
+  //This also makes its own copies of arrays (but references the old elements within)
+  CopyPoint(point) {
+	  var ret = {
+                iceIdx: point.iceIdx,
+                runner_credits_spent: point.runner_credits_spent,
+				runner_credits_lost: point.runner_credits_lost,
+                runner_clicks_spent: point.runner_clicks_spent,
+                virus_counters_spent: point.virus_counters_spent,
+                card_str_mods: point.card_str_mods.concat([]),
+				persistents: point.persistents.concat([]),
+                sr_broken: point.sr_broken.concat([]),
+                effects: point.effects.concat([]),
+              };
+	  return ret;
   }
 
   //modifies this.paths and also returns it
@@ -901,48 +927,20 @@ class RunCalculator {
       var todo = []; //array of path arrays that are not finished
 
       //encounter options at starting ice
-	  //if you make changes here, mirror at encounter options for non-starting ice
-	  //this is done a bit of a weird way so that spend credits and persistents can be hooked in
-	  //it's weird mostly because it just does spend credits, effects, persistents, and nothing else yet
-      var encounterOptions = [];
 	  var iceAI = this.precalculated.iceAIs[startIceIdx];
-	  //standard from ice
-	  var encounterEffects = iceAI.encounterEffects;
-	  for (var i=0; i<encounterEffects.length; i++) {
-		encounterOptions.push({runner_credits_spent:0, effects:encounterEffects[i], persistents:[]});
-	  }
-	  //special from card effects
-	  var activeCards = this.precalculated.activeCards;
-	  for (var i = 0; i < activeCards.length; i++) {
-		if (typeof activeCards[i].AIEncounterOptions == 'function') {
-		  encounterOptions = encounterOptions.concat(activeCards[i].AIEncounterOptions.call(activeCards[i],startIceIdx,iceAI));
-		}
-	  };
+      var encounterOptions = this.EncounterOptions(startIceIdx,iceAI);
 	  //create encounter option points
       for (var i = 0; i < encounterOptions.length; i++) {
-		var encounter_runner_credits_spent = encounterOptions[i].runner_credits_spent;
+		//set up starting conditions
+		var startingPoint = this.EmptyPoint(startIceIdx);
+        //compute total effects if these options are selected
         var encounter_effects = encounterOptions[i].effects;
 		var encounter_persistents = encounterOptions[i].persistents;
-        if (incomplete || !encounter_effects.includes("endTheRun")) {
-          for (
-            var j = 0;
-            j < approachOptions.length;
-            j++ //include ultimate approach costs right from the beginning (for complete runs only)
-          ) {
-            todo.push([
-              {
-                iceIdx: startIceIdx,
-                runner_credits_spent: approachOptions[j].credits + encounter_runner_credits_spent,
-				runner_credits_lost: 0, //assumes no 'lose credits' for now
-                runner_clicks_spent: approachOptions[j].clicks,
-                virus_counters_spent: 0,
-                card_str_mods: [],
-				persistents: encounter_persistents,
-                sr_broken: [],
-                effects: [encounter_effects].concat(approachOptions[j].effects),
-              },
-            ]);
-          }
+		//note we send null as iceAI because it's the previous ice (which there isn't, this is the first), not this new one we're encountering
+		//and [] as card_str_mods and persistents because there are no such persisting things to pass on yet
+		var encounter_point = this.ValidateEncounterPoint(startIceIdx, startingPoint, incomplete, encounter_effects, encounter_persistents, null, [], []);		  
+        if (encounter_point) {
+            todo.push([encounter_point]);
         }
       }
 
@@ -1038,30 +1036,25 @@ class RunCalculator {
       }
     }
     //if there is no ice, the only path is straight into server (this.paths=[] means no valid paths)
-    else {
-      this.paths = [];
-      for (
-        var j = 0;
-        j < approachOptions.length;
-        j++ //include ultimate approach costs
-      ) {
-        var p = [
-          {
-            iceIdx: -1,
-            runner_credits_spent: approachOptions[j].credits,
-			runner_credits_lost: 0, //assumes no 'lose credits' for now
-            runner_clicks_spent: approachOptions[j].clicks,
-            virus_counters_spent: 0,
-            card_str_mods: [],
-			persistents: [],
-            sr_broken: [],
-            effects: [].concat(approachOptions[j].effects),
-          },
-        ];
-        if (this.ValidPath(p, damageLimit, clickLimit, poolCreditLimit,	otherCredits, tagLimit))
-          this.paths.push(p);
-      }
-    }
+    else this.paths = [[this.EmptyPoint(startIceIdx)]]; //should this be -1?
+	
+	//finish each path with any possible approach options
+	var finalpaths = [];
+	for (var i=0; i<this.paths.length; i++) {
+      for (var j = 0; j < approachOptions.length; j++) {
+		var possiblePath = this.paths[i].concat([]); //make a copy of the path
+		//add the effects of this approach option (so far this only handles credits spent, clicks spent, and effects)
+		var approachPoint = this.CopyPoint(possiblePath[possiblePath.length-1]);
+		approachPoint.iceIdx = -1;
+		approachPoint.runner_credits_spent += approachOptions[j].credits;
+		approachPoint.runner_clicks_spent += approachOptions[j].clicks;
+		approachPoint.effects = approachPoint.effects.concat(approachOptions[j].effects);
+		possiblePath.push(approachPoint);
+        if (this.ValidPath(possiblePath, damageLimit, clickLimit, poolCreditLimit,	otherCredits, tagLimit))
+          finalpaths.push(possiblePath);
+	  }
+	}
+	this.paths = finalpaths;
 
 	//incomplete path not found, try again permitting more tags
 	if (this.paths.length == 0 && incomplete && tagLimit != Infinity) {
