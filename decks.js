@@ -71,6 +71,7 @@
  .stolen //called after a card is stolen (intended.steal will still be available to use)
  .scored //called after a card is scored (intended.score will still be available to use)
  .installed //called when a card is installed (Enumerate takes the installed card as an input, use cardInstalled instead if you need automatic)
+ .rez //called when a card is rezzed (Enumerate takes the rezzed card as an input, use cardRezzed instead if you need automatic)
  .addTags //called when tags are to be added
  .tagsTaken //called after tags are taken (or given), intended.addTags has the number
  .netDamage //called when net damage is to be given/taken
@@ -90,6 +91,7 @@
  .modifyBasicActionRunnerDraw //called with input (num) when runner about to draw as a basic action, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .modifyBasicActionCorpDraw //called with input (num) when corp about to draw as a basic action, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .modifyAgendaPointsToWin //called with no inputs when checking agenda points to win, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
+ .modifyHasAbilities //called with input (card) when checking subtypes, any false will override any true (currently treats all as automatic)
  .modifySubTypes //called with input (card) when checking subtypes, return { add:[], remove:[] } where each array is optional and contains the relevant subtype strings
  .cardInstalled //called with input (card) after a card is installed (currently treats all as automatic)
  .cardUninstalled //called with input (card) when a card becomes uninstalled (currently treats all as automatic)

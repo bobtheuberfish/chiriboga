@@ -546,6 +546,26 @@ function CheckActive(card) {
 }
 
 /**
+ * Checks whether a card is permitted to have abilities (returns false if a 'loses all abilities' applies).
+ *
+ * @method CheckHasAbilities
+ * @param {Card} card card object to check
+ * @returns {Boolean} true if card can have abilities, false otherwise
+ */
+function CheckHasAbilities(card) {
+	//from effects (assumes automatic)
+	var callbackName = "modifyHasAbilities";
+    var triggerList = ChoicesActiveTriggers(callbackName);
+    for (var i = 0; i < triggerList.length; i++) {
+      if (!triggerList[i].card[callbackName].Resolve.call(
+        triggerList[i].card,
+        card
+      )) return false;
+	}
+	return true;
+}
+
+/**
  * Checks whether a card callback should be called (has callback and is either active or has callbackName.availableWhenInactive).<br/>LogDebugs the result.
  *
  * @method CheckCallback
@@ -557,12 +577,15 @@ function CheckCallback(card, callbackName) {
   var ret = false;
   if (typeof card[callbackName] !== "undefined") {
     if (
-      CheckActive(card) ||
-      card[callbackName].availableWhenInactive == true ||
+      CheckActive(card) || card[callbackName].availableWhenInactive || 
       (callbackName == "cardAccessed" && card == accessingCard) ||
       (callbackName == "stolen" && card == intended.steal)
-    )
-      ret = true;
+    ) {
+	  //to prevent infinite loop, canHaveAbilities is assumed true when checking modifyHasAbilities
+	  var canHaveAbilities = true;
+	  if (callbackName != "modifyHasAbilities") canHaveAbilities = CheckHasAbilities(card);
+	  if ( canHaveAbilities || card[callbackName].availableWhenInactive ) ret = true;
+	}
   }
   if (ret == true)
     LogDebug(GetTitle(card) + " has valid " + callbackName + " available");

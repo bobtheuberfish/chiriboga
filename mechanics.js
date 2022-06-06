@@ -76,26 +76,6 @@ function PlaceAdvancement(card, num) {
 function Rez(card) {
   card.rezzed = true;
   card.renderer.FaceUp(); //in case Render is not forthcoming
-  if (runner.AI != null) {
-    runner.AI.LoseInfoAboutHQCards(card);
-	//if this ice is inner compared to existing run position, recalculate run
-	var cardServer = GetServer(card);
-    if (GetApproachEncounterIce() == card || (attackedServer == cardServer && cardServer.ice.indexOf(card) > -1 && cardServer.ice.indexOf(card) < approachIce) ) {
-      //update run calculation now that the ice is known
-      //ideally complete run
-      if (!runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, 0, null, approachIce)) //null means no bonus breaker
-      //but if not, use an exit strategy (incomplete run)
-      runner.AI._calculateBestExitStrategy(
-        attackedServer,
-		0,
-        0,
-        0,
-        0,
-		null, //no bonus breaker
-        approachIce
-      );
-    }
-  }
   Log("Corp rezzed " + GetTitle(card, true));
   //if unique, old one is immediately and unpreventably trashed (except if facedown, and facedown cards don't count for check)
   if (typeof card.unique !== "undefined") {
@@ -114,7 +94,33 @@ function Rez(card) {
       }
     }
   }
+  //first the automatic triggers
   AutomaticTriggers("cardRezzed", card);
+  //then the Enumerate ones
+  //currently giving whoever's turn it is priority...not sure this is always going to be right
+  TriggeredResponsePhase(playerTurn, "rez", [card], function() {
+	  //run recalculation has to be done AFTER all the rezzing effects in case they change ice/program states
+	  if (runner.AI != null) {
+		runner.AI.LoseInfoAboutHQCards(card);
+		//if this ice is inner compared to existing run position, recalculate run
+		var cardServer = GetServer(card);
+		if (GetApproachEncounterIce() == card || (attackedServer == cardServer && cardServer.ice.indexOf(card) > -1 && cardServer.ice.indexOf(card) < approachIce) ) {
+		  //update run calculation now that the ice is known
+		  //ideally complete run
+		  if (!runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, 0, null, approachIce)) //null means no bonus breaker
+		  //but if not, use an exit strategy (incomplete run)
+		  runner.AI._calculateBestExitStrategy(
+			attackedServer,
+			0,
+			0,
+			0,
+			0,
+			null, //no bonus breaker
+			approachIce
+		  );
+		}
+	  }
+  });
 }
 
 /**

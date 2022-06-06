@@ -921,7 +921,12 @@ class RunCalculator {
         if (!PlayerCanLook(runner, server.ice[i])) unknownIce++;
         else maxCorpCred++; //very rough heuristic but essentially allows for rezzed unbroken Tithe
       }
-      this.precalculated.activeCards = ActiveCards(null);
+	  var potentialActiveCards = ActiveCards(null);
+	  //only include those which have not lost their abilities
+      this.precalculated.activeCards = [];
+	  for (var i=0; i<potentialActiveCards.length; i++) {
+		  if (CheckHasAbilities(potentialActiveCards[i])) this.precalculated.activeCards.push(potentialActiveCards[i]);
+	  }
 
       //create a pathfinding-style approach
       var todo = []; //array of path arrays that are not finished

@@ -7,6 +7,8 @@ class CorpAI {
     console.log("AI: " + message);
   }
 
+  //this returns either a list of affordable ice or a list or not-affordable ice
+  //'affordable' isn't necessarily monetary e.g. it may not be tactically 'affordable' right now
   _iceInCardsCommon(
     serverToInstallTo,
     affordable,
@@ -19,8 +21,12 @@ class CorpAI {
     for (var i = 0; i < cards.length; i++) {
       if (cards[i].cardType == "ice") {
 		if (extraCost < corp.creditPool) { //even not-affordable ice is excluded if it can't be installed
-			if (affordable == (cards[i].rezCost + extraCost <= corp.creditPool) )
-			  relevantIceInCards.push(cards[i]);
+			var yesToThisIce = true;
+			if (typeof cards[i].AIWorthwhileIce == 'function') {
+			  yesToThisIce = cards[i].AIWorthwhileIce.call(cards[i],serverToInstallTo);
+			}
+			var isAffordable = (cards[i].rezCost + extraCost <= corp.creditPool) && yesToThisIce;
+			if (affordable == isAffordable) relevantIceInCards.push(cards[i]);
 		}
       }
     }
@@ -505,7 +511,7 @@ class CorpAI {
 			//weaker if threatened
 			if (this._aCompatibleBreakerIsInstalled(card)) ret *= 0.5;
 			//and modify value based on hosted cards and virus counters
-			if (typeof card.hostedCards !== "undefined") {
+			if (typeof card.hostedCards !== "undefined" && !card.AIDisablesHostedPrograms) {
 			  for (var i = 0; i < card.hostedCards.length; i++) {
 				if (card.hostedCards[i].player == corp) ret++;
 				else {
@@ -1319,19 +1325,31 @@ class CorpAI {
 			}
 		  }
 		}
-	  }	  
-	  //if a card is hosted (e.g. Tranquilizer) only rez if super rich (the *5 is arbitrary, observe and tweak)
-	  //unless breaching could mean game loss
+	  }
+	  //some reasons not to rez apply in general but not if breaching could mean game loss
 	  if (!this._runnerMayWinIfServerBreached(server)) {
+		//check for on-card not-worthwhile reason
+		if (typeof card.AIWorthwhileIce == 'function') {
+			if (!card.AIWorthwhileIce.call(card,server)) {
+				this._log("Would be better not to rez this ice quite yet");
+				rezIce = false;
+			}
+		}
+		//ignore effect of hosted cards for some ice e.g. Magnet
+		if (!card.AIDisablesHostedPrograms) {
+		  //if a card is hosted (e.g. Tranquilizer) only rez if super rich (the *5 is arbitrary, observe and tweak)
 		  if ( (typeof(card.hostedCards) !== 'undefined') && (card.hostedCards.length > 0) && (Credits(corp) < currentRezCost*5) ) {
 			  rezIce = false;
 		  }
-	  }	  
+		}
+	  }
 	  //there may be other reasons to leave this ice unrezzed (e.g. allow into an ambush)
 	  if (this._iceToLeaveUnrezzed(server) == card) {
 		  rezIce = false;
 	  }
+	  /*
 	  //special exceptions:
+	  //TODO check this doesn't override false with true (or just return above if false?)
 	  if (GetTitle(card) == "Cell Portal") {
 		//only rez cell portal if it is behind at least one rezzed ice
 		rezIce = false;
@@ -1358,6 +1376,7 @@ class CorpAI {
 			rezIce = true;
 		}
 	  }
+	  */
 	  return rezIce;
   }
 
@@ -1747,7 +1766,7 @@ class CorpAI {
 		if (triggerables[i].card.AITriggerWhenCan) {
 		  this._log("there is an active card I would use ability of");
 		  return this._returnPreference(optionList, "trigger", {
-			cardToTrigger: triggerables.card,
+			cardToTrigger: triggerables[i].card,
 		  });
 		}
 	  }
@@ -2028,6 +2047,7 @@ class CorpAI {
           var data = [];
           if (cmd == "trash") data = [{ prop: "card", key: "cardToTrash" }];
           else if (cmd == "rez") data = [{ prop: "card", key: "cardToRez" }];
+          else if (cmd == "trigger") data = [{ prop: "card", key: "cardToTrigger" }];
           else if (cmd == "play") data = [{ prop: "card", key: "cardToPlay" }];
           else if (cmd == "score")
             data = [{ prop: "card", key: "cardToScore" }];

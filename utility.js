@@ -1217,6 +1217,17 @@ function MoveCardTriggers(card, locationfrom, locationto) {
 		  }
 	  }
     }
+	//if new location is a card, set .host
+	//for now, this assumes hosts can only be installed cards
+	var installedCards = InstalledCards();
+	for (var i=0; i<installedCards.length; i++) {
+		if (installedCards[i].hostedCards) {
+			if (locationto == installedCards[i].hostedCards) {
+				card.host = installedCards[i];
+				break;
+			}
+		}
+	}
   }
   if (locationfrom !== null) {
     if (locationfrom == corp.archives.cards) card.faceUp = false;
@@ -1373,7 +1384,7 @@ function RezzedCardsIn(src) {
  * @param {Player} player corp or runner (null for both)
  * @returns {Card[]} array of cards
  */
-function InstalledCards(player) {
+function InstalledCards(player=null) {
   //since either player's cards could be hosted on the other's...got to do it this way
   var initialCards = [];
   initialCards = initialCards.concat(corp.RnD.root);
@@ -2082,6 +2093,7 @@ function ChoicesAbility(card, limitTo = "") {
     return [];
   }
   if (typeof card.abilities !== "undefined") {
+	if (!CheckHasAbilities(card)) return [];
     for (var i = 0; i < card.abilities.length; i++) {
       checkedClick = false;
       checkedAccess = false;
@@ -2822,7 +2834,7 @@ function DeckBuild(
 	  //ice
 	  var iceCards = [];
 	  if (setIdentifiers.includes('sg')) iceCards = iceCards.concat([30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074]);
-	  if (setIdentifiers.includes('su21')) iceCards = iceCards.concat([31043]);
+	  if (setIdentifiers.includes('su21')) iceCards = iceCards.concat([31043, 31044]);
 	  var numIceCardsToAdd = RandomRange(15, 17);
 	  var iceInfluenceBudget = 9 - influenceUsed;
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(

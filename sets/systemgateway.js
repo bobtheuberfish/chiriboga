@@ -262,6 +262,13 @@ cardSet[30004] = {
 	if (iceCard == this.host) return this;
 	return null;
   },
+  AIOkToTrash: function() {
+	  //ok to trash if it has lost its abilities
+	  if (this.host) {
+		  if (this.host.AIDisablesHostedPrograms) return true; //do trash
+	  }
+	  return false; //don't trash
+  },
 };
 cardSet[30005] = {
   title: "Buzzsaw",
@@ -1427,6 +1434,13 @@ cardSet[30017] = {
 	//I know Tranquilizer isn't technically a breaker but we'll treat it like one
 	//so we don't keep installing other stuff to get past it
 	return null;
+  },
+  AIOkToTrash: function() {
+	  //ok to trash if it has lost its abilities
+	  if (this.host) {
+		  if (this.host.AIDisablesHostedPrograms) return true; //do trash
+	  }
+	  return false; //don't trash
   },
 };
 cardSet[30018] = {

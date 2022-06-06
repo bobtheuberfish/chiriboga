@@ -2725,6 +2725,10 @@ cardSet[31032] = {
   //acts like an icebreaker but doesn't have that subtype (or can be used on any subtype of ice)
   AISpecialBreaker:true,
   AIOkToTrash: function() {
+	//ok to trash if it has lost its abilities
+	if (this.host) {
+	  if (this.host.AIDisablesHostedPrograms) return true; //do trash
+	}
 	//install over this program if a matching breaker exists without Egret's help
 	//temporarily disable the subtype modification for this check
 	var storedModifySubTypes = this.modifySubTypes;
@@ -3576,6 +3580,86 @@ cardSet[31043] = {
 	return result;
   },
 };
+
+cardSet[31044] = {
+  title: "Magnet",
+  imageFile: "31044.png",
+  elo: 1644,
+  player: corp,
+  faction: "Haas-Bioroid",
+  influence: 1,
+  cardType: "ice",
+  subTypes: ["Code Gate"],
+  rezCost: 3,
+  strength: 3,
+  hostedCards: [],
+  //When you rez this ice, choose 1 installed program hosted on a piece of ice. Move that program onto this ice.
+  rez: {
+    Enumerate: function (card) {
+      if (card == this) {
+		  var choices = ChoicesInstalledCards(runner, function (card) {
+			if (CheckCardType(card, ["program"])) {
+				if (card.host) {
+					return CheckCardType(card.host, ["ice"]);
+				}
+			}
+			return false;
+		  });	  
+		  return choices;
+      }
+	  return [];
+    },
+	Resolve: function(params) {
+		MoveCard(params.card, this.hostedCards);
+		Log(GetTitle(params.card)+" moved onto Magnet");
+	},
+  },
+  //Each hosted program loses all abilities.
+  modifyHasAbilities: {
+	Resolve: function(card) {
+		if (this.hostedCards.includes(card)) {
+			if (CheckCardType(card, ["program"])) {
+				return false; //lose all abilities
+			}
+		}
+		return true; //permit to have abilities
+	},
+	automatic:true,
+  },
+  //subroutines:
+  //End the run.
+  subroutines: [
+    {
+      text: "End the run.",
+      Resolve: function () {
+        EndTheRun();
+      },
+      visual: { y: 121, h: 16 },
+    },
+  ],
+  AIDisablesHostedPrograms: true,
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+    result.sr = [[["endTheRun"]]];
+	return result;
+  },
+  //for corp to decide whether to install/rez this yet
+  AIWorthwhileIce: function(server) {
+	  //worthwhile only if there is a program hosted on ice that's hasn't got AIDisablesHostedPrograms
+	  var installedCards = InstalledCards(runner);
+	  for (var i=0; i<installedCards.length; i++) {
+		  var card = installedCards[i];
+		  if (card.host) {
+			if (CheckCardType(card, ["program"])) {
+			  if (CheckCardType(card.host, ["ice"])) {
+				if (!card.host.AIDisablesHostedPrograms) return true; //worthwhile
+			  }
+			}
+		  }
+	  }
+	  return false; //not worthwhile
+  },
+};
+
 
 //TODO link (e.g. Reina)
 

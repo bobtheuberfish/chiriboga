@@ -1769,8 +1769,10 @@ function DecisionPhase(
   };
   decisionPhase.Resolve[command] = function (params) {
     IncrementPhase(true); //return to original phase before callback in case the callback needs to change phase
-    if (typeof context !== "undefined") callback.call(context, params);
-    else callback(params);
+	if (typeof callback == 'function') {
+		if (typeof context !== "undefined") callback.call(context, params);
+		else callback(params);
+	}
   };
   decisionPhase.player = player;
   if (title === null) decisionPhase.title = currentPhase.title;
