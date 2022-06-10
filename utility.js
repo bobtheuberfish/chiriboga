@@ -617,7 +617,7 @@ function GetMostRelevantIce() {
 	//ignore options rendered as a button
     if (typeof validOptions[i].button === "undefined") {
       if (typeof validOptions[i].subroutine !== "undefined") {
-		if (typeof validOptions[i].card) return validOptions[i].card; //just return the first found
+		if (validOptions[i].card) return validOptions[i].card; //just return the first found
 	  }
 	}
   }
