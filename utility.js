@@ -2888,7 +2888,7 @@ function DeckBuild(
 	  //ice
 	  var iceCards = [];
 	  if (setIdentifiers.includes('sg')) iceCards = iceCards.concat([30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074]);
-	  if (setIdentifiers.includes('su21')) iceCards = iceCards.concat([31043, 31044, 31045]);
+	  if (setIdentifiers.includes('su21')) iceCards = iceCards.concat([31043, 31044, 31045, 31046]);
 	  var numIceCardsToAdd = RandomRange(15, 17);
 	  var iceInfluenceBudget = 9 - influenceUsed;
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(

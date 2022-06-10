@@ -3817,6 +3817,67 @@ cardSet[31045] = {
   },
 };
 
+cardSet[31046] = {
+  title: "Rototurret",
+  imageFile: "31046.png",
+  elo: 1560,
+  player: corp,
+  faction: "Haas-Bioroid",
+  influence: 1,
+  cardType: "ice",
+  subTypes: ["Sentry","Destroyer"],
+  rezCost: 4,
+  strength: 0,
+  //subroutines:
+  //Trash 1 installed program.
+  //End the run.
+  subroutines: [
+    {
+      text: "Trash 1 installed program.",
+      Resolve: function () {
+        var choices = ChoicesInstalledCards(runner, function (card) {
+          //only include trashable programs
+          if (CheckCardType(card, ["program"]) && CheckTrash(card)) return true;
+          return false;
+        });
+        if (choices.length > 0) {
+          var decisionCallback = function (params) {
+            Trash(params.card, true); //true means can be prevented
+          };
+          DecisionPhase(
+            corp,
+            choices,
+            decisionCallback,
+            "Rototurret",
+            "Trash",
+            this,
+            "trash"
+          );
+        }
+      },
+      visual: { y: 57, h: 16 },
+    },
+    {
+      text: "End the run.",
+      Resolve: function () {
+        EndTheRun();
+      },
+      visual: { y: 73, h: 16 },
+    },
+  ],
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+    result.sr = [];
+	//No need to fear program trash if none are installed
+	var installedPrograms = ChoicesInstalledCards(runner, function (card) {
+	  return CheckCardType(card, ["program"]);
+	});
+	if (installedPrograms.length > 0) result.sr.push([["misc_serious"]]);
+	else result.sr.push([[]]); //push a blank sr so that indices match
+	result.sr.push([["endTheRun"]]);
+	return result;
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*
