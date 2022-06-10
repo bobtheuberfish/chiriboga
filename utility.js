@@ -189,7 +189,7 @@ function DownloadCapturedLog() {
   if (typeof corp.RnD.AISuccessfulRuns !== 'undefined') extraOutput += "corp.RnD.AISuccessfulRuns="+corp.RnD.AISuccessfulRuns+";\n";
   if (typeof corp.HQ.AISuccessfulRuns !== 'undefined') extraOutput += "corp.HQ.AISuccessfulRuns="+corp.HQ.AISuccessfulRuns+";\n";
   if (runner.AI && typeof runner.AI.suspectedHQCards !== 'undefined') {
-	  extraOutput += "runner.AI.suspectedHQCards = [";
+	  extraOutput += "if (runner.AI) runner.AI.suspectedHQCards = [";
 	  for (var i=0; i<runner.AI.suspectedHQCards.length; i++) {
 		  extraOutput += "{title:'"+runner.AI.suspectedHQCards[i].title+"',cardType:'"+runner.AI.suspectedHQCards[i].cardType+"',copies:"+runner.AI.suspectedHQCards[i].copies+",uncertainty:"+runner.AI.suspectedHQCards[i].uncertainty+"},";
 	  }
@@ -607,6 +607,25 @@ function GetServerByArray(src) {
 }
 
 /**
+ * Get either the ice being encountered/approached or, if different, an ice having subroutines chosen
+ *
+ * @method GetMostRelevantIce()
+ * @returns {Card} card or null
+ */
+function GetMostRelevantIce() {
+  for (var i = 0; i < validOptions.length; i++) {
+	//ignore options rendered as a button
+    if (typeof validOptions[i].button === "undefined") {
+      if (typeof validOptions[i].subroutine !== "undefined") {
+		if (typeof validOptions[i].card) return validOptions[i].card; //just return the first found
+	  }
+	}
+  }
+  //no ice having subroutines chosen, look for approach/encounter ice
+  return GetApproachEncounterIce();
+}
+
+/**
  * Get the currently approached/encountered ice, or if in movement phase from it.<br/>Returns card or null.
  *
  * @method GetApproachEncounterIce
@@ -646,11 +665,16 @@ function OptionsAreOnlyUniqueServers() {
  */
 function OptionsAreOnlyUniqueSubroutines() {
   if (validOptions.length < 1) return false;
-  //maybe we can use click-to-choose subroutines - to do so all must have .subroutine set and each be unique
+  //maybe we can use click-to-choose subroutines - to do so all must have .subroutine set and each be unique and on the same card
+  var cardSpecified = null;
   var uniqueSubroutines = [];
   for (var i = 0; i < validOptions.length; i++) {
-    if (typeof validOptions[i].button !== "undefined") continue; //nor relevant, rendered as a button
+    if (typeof validOptions[i].button !== "undefined") continue; //not relevant, rendered as a button
     if (typeof validOptions[i].subroutine === "undefined") return false;
+	if (typeof validOptions[i].card) {
+		if (!cardSpecified) cardSpecified = validOptions[i].card;
+		else if (cardSpecified != validOptions[i].card) return false; //more than one card specified
+	}
     if (uniqueSubroutines.includes(validOptions[i].subroutine)) return false;
     uniqueSubroutines.push(validOptions[i].subroutine);
   }
@@ -1858,6 +1882,36 @@ function ModifyingTriggers(
   return ret;
 }
 
+
+/**
+ * Create choices list for a particular subroutine.
+ *
+ * @method ChoicesSubroutine
+ * @param {Card} iceCard containing the subroutine
+ * @param {Subroutine} triggeredSubroutine to get choices for
+ * @returns {Params[]} list of options, each having .card, .ability, and .choice
+ */
+ function ChoicesSubroutine(iceCard, triggeredSubroutine) {
+  var ret = [
+	{ card: iceCard, ability: triggeredSubroutine, choice: null },
+  ]; //subroutines fire even if there are no choices to be made
+  if (typeof triggeredSubroutine.Enumerate === "function") {
+	var choices = triggeredSubroutine.Enumerate.call(iceCard);
+	if (choices.length > 0) {
+	  ret = [];
+	  for (var i = 0; i < choices.length; i++) {
+		ret.push({
+		  card: iceCard,
+		  ability: triggeredSubroutine,
+		  choice: choices[i],
+		  label: choices[i].label,
+		});
+	  }
+	  return ret;
+	}
+  } else return ret;
+ }
+ 
 /**
  * Gets list of unbroken subroutines on ice being encountered.<br/>Nothing is logged.
  *
@@ -2834,7 +2888,7 @@ function DeckBuild(
 	  //ice
 	  var iceCards = [];
 	  if (setIdentifiers.includes('sg')) iceCards = iceCards.concat([30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074]);
-	  if (setIdentifiers.includes('su21')) iceCards = iceCards.concat([31043, 31044]);
+	  if (setIdentifiers.includes('su21')) iceCards = iceCards.concat([31043, 31044, 31045]);
 	  var numIceCardsToAdd = RandomRange(15, 17);
 	  var iceInfluenceBudget = 9 - influenceUsed;
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(

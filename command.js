@@ -643,7 +643,7 @@ function EnumeratePhase() {
 function Cancel() {
   //special case: was choosing a subroutine
   if (OptionsAreOnlyUniqueSubroutines()) {
-    var ice = GetApproachEncounterIce();
+    var ice = GetMostRelevantIce();
     cardRenderer.RenderSubroutineChoices(null, []);
     if (ice) {
       ice.renderer.ToggleZoom();
@@ -743,7 +743,7 @@ function MakeChoice() {
   //only a list of unique servers/subroutines? choose by click!
   if (OptionsAreOnlyUniqueServers()) return; //skip render of modal
   if (OptionsAreOnlyUniqueSubroutines()) {
-    var ice = GetApproachEncounterIce();
+    var ice = GetMostRelevantIce();
     cardRenderer.RenderSubroutineChoices(ice, validOptions);
     ice.renderer.ToggleZoom();
     return; //skip render of modal

@@ -1204,24 +1204,7 @@ phases.runSubroutines = {
         //non-broken subroutine? trigger and resolve.
         if (!approachedIce.subroutines[subroutine].broken) {
           var triggeredSubroutine = approachedIce.subroutines[subroutine];
-          var ret = [
-            { card: approachedIce, ability: triggeredSubroutine, choice: null },
-          ]; //subroutines fire even if there are no choices to be made
-          if (typeof triggeredSubroutine.Enumerate === "function") {
-            choices = triggeredSubroutine.Enumerate.call(approachedIce);
-            if (choices.length > 0) {
-              ret = [];
-              for (var i = 0; i < choices.length; i++) {
-                ret.push({
-                  card: approachedIce,
-                  ability: triggeredSubroutine,
-                  choice: choices[i],
-                  label: choices[i].label,
-                });
-              }
-              return ret;
-            }
-          } else return ret;
+		  return ChoicesSubroutine(approachedIce, triggeredSubroutine);
         }
         //to get to here would require enumerating returned no valid options. this subroutine will be skipped
       }

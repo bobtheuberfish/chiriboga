@@ -1206,13 +1206,13 @@ cardSet[31018] = {
     return ChoicesExistingServers();
   },
   Resolve: function (params) {
-	encounteredIceThisRun=false;
+	this.encounteredIceThisRun=false;
     MakeRun(params.server);
   },
   cardEncountered: {
     Resolve: function (card) {
-		if (!encounteredIceThisRun) Bypass();
-		encounteredIceThisRun=true;
+		if (!this.encounteredIceThisRun) Bypass();
+		this.encounteredIceThisRun=true;
     },
   },  
   //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
@@ -3660,6 +3660,162 @@ cardSet[31044] = {
   },
 };
 
+cardSet[31045] = {
+  title: "Ravana 1.0",
+  imageFile: "31045.png",
+  elo: 1582,
+  player: corp,
+  faction: "Haas-Bioroid",
+  influence: 1,
+  cardType: "ice",
+  rezCost: 3,
+  strength: 5,
+  subTypes: ["Code Gate", "Bioroid"],
+  //subroutines:
+  //Resolve 1 subroutine on another rezzed bioroid ice.
+  //Resolve 1 subroutine on another rezzed bioroid ice.
+  SharedChoicesCards: function() {
+	  return ChoicesInstalledCards(corp, function(card) {
+		  if (card.rezzed) {
+			  if (CheckSubType(card, "Bioroid")) {
+				  if (CheckCardType(card, ["ice"])) {
+					  //current approach to avoiding infinite loop is to disallow choosing Ravana 1.0
+					  if (card.title != "Ravana 1.0") return true;
+				  }
+			  }
+		  }
+		  return false;
+	  });
+  },
+  SharedSubroutineResolve: function() {
+	  //current implementation is: choose a card, then choose a subroutine
+	  var choicesCards = this.SharedChoicesCards();
+	  if (choicesCards.length < 1) return;
+      function subsDecisionCallback(subsparams) {
+		var srchoices = ChoicesSubroutine(subsparams.card, subsparams.subroutine);
+		function srDecisionCallback(srparams) {
+			//fire the chosen subroutine
+			Trigger(srparams.card, srparams.ability, srparams.choice, "Firing");
+		}
+		//choose a subroutine option
+		DecisionPhase(
+          corp,
+          srchoices,
+          srDecisionCallback,
+          subsparams.card.title,
+          subsparams.card.title,
+          subsparams.card
+        );
+      }
+	  function cardDecisionCallback(cardparams) {
+		var subschoices = [];
+		for (var i=0; i<cardparams.card.subroutines.length; i++) {
+		  subschoices.push({card:cardparams.card, subroutine:cardparams.card.subroutines[i], label:cardparams.card.subroutines[i].label});
+		}
+		//choose a subroutine
+		DecisionPhase(
+          corp,
+          subschoices,
+          subsDecisionCallback,
+          cardparams.card.title,
+          cardparams.card.title,
+          cardparams.card
+        );
+	  }
+	  //choose a rezzed bioroid ice other than Ravana 1.0
+      DecisionPhase(
+        corp,
+        choicesCards,
+        cardDecisionCallback,
+        this.title,
+        this.title,
+        this
+      );
+  },
+  subroutines: [
+    {
+      text: "Resolve 1 subroutine on another rezzed bioroid ice.",
+      Resolve: function () {
+		this.SharedSubroutineResolve();
+      },
+      visual: { y: 96, h: 32 },
+    },
+    {
+      text: "Resolve 1 subroutine on another rezzed bioroid ice.",
+      Resolve: function () {
+		this.SharedSubroutineResolve();
+      },
+      visual: { y: 127, h: 32 },
+    },
+  ],
+  //Lose [click]: Break 1 subroutine on this ice. Only the runner can use this ability.
+  abilities: [
+    {
+      text: "Break 1 subroutine on this ice",
+      Enumerate: function () {
+        if (!CheckClicks(1, runner)) return [];
+        if (activePlayer !== runner) return [];
+        if (!encountering) return [];
+        if (GetApproachEncounterIce() != this) return [];
+        var choices = [];
+        for (var i = 0; i < this.subroutines.length; i++) {
+          var subroutine = this.subroutines[i];
+          if (!subroutine.broken)
+            choices.push({
+              subroutine: subroutine,
+              label: 'Lose [click]: Break "' + subroutine.text + '"',
+            });
+        }
+        return choices;
+      },
+      Resolve: function (params) {
+        SpendClicks(runner, 1);
+        Break(params.subroutine);
+      },
+      opponentOnly: true,
+    },
+  ],
+  activeForOpponent: true,
+  AIImplementIce: function(result, maxCorpCred, incomplete) {
+	//depends on what other bioroid ice are around
+	//compile a list of all rezzed cards
+	var installedCards = InstalledCards(corp);
+	//check for specific cards (current just Eli, Ansel, Brân)
+	var worstSR = []; //if there's only Ravana 1.0, worst effect is nothing
+	for (var i=0; i<installedCards.length; i++) {
+		var otherCard = installedCards[i];
+		if (otherCard.rezzed) {
+			if (otherCard.title == "Eli 1.0") {
+				worstSR = ["endTheRun"];
+			}
+			else if (otherCard.title == "Ansel 1.0" || otherCard.title == "Brân 1.0") {
+				worstSR = ["misc_serious"];
+				break; //this is the worst possible with current card pool
+			}
+		}
+	}
+    result.sr = [[worstSR], [worstSR]];	
+	return result;
+  },
+  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    if (this == iceAI.ice) {
+        if (clicksLeft > 0) {
+          var breakresult = runner.AI.rc.SrBreak(this, iceAI, point, 1);
+          for (var j = 0; j < breakresult.length; j++) {
+            breakresult[j].runner_clicks_spent += 1;
+          }
+          result = result.concat(breakresult);
+        }
+    }
+	return result;
+  },
+  //for corp to decide whether to install/rez this yet
+  AIWorthwhileIce: function(server) {
+	  //worthwhile only if there is a rezzed bioroid ice that isn't a Ravana 1.0
+	  return (this.SharedChoicesCards().length > 0);
+  },
+};
 
 //TODO link (e.g. Reina)
 

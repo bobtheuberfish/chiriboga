@@ -5,12 +5,15 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>Chiriboga Deck Launcher</title>
 		<link href="images/favicon.ico" rel="icon">
+		<link rel="stylesheet" href="jquery/jquery-ui.css" />
 		<link rel="stylesheet" href="style.css" />
 		<link rel="manifest" href="manifest.json">
 		<?php
 		include 'cardrenderer/webfont.php';
 		?>
 		<script src="jquery/jquery-3.2.1.min.js"></script>
+		<script src="jquery/jquery-ui.min.js"></script>
+		<script src="jquery/textarea-helper.js"></script>
 		<script src="deck/lz-string.min.js"></script>
 		<script src="deck/seedrandom.min.js"></script>
 		<script>
@@ -38,6 +41,52 @@
 
 			var deckPlayer = corp;
 			if (URIParameter("r") !== "") deckPlayer = runner;
+
+			//generate available titles
+			var titles = [];
+			for (var i=0; i<cardSet.length; i++) {
+				if (typeof cardSet[i] !== "undefined") {
+					if (cardSet[i].player == deckPlayer && cardSet[i].cardType != 'identity') { 
+						var setCardTitle = cardSet[i].title;
+						titles.push(setCardTitle);
+					}
+				}
+			}
+			titles.sort();
+
+			function WordAtCursor(remove=false) {
+				var text = $(this).val();
+				var start = $(this)[0].selectionStart - 1;
+				var end = $(this)[0].selectionEnd;
+				while (start > 0) {
+					if (text[start] != "\n") {
+						--start;
+					} else {
+						break;
+					}                        
+				}
+				if (start > 0) ++start;
+				while (end < text.length) {
+					if (text[end] != "\n") {
+						++end;
+					} else {
+						break;
+					}
+				}
+				var currentWord = text.substr(start, end - start);
+				if (remove) {
+					$(this).val(text.slice(0, start)+text.slice(end));
+					$(this)[0].selectionStart = start;
+				}
+				return currentWord;
+			}
+
+			function extractTerm( term ) {
+			  //extract the term at current position
+			  var wordAtCursor = WordAtCursor.call($("#deck"));
+			  var justTheWord = wordAtCursor.match(/(\d* *)(.*)/)[2]; //actually the word can be multiple words
+			  return justTheWord;
+			}
 
 			if (deckPlayer == corp) dC = "c";
 			//deckchar is c for corp
@@ -182,6 +231,78 @@
 			}
 
 			function Init() {
+			  //set up autosuggest
+			  var autoMinLen = 1;
+			  $("#deck").on("keydown", function (event) {
+				if (event.which == 13) {
+					//enter key
+					$(this).autocomplete("option", "minLength", Infinity);
+					return;
+				}
+				//known issue: this leaps to strange places when it is too large to fit onscreen...
+				var newY = $(this).textareaHelper('caretPos').top + (parseInt($(this).css('font-size'), 10) * 1.5);
+				var newX = $(this).textareaHelper('caretPos').left;
+				var posString = "left+" + newX + "px top+" + newY + "px";
+				$(this).autocomplete("option", "position", {
+					my: "left top",
+					at: posString,
+					of: $(this),
+				});
+				var wordAtCursor = WordAtCursor.call($("#deck"));
+				var minLen = $(this).val().length - wordAtCursor.length + autoMinLen; //since length check tests shole textarea
+				var coefficient = wordAtCursor.match(/(\d* *)(.*)/)[1];
+				if (coefficient) minLen += coefficient.length;
+				$(this).autocomplete("option", "minLength", minLen);
+			  });
+
+			  $("#deck").autocomplete({
+				minLength: autoMinLen,
+				open: function( event, ui ) {
+					//prevent up/down arrows from opening the menu
+					return false;
+				},
+				source: function( request, response ) {
+				  // delegate back to autocomplete, but extract the relevant term
+				  response( $.ui.autocomplete.filter(
+					titles, extractTerm( request.term ) ).slice(0,4) ); //limit number of results
+				},
+				select: function( event, ui ) {
+					var wordAtCursor = WordAtCursor.call($("#deck"),true); //true removes it
+					var coefficient = wordAtCursor.match(/(\d* *)(.*)/)[1];
+					if (!coefficient) coefficient = "";
+					var originalText = $(this).val();
+					var curPos = $(this)[0].selectionStart;
+					var backPart = originalText.slice(curPos);
+					if ( backPart.length == 0 || backPart[0] != "\n") {
+						backPart = "\n" + backPart;
+					}
+					$(this).val(originalText.slice(0, curPos)+coefficient+ui.item.value+backPart);
+					Parse();
+					return false; //prevent default action (would replace whole area)
+				},
+				autoFocus:true,
+				focus: function( event, ui ) {
+					return false; //prevent default action (would replace whole area)
+				},
+				delay:0,
+			  });
+			  
+			  // Overrides the default autocomplete filter function to search only from the beginning of the string
+			  $.ui.autocomplete.filter = function (array, term) {
+				    term = Normalise(term);
+					if (term.length < autoMinLen) array = []; //enforce min length
+					var matcher = new RegExp("^" + $.ui.autocomplete.escapeRegex(term), "i");
+					return $.grep(array, function (value) {
+						value = Normalise(value);
+						return matcher.test(value.label || value.value || value);
+					});
+			  };
+			  
+			  //click into list should close the autocomplete
+			  $("#deck").on("click",function() {
+				  $("#deck").autocomplete("close");
+			  });
+			  
 			  //identity select will regenerate a deck if changed
 			  $("#identityselect").change(function () {
 				json.identity = $("select#identityselect option:checked").val();
@@ -214,18 +335,16 @@
 			  } else GenerateDeck(); //this will recognise the input string and load it
 			}
 
+			function Normalise(src) {
+				return src.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+			}
+
 			function GetCardIdFromTitle(title) {
-			  var soughtCardTitle = title
-				.normalize("NFD")
-				.replace(/[\u0300-\u036f]/g, "")
-				.toLowerCase();
+			  var soughtCardTitle = Normalise(title);
 			  //seek backwards so as to get the most recent version
 			  for (var i=cardSet.length; i>-1; i--) {
 				if (typeof cardSet[i] !== "undefined") {
-				  var setCardTitle = cardSet[i].title
-					.normalize("NFD")
-					.replace(/[\u0300-\u036f]/g, "")
-					.toLowerCase();
+				  var setCardTitle = Normalise(cardSet[i].title);
 				  if (setCardTitle.length >= soughtCardTitle.length) {
 					if (setCardTitle.substring(0,soughtCardTitle.length) === soughtCardTitle) {
 						return i;
@@ -330,13 +449,13 @@
 					numstylestr +
 					">" +
 					totalCards +
-					" cards </span><span" +
+					" cards </span><br><br><span" +
 					infstylestr +
-					">(" +
+					">" +
 					totalInfluence +
-					" influence)</span>";
+					" influence</span><br>";
 				else
-				  validityOutput += totalCards + " card (" + totalInfluence + " influence)";
+				  validityOutput += totalCards + " card<br><br>" + totalInfluence + " influence<br>";
 				if (deckPlayer == corp) {
 				  var agendaMin = 2 * Math.floor(Math.max(totalCards,cardSet[json.identity].deckSize) / 5) + 2;
 				  var agendaMax = agendaMin + 1;
@@ -353,7 +472,7 @@
 					  agendaMin +
 					  "-" +
 					  agendaMax +
-					  ")</span>";
+					  " required)</span>";
 				  else
 					validityOutput +=
 					  "<br><span" +
@@ -362,7 +481,7 @@
 					  agendaMin +
 					  "-" +
 					  agendaMax +
-					  ")</span>";
+					  " required)</span>";
 				}
 				$("#output").html(validityOutput);
 				$("#launch").prop("disabled", false);
@@ -400,6 +519,17 @@
 			.toprow {
 				padding-top:30px;
 			}
+			
+			#output {
+				display:inline-block;
+				vertical-align:top;
+				width:160px;
+				padding-top:20px;
+			}
+			
+			.ui-widget-content {
+				background: #113;
+			}
 		</style>
 	</head>
 
@@ -410,14 +540,14 @@
 				<div class="leftrow toprow">
 					<select id="identityselect" style="max-width: 340px;"></select>
 					<img id="identity" src="images/glow_outline.png">
+					<div id="output">
+					</div>
 				</div>
 				<div class="leftrow">
 					<button id="exittomenu" onclick="window.location.href='index.html';" class="button">Exit to main menu</button>
 					<button id="launch" class="button" onclick="window.location.href=$(this).prop('href');">Launch</button>
 				</div>
-				<div id="output" class="leftrow toprow">
-				</div>
-				<div class="leftrow">
+				<div class="leftrow toprow">
 					<textarea id="deck" spellcheck="false" cols="30" style="max-width:340px; min-width:340px;"></textarea><br/>
 				</div>
 				<br/>

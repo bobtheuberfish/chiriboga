@@ -35,7 +35,7 @@ class CorpAI {
 
   _affordableIce(
     serverToInstallTo,
-    cards //returns all ice in hand with cost equal to or less than credit pool
+    cards //returns all ice in cards (or hand, if cards not specified) with cost equal to or less than credit pool
   ) {
     if (typeof cards == "undefined") cards = corp.HQ.cards; //usually installing from hand but this makes other options possible
     return this._iceInCardsCommon(serverToInstallTo, true, cards);
@@ -268,6 +268,62 @@ class CorpAI {
         return i;
     }
     return 0; //just arbitrary
+  }
+  
+  _highestELO(cards) {
+	if (cards.length < 1) {
+		console.error("Empty cards array?");
+		return;
+	}
+	var ret = cards[0];
+	var highestElo = cards[0].elo;
+	for (var i=1; i<cards.length; i++) {
+		if (cards[i].elo > highestElo) {
+			highestElo = cards[i].elo;
+			ret = cards[i];
+		}
+	}
+	return ret;
+  }
+  
+  //returns the option or null if not found
+  _firstOptionWithCard(optionList, card) {
+	for (var i=0; i<optionList.length; i++) {
+		if (optionList[i].card) {
+			if (optionList[i].card == card) return optionList[i];
+		}
+	}
+	return null;
+  }
+  
+  _bestNonAgendaTutorOption(optionList) {
+	//fast advance
+	var fastAdvanceCards = [];
+	for (var i=0; i<optionList.length; i++) {
+		if (optionList[i].card) {
+			if (optionList[i].card.AIFastAdvance) fastAdvanceCards.push(optionList[i].card);
+		}
+	}
+	if (fastAdvanceCards.length > 0) return this._firstOptionWithCard(optionList,this._highestELO(fastAdvanceCards));
+	//opportunity (e.g. tags/damage)
+	var opportunityCards = [];
+	for (var i=0; i<optionList.length; i++) {
+		if (optionList[i].card) {
+			if ( optionList[i].card.AIBestIfTags || optionList[i].card.AIDamageOperation || ( typeof optionList[i].card.AIWouldPlay == 'function' && optionList[i].card.AIWouldPlay.call(optionList[i].card) ) ) opportunityCards.push(optionList[i].card);
+		}
+	}
+	if (opportunityCards.length > 0) return this._firstOptionWithCard(optionList,this._highestELO(opportunityCards));
+	//if no afffordable ice in hand, choose ice
+	var cardList = [];
+	for (var i=0; i<optionList.length; i++) {
+		if (optionList[i].card) cardList.push(optionList[i].card);
+	}
+	if (!this._affordableIce(null).length == 0) {
+	  var affordableIceInList = this._affordableIce(null,cardList);
+	  if (affordableIceInList.length > 0) return this._firstOptionWithCard(optionList,this._highestELO(affordableIceInList));
+	}
+	//choose highest elo card in option list
+	return this._firstOptionWithCard(optionList,this._highestELO(cardList));
   }
 
   _bestRecurToHQOption(optionList,serverUnderThreat,useNowIfPossible=false) {
@@ -1347,8 +1403,24 @@ class CorpAI {
 	  if (this._iceToLeaveUnrezzed(server) == card) {
 		  rezIce = false;
 	  }
-	  /*
 	  //special exceptions:
+	  if (runner.resolvingCards.length > 0) {
+		  var copyOfInsideJob = this._copyOfCardExistsIn("Inside Job", runner.resolvingCards);
+		  if (copyOfInsideJob) {
+			if (!copyOfInsideJob.encounteredIceThisRun) {
+				var indexInServer = server.ice.indexOf(card);
+				if (indexInServer == 0 || !server.ice[indexInServer-1].rezzed && corp.creditPool < RezCost(card) + RezCost(server.ice[indexInServer-1])) {
+					if (typeof card.cardRezzed == 'undefined' 
+					  && typeof card.rez == 'undefined') {
+					  //if this is first and only ice that would be encountered during an inside job,
+					  //  only rez it if there is some other benefit
+					  rezIce = false;
+					}
+				}
+			}
+		  }
+	  }
+	  /*
 	  //TODO check this doesn't override false with true (or just return above if false?)
 	  if (GetTitle(card) == "Cell Portal") {
 		//only rez cell portal if it is behind at least one rezzed ice

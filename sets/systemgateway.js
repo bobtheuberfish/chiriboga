@@ -3711,6 +3711,7 @@ cardSet[30049] = {
     automatic: true,
     availableWhenInactive: true,
   },
+  AIDamageOperation: true,
 };
 cardSet[30050] = {
   title: "Anoetic Void",
@@ -3857,7 +3858,7 @@ cardSet[30051] = {
       var choices = [];
       if (!this.usedThisTurn) {
         choices.push({ id: 0, label: "Gain 2[c]", button: "Gain 2[c]" });
-        choices.push({ id: 1, label: "Draw 2 cards", button: "Draw 2 cards" });
+        if (corp.RnD.cards.length > 1) choices.push({ id: 1, label: "Draw 2 cards", button: "Draw 2 cards" });
       }
       return choices;
     },
@@ -4237,6 +4238,7 @@ cardSet[30056] = {
     if (params.id != 1) GainCredits(corp, 3);
     if (params.id != 0) Draw(corp, 3);
   },
+  AIBestIfTags:1, //most useful if at least 1 tag
 };
 cardSet[30057] = {
   title: "Public Trail",
@@ -4725,6 +4727,7 @@ cardSet[30065] = {
       );
     }
   },
+  AIBestIfTags:1, //most useful if at least 1 tag
 };
 cardSet[30066] = {
   title: "Malapert Data Vault",
@@ -4758,6 +4761,11 @@ cardSet[30066] = {
         var choices = ChoicesArrayCards(corp.RnD.cards, function (card) {
           return !CheckCardType(card, ["agenda"]); //only non-agenda cards permitted
         });
+		//**AI code
+		if (corp.AI != null) {
+			//don't use this ability if R&D is getting super empty
+			if (choices.length > 1) return [corp.AI._bestNonAgendaTutorOption(choices)];
+		}
         choices.push({ card: null, label: "Continue", button: "Continue" }); //even if there are no non-agenda cards, you can legally search and fail  (more info here: http://ancur.wikia.com/wiki/Democracy_and_Dogma_UFAQ#Mumbad_City_Hall)
         return choices;
       }
@@ -4949,7 +4957,9 @@ cardSet[30070] = {
   //When you score this agenda, you may draw 2 cards.
   scored: {
     Enumerate: function () {
-      if (intended.score == this) return [{}];
+      if (intended.score == this) {
+		  if (corp.RnD.cards.length > 1) return [{}];
+	  }
       return [];
     },
     Resolve: function (params) {

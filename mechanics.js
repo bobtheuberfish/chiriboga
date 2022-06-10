@@ -102,10 +102,12 @@ function Rez(card) {
 	  //run recalculation has to be done AFTER all the rezzing effects in case they change ice/program states
 	  if (runner.AI != null) {
 		runner.AI.LoseInfoAboutHQCards(card);
-		//if this ice is inner compared to existing run position, recalculate run
+		//if it was ice that was rezzed, recalculate run (even if ice is in another server e.g. could affect Ravana 1.0)
+		/*
 		var cardServer = GetServer(card);
 		if (GetApproachEncounterIce() == card || (attackedServer == cardServer && cardServer.ice.indexOf(card) > -1 && cardServer.ice.indexOf(card) < approachIce) ) {
-		  //update run calculation now that the ice is known
+		*/
+		if (CheckCardType(card,["ice"]) && attackedServer) {
 		  //ideally complete run
 		  if (!runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, 0, null, approachIce)) //null means no bonus breaker
 		  //but if not, use an exit strategy (incomplete run)
