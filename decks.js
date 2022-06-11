@@ -737,7 +737,7 @@ function LoadDecks() {
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-  debugging = true; //set true to pause execution on error
+  debugging = false; //set true to pause execution on error
   //mainLoopDelay = 10; //for speedy AI vs AI testing
 
   /*
