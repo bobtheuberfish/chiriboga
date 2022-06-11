@@ -2182,11 +2182,12 @@ function ChoicesAbility(card, limitTo = "") {
  *
  * @method FullCheckPlay
  * @param {Card} card to full check play
+ * @param {Card} requireActionPhase set false for predictive checks
  * @returns {Choice[]} list of choices if can play, null if can not play
  */
-function FullCheckPlay(card) {
+function FullCheckPlay(card,requireActionPhase=true) {
   if (card == null) return false;
-  if (CheckActionClicks(card.player, 1)) {
+  if ((!requireActionPhase && CheckClicks(card.player, 1)) || CheckActionClicks(card.player, 1)) {
     if (CheckPlay(card)) {
       if (CheckCredits(card.playCost, card.player, "playing", card)) {
         if (typeof card.Enumerate !== "undefined") {
@@ -2913,7 +2914,7 @@ function DeckBuild(
 	    30037, 30038, 30039, 30040, 30041, 30042, 30045, 30046, 30047, 30048, 30049, 30050, 30053, 30054, 30055, 30056, 30057, 30058, 30061, 30062,
 		30063, 30064, 30065, 30066, 30071, 30072, 30073, 30074, 30075,
 	  ]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31042]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31042, 31047]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,

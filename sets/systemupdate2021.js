@@ -3878,6 +3878,41 @@ cardSet[31046] = {
   },
 };
 
+cardSet[31047] = {
+  title: "Archived Memories",
+  imageFile: "31047.png",
+  elo: 1732,
+  player: corp,
+  faction: "Haas-Bioroid",
+  influence: 2,
+  cardType: "operation",
+  playCost: 0,
+  //Add 1 card from Archives to HQ.
+  Enumerate: function () {
+	var choices = ChoicesArrayCards(corp.archives.cards);
+	if (choices.length < 1) return [];
+	//**AI code (in this case, implemented by setting and returning the preferred option)
+	if (corp.AI != null) {
+		//current logic is if there is an agenda in archives or if the best 'tutor' option is an operation
+		var agendaRecur = corp.AI._bestRecurToHQOption(choices,corp.archives);
+		if (agendaRecur) {
+			if (agendaRecur.card.cardType=="agenda") return [agendaRecur];
+		}
+		var nonAgenda = corp.AI._bestNonAgendaTutorOption(choices,true); //true means return null rather than mediocre options
+		if (nonAgenda) {
+			if (nonAgenda.card.cardType=="operation") return [nonAgenda];
+		}
+		return []; //don't use right now
+	}
+	return choices;
+  },
+  Resolve: function (params) {
+	Log(GetTitle(params.card, true)+" added to HQ");
+	MoveCard(params.card, corp.HQ.cards);
+  },
+  AIIsRecurOrTutor: true,
+};
+
 //TODO link (e.g. Reina)
 
 /*

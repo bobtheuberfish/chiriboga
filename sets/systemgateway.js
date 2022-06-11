@@ -4238,7 +4238,6 @@ cardSet[30056] = {
     if (params.id != 1) GainCredits(corp, 3);
     if (params.id != 0) Draw(corp, 3);
   },
-  AIBestIfTags:1, //most useful if at least 1 tag
 };
 cardSet[30057] = {
   title: "Public Trail",
@@ -4297,6 +4296,10 @@ cardSet[30057] = {
 	var ptp = corp.AI._potentialTagPunishment(runner.tags+1,corp.clickTracker-1,corp.creditPool-this.playCost) && corp.AI._clicksLeft() > 1 && runner.tags < 2;
 	if (ptp) return true;
 	return false;
+  },
+  AIWouldPlayBeforeScore: function (cardToScore, serverToScoreIn) {
+	if (!CheckTags(1) && cardToScore.title == "Orbital Superiority") return true; //worth it to do that 4 meat damage!
+    return false;
   },
 };
 cardSet[30058] = {
@@ -4727,7 +4730,7 @@ cardSet[30065] = {
       );
     }
   },
-  AIBestIfTags:1, //most useful if at least 1 tag
+  AITagPunishment:1, //can be used to punish if at least 1 tag
 };
 cardSet[30066] = {
   title: "Malapert Data Vault",

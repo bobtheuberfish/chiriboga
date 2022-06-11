@@ -296,7 +296,7 @@ class CorpAI {
 	return null;
   }
   
-  _bestNonAgendaTutorOption(optionList) {
+  _bestNonAgendaTutorOption(optionList,onlyTheBest=false) {
 	//fast advance
 	var fastAdvanceCards = [];
 	for (var i=0; i<optionList.length; i++) {
@@ -305,18 +305,19 @@ class CorpAI {
 		}
 	}
 	if (fastAdvanceCards.length > 0) return this._firstOptionWithCard(optionList,this._highestELO(fastAdvanceCards));
-	//opportunity (e.g. tags/damage)
+	//opportunity (e.g. tag punishment/damage)
 	var opportunityCards = [];
 	for (var i=0; i<optionList.length; i++) {
-		if (optionList[i].card) {
-			if ( optionList[i].card.AIBestIfTags || optionList[i].card.AIDamageOperation || ( typeof optionList[i].card.AIWouldPlay == 'function' && optionList[i].card.AIWouldPlay.call(optionList[i].card) ) ) opportunityCards.push(optionList[i].card);
+		if (optionList[i].card && !optionList[i].card.AIIsRecurOrTutor) {
+			if ( optionList[i].card.AITagPunishment || optionList[i].card.AIDamageOperation || ( typeof optionList[i].card.AIWouldPlay == 'function' && optionList[i].card.AIWouldPlay.call(optionList[i].card) ) ) opportunityCards.push(optionList[i].card);
 		}
 	}
 	if (opportunityCards.length > 0) return this._firstOptionWithCard(optionList,this._highestELO(opportunityCards));
-	//if no afffordable ice in hand, choose ice
+	if (onlyTheBest) return null;
+	//if no affordable ice in hand, choose ice
 	var cardList = [];
 	for (var i=0; i<optionList.length; i++) {
-		if (optionList[i].card) cardList.push(optionList[i].card);
+		if (optionList[i].card && !optionList[i].card.AIIsRecurOrTutor) cardList.push(optionList[i].card);
 	}
 	if (!this._affordableIce(null).length == 0) {
 	  var affordableIceInList = this._affordableIce(null,cardList);
@@ -347,15 +348,18 @@ class CorpAI {
 	  }
 	  //if HQ is under threat and contains agendas, seek to pad with non agenda cards
 	  if (serverUnderThreat == corp.HQ && this._agendasInHand() > 0) useNowIfPossible = true;
+	  //TODO don't include multiple copies of cards in archives since only one can be recurred
+	  //TODO also take into account whether there will be the credits/clicks after whatever is causing this recur
 	  var faai = this._fullyAdvanceableAgendaInstalled(corp.HQ.cards.concat(corp.archives.cards));
 	  //look for fast advance cards (if could use to finish an agenda using cards from both HQ and archives)
-	  if (useNowIfPossible || this._fullyAdvanceableAgendaInstalled(corp.HQ.cards.concat(corp.archives.cards))) {
+	  if (useNowIfPossible || faai) {
 		  for (var i=0; i<optionList.length; i++) {
 			if (optionList[i].card) {
 			  if (optionList[i].card.AIFastAdvance) return optionList[i];
 			}
 		  }
 	  }
+	  //TODO include kill combos
 	  //save the ability for later, if possible
 	  if (!useNowIfPossible) return null;
 	  //for now it's just arbitrary but could potentially add logic here
@@ -1331,6 +1335,16 @@ class CorpAI {
 	  return false;
   }
 
+  //returns the ice position in the given server
+  //if server is null, 0 is returned
+  //if ice is not in the server, server.ice.length is returned
+  _icePositionInServer(iceCard, server) {
+	  if (!server) return 0;
+	  var iceIndex = server.ice.indexOf(iceCard);
+	  if (iceIndex > -1) return iceIndex;
+	  return server.ice.length;
+  }
+
   //returns true to rez, false not to
   //passing the rez cost is an optimisation
   //input server to hypothesise if the ice isn't installed yet
@@ -1340,33 +1354,62 @@ class CorpAI {
 	  if (typeof currentRezCost == 'undefined') {
 		  currentRezCost = RezCost(card);
 	  }
-	  //make sure there isn't better ice this will prevent us from rezzing
+	  //make sure there isn't better ice behind or in another server this will prevent us from rezzing
+	  //for optimisation, we'll make a list of unrezzed ice with {card, server, cost, value} where value is the server value
+	  var iceToCompareList = [];
 	  var thisServerValue = this._serverValue(server);
-	  var thisIceProtectionValue = this._cardProtectionValue(card);
-	  var serversToCompare = [];
-	  if (corp.archives !== server) serversToCompare.push(corp.archives);
-	  if (corp.RnD !== server) serversToCompare.push(corp.RnD);
-	  if (corp.HQ !== server) serversToCompare.push(corp.HQ);
-	  for (var i=0; i<corp.remoteServers.length; i++) {
-		if (corp.remoteServers[i] !== server) {
-			serversToCompare.push(corp.remoteServers[i]);
+	  //behind this ice (if the server exists)
+	  if (server) {
+	    var thisIcePosition = this._icePositionInServer(card, server);
+	    for (var i=thisIcePosition-1; i>-1; i--) {
+		  if (!server.ice[i].rezzed) {
+			iceToCompareList.push({card:server.ice[i], server:server, cost:RezCost(server.ice[i]), value:thisServerValue});
+		  }
 		}
 	  }
-	  for (var i=0; i<serversToCompare.length; i++) {
-		  var serverToCompare = serversToCompare[i];
-		  var comparisonValue = this._serverValue(serverToCompare);
-		  for (var j=0; j<serverToCompare.ice.length; j++) {
-			if (!serverToCompare.ice[j].rezzed) {
-				if (!CheckCredits(currentRezCost+RezCost(serverToCompare.ice[j]), corp, "rezzing")) {
-					if ( (comparisonValue > thisServerValue) ||
-						 ((comparisonValue == thisServerValue) && (this._cardProtectionValue(serverToCompare.ice[j]) > thisIceProtectionValue)) ) {
-					  this._log("Rez cost not worth it, need to save it for "+serverToCompare.ice[j].title+" in "+ServerName(serverToCompare));
-					  rezIce = false;
-					}
-					else this._log("Rez this is better than "+serverToCompare.ice[j].title+" in "+ServerName(serverToCompare));
-				}
+	  //in another server (if Runner has clicks to potentially run it)
+	  if (runner.clickTracker > 0) {
+		  //start by making a list of servers to compare
+		  var serversToCompare = [];
+		  if (corp.archives !== server) serversToCompare.push(corp.archives);
+		  if (corp.RnD !== server) serversToCompare.push(corp.RnD);
+		  if (corp.HQ !== server) serversToCompare.push(corp.HQ);
+		  for (var i=0; i<corp.remoteServers.length; i++) {
+			if (corp.remoteServers[i] !== server) {
+				serversToCompare.push(corp.remoteServers[i]);
 			}
 		  }
+		  //now loop through the ice in all those servers, adding to unrezzed ice list
+		  for (var i=0; i<serversToCompare.length; i++) {
+			  var serverToCompare = serversToCompare[i];
+			  var comparisonValue = this._serverValue(serverToCompare);
+			  for (var j=0; j<serverToCompare.ice.length; j++) {
+				if (!serverToCompare.ice[j].rezzed) {
+					iceToCompareList.push({card:serverToCompare.ice[j], server:serverToCompare, cost:RezCost(serverToCompare.ice[j]), value:comparisonValue});
+				}
+			  }
+		  }
+	  }
+	  //list of ice to compare is made, now compare
+	  var thisIceProtectionValue = this._cardProtectionValue(card);
+	  for (var i=0; i<iceToCompareList.length; i++) {
+		var iceToCompare = iceToCompareList[i].card;
+		var serverToCompare = iceToCompareList[i].server;
+		var rezCostToCompare = iceToCompareList[i].cost;
+		var valueToCompare = iceToCompareList[i].value;
+		//only check ice that could be rezzed if we don't rez this
+		if (CheckCredits(rezCostToCompare, corp, "rezzing")) {
+		  //but couldn't be rezzed if we do rez this
+		  if (!CheckCredits(currentRezCost+rezCostToCompare, corp, "rezzing")) {
+			//save credits for that ice if the server value is greater, or if server value equal and ice value greater
+			if ( (valueToCompare > thisServerValue) ||
+			  ((valueToCompare == thisServerValue) && (this._cardProtectionValue(iceToCompare) > thisIceProtectionValue)) ) {
+				this._log("Rez cost not worth it, need to save it for "+iceToCompare.title+" in "+ServerName(serverToCompare));
+				rezIce = false;
+			}
+			else this._log("Rez this is better than "+iceToCompare.title+" in "+ServerName(serverToCompare));
+		  }
+		}
 	  }
 	  //also consider if there is a defensive upgrade worth rezzing in this server instead
 	  for (var i=0; i<server.root.length; i++) {
@@ -1703,7 +1746,7 @@ class CorpAI {
         }
       }
     }
-    //are there things we could install first to benefit?
+    //are there things we could install or play first to benefit?
     if (this._clicksLeft() > 0) {
       for (var i = 0; i < corp.HQ.cards.length; i++) {
         var card = corp.HQ.cards[i];
@@ -1723,6 +1766,18 @@ class CorpAI {
             }
           }
         }
+        if (typeof card.AIWouldPlayBeforeScore !== "undefined") {
+          if (
+            card.AIWouldPlayBeforeScore.call(card, cardToScore, serverToScoreIn)
+          ) {
+			//the true here means yes log, the first false means don't check AIWouldPlay, the second means don't require action phase
+			if (this._commonCardToPlayChecks(card,"before score",true,false,false)) {
+				return this._returnPreference(optionList, "play", {
+					cardToPlay: card,
+				});
+			}
+		  }
+		}
       }
     }
     return this._returnPreference(optionList, "score", {
@@ -1769,12 +1824,12 @@ class CorpAI {
 
   //returns true if the card should be played
   //TODO use functions like this more widely rather than having copies of similar code
-  _commonCardToPlayChecks(cardToPlay,msg="",logwillplay=false) {
+  _commonCardToPlayChecks(cardToPlay,msg="",logwillplay=false,checkWouldPlay=true,requireActionPhase=true) {
 	if (cardToPlay) {
 	  this._log("there is a card to play "+msg);
 	  var playThis = true; //if no specific rules have been defined then just play it whenever you can
-	  if (typeof(cardToPlay.AIWouldPlay) == 'function') playThis = cardToPlay.AIWouldPlay.call(cardToPlay);
-	  if (playThis&&FullCheckPlay(cardToPlay)) {
+	  if (checkWouldPlay && typeof(cardToPlay.AIWouldPlay) == 'function') playThis = cardToPlay.AIWouldPlay.call(cardToPlay);
+	  if (playThis&&FullCheckPlay(cardToPlay,requireActionPhase)) {
 		if (logwillplay) this._log("I will play it");
 		return true;
 	  }
@@ -1869,9 +1924,11 @@ class CorpAI {
 	if (!almostDoneAgenda) {
 		//take advantage of a temporary window of opportunity (i.e., play right away)
 		if (optionList.includes("play")) {
+		  //these are in order of priority, most critical first
 		  var useWhenCanCards = [
 			"Neurospike", //agendas scored
 			"Public Trail", //successful run
+			"Archived Memories", //desired target to recur
 		  ];
 		  for (var i = 0; i < useWhenCanCards.length; i++) {
 			cardToPlay = this._copyOfCardExistsIn(
