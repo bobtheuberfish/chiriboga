@@ -2483,6 +2483,42 @@ function CountInfluence(identityCard, indices) {
 }
 
 /**
+ * Helper function to check legality to add a card for deckbuilding (non-agenda cards).<br/>Does not check limit per deck.
+ *
+ */
+function LegalCardForDeckBuild(
+  cardNumber,
+  identityCard,
+  destination,
+  maxLength,
+  maxInfluence,
+  minLength,
+  exactInfluence,
+  highestInfInPool,
+  totalInfluence,
+) {
+  var cardSlotsThatWillBeLeft = minLength - destination.length - 1;
+  if (cardSet[cardNumber].faction == identityCard.faction || cardSet[cardNumber].influence == 0) {
+	  var influenceThatWillBeLeft = maxInfluence - totalInfluence;
+	  if (!exactInfluence || influenceThatWillBeLeft == 0 || cardSlotsThatWillBeLeft > 0) return true;
+  }
+  else {
+	var infFlex = 2;
+	if ((maxLength < 2)||(totalInfluence >= maxInfluence)) infFlex = 0; //the flex is only there for accidental overflow, don't waste it
+	var suitableInfluence = true;
+	if (exactInfluence) {
+		infFlex = 0;
+		var influenceThatWillBeLeft = maxInfluence - totalInfluence - cardSet[cardNumber].influence;
+//console.log(cardSlotsThatWillBeLeft+" card slots left, "+influenceThatWillBeLeft+" inf remaining after inclusion of "+cardSet[cardNumber].title+" with inf: "+cardSet[cardNumber].influence);
+		if ( (cardSlotsThatWillBeLeft > influenceThatWillBeLeft) && (cardSet[cardNumber].influence > 0) ) suitableInfluence = false; //don't use up all the influence immediately (card pool may not have enough in-faction cards to complete the quota otherwise)
+		else if (cardSlotsThatWillBeLeft == 0 && influenceThatWillBeLeft > 0 && cardSet[cardNumber].influence < highestInfInPool) suitableInfluence = false; //try not to waste any influence
+	}
+	if (totalInfluence + cardSet[cardNumber].influence <= maxInfluence + infFlex && suitableInfluence) return true;
+  }
+  return false;
+}
+
+/**
  * Instance and add cards to a given array from a list of set numbers.<br/>Do not use this with agendas.<br/>Nothing is logged.
  *
  * @method DeckBuildRandomly
@@ -2536,61 +2572,61 @@ function DeckBuildRandomly(
     destination.length < maxLength &&
     Date.now() - startTime < deckBuildingMaxTime
   ) {
-    var randomIndex = RandomRange(0, indices.length - 1);
-    var cardNumber = indices[randomIndex];
-    var limitPerDeck = 3;
-    if (typeof cardSet[cardNumber].limitPerDeck !== "undefined")
-      limitPerDeck = cardSet[cardNumber].limitPerDeck;
-    if (typeof cardSet[cardNumber].AILimitPerDeck !== "undefined")
-      limitPerDeck = cardSet[cardNumber].AILimitPerDeck;
-    if (countSoFar[randomIndex] < limitPerDeck) {
-      var legalCard = false;
-	  var cardSlotsThatWillBeLeft = minLength - destination.length - 1;
-      if (cardSet[cardNumber].faction == identityCard.faction || cardSet[cardNumber].influence == 0) {
-		  var influenceThatWillBeLeft = maxInfluence - totalInfluence;
-		  if (!exactInfluence || influenceThatWillBeLeft == 0 || cardSlotsThatWillBeLeft > 0) legalCard = true;
-	  }
-      else {
-		var infFlex = 2;
-		if ((maxLength < 2)||(totalInfluence >= maxInfluence)) infFlex = 0; //the flex is only there for accidental overflow, don't waste it
-		var suitableInfluence = true;
-		if (exactInfluence) {
-			infFlex = 0;
-			var influenceThatWillBeLeft = maxInfluence - totalInfluence - cardSet[cardNumber].influence;
-//console.log(cardSlotsThatWillBeLeft+" card slots left, "+influenceThatWillBeLeft+" inf remaining after inclusion of "+cardSet[cardNumber].title+" with inf: "+cardSet[cardNumber].influence);
-			if ( (cardSlotsThatWillBeLeft > influenceThatWillBeLeft) && (cardSet[cardNumber].influence > 0) ) suitableInfluence = false; //don't use up all the influence immediately (card pool may not have enough in-faction cards to complete the quota otherwise)
-			else if (cardSlotsThatWillBeLeft == 0 && influenceThatWillBeLeft > 0 && cardSet[cardNumber].influence < highestInfInPool) suitableInfluence = false; //try not to waste any influence
+	//grab a couple of cards at random to choose from
+	var randomIndices = [];
+	for (var j=0; j<2; j++) {
+		var randomIndex = RandomRange(0, indices.length - 1);
+		var cardNumber = indices[randomIndex];
+		var limitPerDeck = 3;
+		if (typeof cardSet[cardNumber].limitPerDeck !== "undefined")
+		  limitPerDeck = cardSet[cardNumber].limitPerDeck;
+		if (typeof cardSet[cardNumber].AILimitPerDeck !== "undefined")
+		  limitPerDeck = cardSet[cardNumber].AILimitPerDeck;
+		//check how many already in deck and update list of maxed cards if necessary
+		if (countSoFar[randomIndex] >= limitPerDeck) {
+			if (!maxedIndices.includes(randomIndex)) {
+			  //don't include this as highest influence in pool
+			  maxedIndices.push(randomIndex);
+			  var highestInfInPool = 0;
+			  for (var i = 0; i < indices.length; i++) {
+				  if (cardSet[indices[i]].faction != identityCard.faction && cardSet[indices[i]].influence > highestInfInPool && !maxedIndices.includes(i)) highestInfInPool = cardSet[indices[i]].influence;
+			  }
+			}
 		}
-        if (totalInfluence + cardSet[cardNumber].influence <= maxInfluence + infFlex && suitableInfluence) {
-          totalInfluence += cardSet[cardNumber].influence;
-          legalCard = true;
-        }
-      }
-      if (legalCard) {
-//console.log("Choosing "+cardSet[cardNumber].title+" ("+cardSet[cardNumber].influence+" inf, "+(maxLength-destination.length)+" cards and "+(maxInfluence-totalInfluence)+" inf remaining)");
-        countSoFar[randomIndex]++;
-        if (typeof cardBack !== "undefined")
-          InstanceCardsPush(
-            cardNumber,
-            destination,
-            1,
-            cardBack,
-            glowTextures,
-            strengthTextures
-          );
-        //live deck
-        else destination.push(cardNumber);
-        ret.push(cardNumber);
-      }
-    }
-	else if (!maxedIndices.includes(randomIndex)) {
-	  //don't include this as highest influence in pool
-	  maxedIndices.push(randomIndex);
-	  var highestInfInPool = 0;
-	  for (var i = 0; i < indices.length; i++) {
-		  if (cardSet[indices[i]].faction != identityCard.faction && cardSet[indices[i]].influence > highestInfInPool && !maxedIndices.includes(i)) highestInfInPool = cardSet[indices[i]].influence;
-	  }
+		else if (LegalCardForDeckBuild(cardNumber,identityCard,destination,maxLength,maxInfluence,minLength,exactInfluence,highestInfInPool,totalInfluence)) {
+			randomIndices.push(randomIndex);
+		}
 	}
+	if (randomIndices.length > 1) {
+	  //choose highest elo
+	  var bestIndex = randomIndices[0];
+	  var chosenOver = randomIndices[1]; //for reporting/debugging
+	  var highestElo = cardSet[indices[bestIndex]].elo;
+	  for (var i=1; i<randomIndices.length; i++) {
+		var eloToCheck = cardSet[indices[randomIndices[i]]].elo;
+		if (eloToCheck > highestElo) {
+			highestElo = eloToCheck;
+			chosenOver = bestIndex;
+			bestIndex = randomIndices[i];
+		}
+		else chosenOver = randomIndices[i];
+	  }
+	  var cardNumber = indices[bestIndex];
+	  if (cardSet[cardNumber].faction !== identityCard.faction) totalInfluence += cardSet[cardNumber].influence;
+      countSoFar[bestIndex]++;
+      if (typeof cardBack !== "undefined")
+        InstanceCardsPush(
+          cardNumber,
+          destination,
+          1,
+          cardBack,
+          glowTextures,
+          strengthTextures
+        );
+      //live deck
+      else destination.push(cardNumber);
+      ret.push(cardNumber);
+    }
   }
   //report timeout error, if relevant
   if (Date.now() - startTime >= deckBuildingMaxTime) {
@@ -2707,7 +2743,7 @@ function DeckBuild(
   cardBack,
   glowTextures,
   strengthTextures
-) {
+) {	
   var cardsAdded = [];
   if (typeof destination == 'undefined') destination = [];
   
@@ -2889,7 +2925,11 @@ function DeckBuild(
 	  //ice
 	  var iceCards = [];
 	  if (setIdentifiers.includes('sg')) iceCards = iceCards.concat([30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074]);
-	  if (setIdentifiers.includes('su21')) iceCards = iceCards.concat([31043, 31044, 31045, 31046]);
+	  if (setIdentifiers.includes('su21')) {
+		  iceCards = iceCards.concat([31043, 31044, 31046]);
+		  //don't include Ravana 1.0 unless there's likely to be other Bioroid ice (for now just assume Haas-Bioroid decks will have them and other factions won't)
+		  if (identityCard.faction == "Haas-Bioroid") iceCards = iceCards.concat([31045]);
+	  }
 	  var numIceCardsToAdd = RandomRange(15, 17);
 	  var iceInfluenceBudget = 9 - influenceUsed;
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
@@ -2909,12 +2949,9 @@ function DeckBuild(
 		cardsAdded
 	  );
 	  //other cards (this currently includes extras of all the previous non-agenda cards too)
-	  var otherCards = [];
-	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([
-	    30037, 30038, 30039, 30040, 30041, 30042, 30045, 30046, 30047, 30048, 30049, 30050, 30053, 30054, 30055, 30056, 30057, 30058, 30061, 30062,
-		30063, 30064, 30065, 30066, 30071, 30072, 30073, 30074, 30075,
-	  ]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31042, 31047]);
+	  var otherCards = economyCards.concat(iceCards);
+	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30058, 30061, 30066]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,

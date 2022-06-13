@@ -1158,10 +1158,31 @@ class CorpAI {
 	priorityOnly=false //set true to exclude low priorities like unaffordable ice or non-ice into new server
   ) {
     var ret = [];
+	
+	var strongestEmptyRemote = null;
+    var emptyProtectedRemotes = this._emptyProtectedRemotes(); //sorted strongest protection first
+	if (emptyProtectedRemotes.length > 0) strongestEmptyRemote = emptyProtectedRemotes[0];
+
+	//Check for this-turn win conditions
+	var potentialAdvancement = this._potentialAdvancement(null,true);
+	//check for cards in hand that could be installed and fast-advanced to win
+	for (var i=0; i<corp.HQ.cards.length; i++) {
+		var card = corp.HQ.cards[i];
+		if (CheckCardType(card,["agenda"])) {
+			if (AgendaPoints(corp) + card.agendaPoints >= AgendaPointsToWin()) {
+			  if (card.advancementRequirement <= potentialAdvancement) {
+				  ret.push({
+					cardToInstall: card,
+					serverToInstallTo: strongestEmptyRemote,
+				  });
+			  }
+			}
+		}
+	}
+	
     //Check if there are any assets in cards that are worth installing
     //Include relevant checks in their function e.g. emptyProtectedRemotes.length > 0
     //And return -1 (don't install), 0 to emptyProtectedRemotes.length-1 (install in this server), or emptyProtectedRemotes.length (install in a new server)
-    var emptyProtectedRemotes = this._emptyProtectedRemotes();
     for (var i = 0; i < cards.length; i++) {
       if (!this._uniqueCopyAlreadyInstalled(cards[i])) {
         if (typeof cards[i].AIWorthInstalling == "function") {
@@ -1785,19 +1806,35 @@ class CorpAI {
     });
   }
 
+  //if null card is specified, this is a generic "what if one was to be installed?" check
+  //(in which case it will assume a click less)
   _potentialAdvancement(card,thisTurn=true,fastAdvanceArray) {
 	  if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards; //source of fast advance cards
 	  var ret = 0;
+	  var clicksLeft = this._clicksLeft();
+	  if (!card) clicksLeft--;
 	  //basic advance
-	  if (thisTurn) ret += Math.min(this._clicksLeft(), Credits(corp));
+	  if (thisTurn) ret += Math.min(clicksLeft, Credits(corp));
 	  else ret += Credits(corp);
-	  //check if any Seamless Launch in hand
-	  var slih = this._copyOfCardExistsIn("Seamless Launch",fastAdvanceArray);
-	  if (slih) {
-		  if (!thisTurn || !slih.cardsInstalledThisTurn.includes(card)) {
-			//plus one for each Seamless Launch if it can be used
-			ret += this._copiesOfCardIn("Seamless Launch",fastAdvanceArray);
+	  var creditCostSoFar = ret;
+	  //some things can be done if card is already installed
+	  if (card) {
+		  //check if any Seamless Launch in hand
+		  //these replace normal advance (in terms of credit cost) so don't add to creditCostSoFar
+		  var slih = this._copyOfCardExistsIn("Seamless Launch",fastAdvanceArray);
+		  if (slih) {
+			  if (!thisTurn || !slih.cardsInstalledThisTurn.includes(card)) {
+				//plus one for each Seamless Launch if it can be used
+				ret += this._copiesOfCardIn("Seamless Launch",fastAdvanceArray);
+			  }
 		  }
+	  }
+	  //check for Biotic Labor possibility
+	  var blih = this._copyOfCardExistsIn("Biotic Labor",fastAdvanceArray);
+	  if (blih) {
+		var creditsLeft = Credits(corp) - creditCostSoFar;
+		var copiesAfford = Math.floor(creditsLeft * 0.2); //number of full amounts of 5 credits (4 for card, 1 for extra advance)
+		ret += Math.min(copiesAfford, this._copiesOfCardIn("Biotic Labor",fastAdvanceArray));
 	  }
 	  return ret;
   }
@@ -2009,6 +2046,7 @@ class CorpAI {
 				var blufflim = this._bluffAdvanceLimit(card);
 				if (blufflim > advancementLimit) advancementLimit = blufflim;
 			}
+			var advancementRemaining = this._advancementRequired(card);
 			//don't start advancing if too poor to finish the job (the false means not necessarily this turn) or agenda in weak server
 			var startOrContinueAdvancement = false;
 			if (card.advancement > 0) startOrContinueAdvancement = true; //already started, feel free to continue (the counter shows the runner it is advanceable)
@@ -2024,25 +2062,51 @@ class CorpAI {
 				) {
 				  this._log("I could advance a card");
 				  //if there is an economy advance card in hand, consider using it
-				  cardToPlay = this._copyOfCardExistsIn(
-					"Seamless Launch",
-					corp.HQ.cards
-				  );
+				  //don't waste Seamless by overadvancing an ordinary advancement target
+                  if (Counters(card,"advancement") < advancementLimit - 1 ||
+					card.AIOverAdvance) {
+					  cardToPlay = this._copyOfCardExistsIn(
+					  "Seamless Launch",
+					  corp.HQ.cards
+				    );
+				  }
+				  //or an expensive fast advance (if needed or punishment combo exists)
+				  if (!cardToPlay) {
+					var spareCredAfterExpensiveAdv = Credits(corp) - (4 + advancementRemaining); //4 here is Biotic Labor (only expensive fast advance currently implemented)
+					//first check can even afford it
+					if (spareCredAfterExpensiveAdv >= 0) {
+						var worthExpensiveFastAdvance = (advancementRemaining > corp.clickTracker);
+						if (!worthExpensiveFastAdvance) {
+							//might be wasteful, check for combos
+							var arrayToCheckForCombo = corp.HQ.cards;
+							//combos that require setup prior to score:
+							var copyOfPublicTrail = this._copyOfCardExistsIn("Public Trail",arrayToCheckForCombo);
+							if (spareCredAfterExpensiveAdv >= 4 && card.title == "Orbital Superiority" && copyOfPublicTrail && copyOfPublicTrail.successfulRunLastTurn) worthExpensiveFastAdvance=true;
+							//and after score:
+							//when an agenda is scored as Precision Design, take into account recur 1 card from archives
+							if (corp.identityCard.title == "Haas-Bioroid: Precision Design") arrayToCheckForCombo = arrayToCheckForCombo.concat(corp.archives.cards);
+							//when the agenda scored is Offworld Office, extra money exists
+							if (card.title == "Offworld Office" || card.title == "Hostile Takeover") spareCredAfterExpensiveAdv += 7;
+							//now check
+							if (spareCredAfterExpensiveAdv >= 3 && this._copyOfCardExistsIn("Neurospike",arrayToCheckForCombo)) worthExpensiveFastAdvance=true;
+							if (card.title == "Tomorrow's Headline" && this._potentialTagPunishment(runner.tags+1,1,spareCredAfterExpensiveAdv)) worthExpensiveFastAdvance=true;
+						}
+						if (worthExpensiveFastAdvance) {
+						  cardToPlay = this._copyOfCardExistsIn(
+							"Biotic Labor",
+							corp.HQ.cards
+						  );
+						}
+					}
+				  }
 				  if ( cardToPlay && (card == almostDoneAgenda) || card.AIRushToFinish ) { //for now let's just use Seamless for finishing agendas or specific cards
-					this._log("there is an economy advance");
+					this._log("there is an card that will help advance");
 					if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
-					  this._log("I could play it");
-					  if (
-						Counters(card,"advancement") <
-						advancementLimit - 1 ||
-						card.AIOverAdvance
-					  ) {
-						this._log("I intend to");
+					    this._log("I intend to play it");
 						cardToPlay.AIPreferredTarget = almostDoneAgenda;
 						return this._returnPreference(optionList, "play", {
 						  cardToPlay: cardToPlay,
 						});
-					  }
 					}
 				  }
 				  return this._returnPreference(optionList, "advance", {

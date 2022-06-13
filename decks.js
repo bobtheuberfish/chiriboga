@@ -739,7 +739,7 @@ function LoadDecks() {
   //PASTE REPLICATION CODE HERE (and/or customise code below)
   debugging = false; //set true to pause execution on error
   //mainLoopDelay = 10; //for speedy AI vs AI testing
-
+  
   /*
 	RunnerTestField(31002, //identity
 		[], //heapCards

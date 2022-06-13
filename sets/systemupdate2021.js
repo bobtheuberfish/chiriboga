@@ -3913,6 +3913,22 @@ cardSet[31047] = {
   AIIsRecurOrTutor: true,
 };
 
+cardSet[31048] = {
+  title: "Biotic Labor",
+  imageFile: "31048.png",
+  elo: 1919,
+  player: corp,
+  faction: "Haas-Bioroid",
+  influence: 4,
+  cardType: "operation",
+  playCost: 4,
+  //Gain [click] [click].
+  Resolve: function (params) {
+	GainClicks(corp,2);
+  },
+  AIFastAdvance:true, //is a card for fast advancing
+};
+
 //TODO link (e.g. Reina)
 
 /*
