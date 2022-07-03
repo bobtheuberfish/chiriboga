@@ -15,6 +15,10 @@ class RunCalculator {
     this.reason = "error"; //for reporting
 	
 	this.bonusBreaker = null; //for hypothetical calculations
+	
+	//used by corp for hypothetical runs
+	this.suppressOutput = false; 
+	this.avoidETR = false;
   }
 
   //known ice list
@@ -61,17 +65,17 @@ class RunCalculator {
       //ice is known, calculate specifics
       //start with basic details
 	  //we need to pretend it's an encounter
-	  var stored = runner.AI.IceEncounterSaveState();
-	  runner.AI.IceEncounterModifyState(ice);
+	  var stored = AIIceEncounterSaveState();
+	  AIIceEncounterModifyState(ice);
       result.strength = Strength(ice);
 	  //then restore reality
-	  runner.AI.IceEncounterRestoreState(stored);
+	  AIIceEncounterRestoreState(stored);
       result.sr = [];
       result.subTypes = [].concat(ice.subTypes);
 
       //apply specific details
 	  if (typeof ice.AIImplementIce == "function") {
-		  result = ice.AIImplementIce.call(ice, result, maxCorpCred, incomplete);
+		  result = ice.AIImplementIce.call(ice, this, result, maxCorpCred, incomplete);
 	  } //default case - used for ice that haven't been coded specifically above
       else {
         for (var i = 0; i < ice.subroutines.length; i++) {
@@ -248,9 +252,8 @@ class RunCalculator {
 
     //apply icebreaker specific details
 	if (typeof card.AIImplementBreaker == "function") {
-		result = card.AIImplementBreaker.call(card,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft);
+		result = card.AIImplementBreaker.call(card,this,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft);
 	}
-	
     return result;
   }
 
@@ -308,7 +311,7 @@ class RunCalculator {
 		  
 		  else if (eff == "endTheRun") {
 			//this path will not lead to a complete run
-			if (!incomplete) exclude_path = true;
+			if (!incomplete || this.avoidETR) exclude_path = true;
 			//the effect applies right away, so no need to process other effects
 			break;
 		  }
@@ -645,7 +648,7 @@ class RunCalculator {
       var totalEffect = this.TotalEffect(p);
       result += 1.3 * this.TotalDamage(totalEffect); //during 1.0 the runner seemed too willing to take damage
       if (totalEffect.tag) result += 2.4 * totalEffect.tag; //not sure about this
-      if (totalEffect.misc_serious) result += 1.5 * totalEffect.misc_serious;
+      if (totalEffect.misc_serious) result += 3.0 * totalEffect.misc_serious; //was 1.5 for quite some time but I think this wasn't enough
       if (totalEffect.misc_moderate) result += 0.8 * totalEffect.misc_moderate;
       if (totalEffect.misc_minor) result += 0.3 * totalEffect.misc_minor;
 
@@ -773,8 +776,13 @@ class RunCalculator {
     incomplete,
 	bonusBreaker,
     startIceIdx,
+	rcOptions,
   ) {
-    //console.log("Calculating "+(incomplete ? "incomplete" : "complete")+" run");
+	if (typeof rcOptions != 'undefined') {
+		if (typeof rcOptions.suppressOutput != 'undefined') this.suppressOutput = rcOptions.suppressOutput;
+		if (typeof rcOptions.avoidETR != 'undefined') this.avoidETR = rcOptions.avoidETR;
+	}
+    //if (!this.suppressOutput) console.log("Calculating "+(incomplete ? "incomplete" : "complete")+" run");
     if (typeof startIceIdx == "undefined") startIceIdx = server.ice.length - 1;
 	if (typeof bonusBreaker == "undefined") bonusBreaker = null;
 	this.bonusBreaker = bonusBreaker;
@@ -1024,20 +1032,22 @@ class RunCalculator {
         }
         if (current.length > max_path_length) max_path_length = current.length; //for reporting/testing
         //uncomment other console.log lines if more detail is desired to debug the run calculator
-        if (!continuing && debugging) console.log(this.OneLiner(current,report_as));
+        if (!continuing && debugging && !this.suppressOutput) console.log(this.OneLiner(current,report_as));
       }
-      //console.log(max_loops - num_loops_left);
+      //if (!this.suppressOutput) console.log(max_loops - num_loops_left);
       if (num_loops_left == 0) {
-        console.log(
+        if (!this.suppressOutput) console.log(
           "Run calculator exceeded loop limit for " +
             ServerName(server) +
             " with an execution time of " +
             (Date.now() - timeInMS) +
             " ms"
         );
-        //console.log("Successful paths: "+successful_paths);
-        //console.log("Max path length: "+max_path_length);
-        //console.log("Min cost: "+min_cost);
+		//if (!this.suppressOutput) {
+        //  console.log("Successful paths: "+successful_paths);
+        //  console.log("Max path length: "+max_path_length);
+        //  console.log("Min cost: "+min_cost);
+		//}
       }
     }
     //if there is no ice, the only path is straight into server (this.paths=[] means no valid paths)

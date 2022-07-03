@@ -39,6 +39,24 @@ function CreatePhaseFromTemplate(template, player, title, identifier, next) {
   ret.next = next;
   return ret;
 }
+
+//at beginning of many pseudophases we have a 'checkpoint' which may alter phase
+//returns false if phase was altered
+function PhaseCheckpointContinues() {
+	//check for remote attackingServer destroyed (run immediately ends, see Nisei CR1.5 4.6.8e)
+	if (attackedServer && currentPhase.identifier != "Run 6.4") {
+		if (typeof attackedServer.cards == 'undefined') {
+			if (attackedServer.ice.length == 0 && attackedServer.root.length == 0) {
+				//now end the run, the server is gone
+				attackedServer=null;
+				ChangePhase(phases.runEnds);
+				return false; //do not continue with current phase
+			}
+		}
+	}
+	return true; //continue with current phase
+}
+
 //mulligan template
 phaseTemplates.mulligan = {
   player: null,
@@ -62,6 +80,9 @@ phaseTemplates.mulligan = {
 //This template also contains some phase-specific checks to make things easier
 phaseTemplates.standardResponse = {
   Init: function () {
+	//some checkpoints cause phase change
+	if (!PhaseCheckpointContinues()) return;
+	
     if (!currentPhase.lessOpportunities) opportunitiesGiven = false;
     else opportunitiesGiven = true;
     actedThisPhase = false;
@@ -360,6 +381,9 @@ phaseTemplates.globalTriggers = {
   triggerEnumerateParams: [],
   triggerCallbackName: "NOT SET",
   Init: function () {
+	//some checkpoints cause phase change
+	if (!PhaseCheckpointContinues()) return;
+
     //follow priority rules
     //https://ancur.fandom.com/wiki/Timing_Priority
     activePlayer = currentPhase.player = playerTurn;
@@ -412,6 +436,11 @@ phaseTemplates.globalTriggers = {
         else attackedServer.AISuccessfulRuns = 1;
       }
     }
+	
+	//log run end
+	if (currentPhase.identifier == "Run 6.4") {
+		Log("Run ends");
+	}
 
     //build trigger list
     BuildGlobalTriggerList();

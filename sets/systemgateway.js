@@ -243,7 +243,7 @@ cardSet[30004] = {
 	this.host = null;
 	this.virus=0;
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     if (this.host == iceAI.ice) {
         var sr_broken_by_this = 0;
@@ -252,7 +252,7 @@ cardSet[30004] = {
         }
         if (sr_broken_by_this < Counters(this, "virus")) {
           //number of sr_broken by this card cannot exceed hosted virus counters
-          result = result.concat(runner.AI.rc.SrBreak(this, iceAI, point, 1)); //break 1 subroutine
+          result = result.concat(rc.SrBreak(this, iceAI, point, 1)); //break 1 subroutine
         }
     }
 	return result;
@@ -372,10 +372,10 @@ cardSet[30005] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
-        runner.AI.rc.ImplementIcebreaker(
+        rc.ImplementIcebreaker(
           point,
           this,
           cardStrength,
@@ -499,10 +499,10 @@ cardSet[30006] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
-        runner.AI.rc.ImplementIcebreaker(
+        rc.ImplementIcebreaker(
           point,
           this,
           cardStrength,
@@ -696,7 +696,7 @@ cardSet[30008] = {
 	  }
 	  return false;
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
       var str_mod_by_this = 0;
       for (var i = 0; i < point.card_str_mods.length; i++) {
@@ -704,7 +704,7 @@ cardSet[30008] = {
       }
       if (str_mod_by_this < Counters(this, "virus")) {
         //number of str_mod by this card cannot exceed hosted virus counters
-        var modifyresult = runner.AI.rc.StrModify(this, iceAI.ice, point, -1, true); //-1 strength, the true stores this past the encounter
+        var modifyresult = rc.StrModify(this, iceAI.ice, point, -1, true); //-1 strength, the true stores this past the encounter
         modifyresult.virus_counters_spent += 1;
         result = result.concat(modifyresult);
       }
@@ -1228,10 +1228,10 @@ cardSet[30015] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
-        runner.AI.rc.ImplementIcebreaker(
+        rc.ImplementIcebreaker(
           point,
           this,
           cardStrength,
@@ -1351,12 +1351,12 @@ cardSet[30016] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     var marcost = 2;
     if (this.madeSuccessfulRunThisTurn) marcost = 1;
     result = result.concat(
-        runner.AI.rc.ImplementIcebreaker(
+        rc.ImplementIcebreaker(
           point,
           this,
           cardStrength,
@@ -2078,10 +2078,10 @@ cardSet[30025] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
-        runner.AI.rc.ImplementIcebreaker(
+        rc.ImplementIcebreaker(
           point,
           this,
           cardStrength,
@@ -2187,11 +2187,11 @@ cardSet[30026] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
-    var strup = runner.AI.rc.precalculated.runnerInstalledIcebreakersLength;
+    var strup = rc.precalculated.runnerInstalledIcebreakersLength;
     result = result.concat(
-        runner.AI.rc.ImplementIcebreaker(
+        rc.ImplementIcebreaker(
           point,
           this,
           cardStrength,
@@ -2485,7 +2485,7 @@ cardSet[30032] = {
       Trash(this, true);
     },
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     //unless have a spare, only use Mayfly for worthwhile targets (the 1.5 is arbitrary)
     var anotherInGrip = false;
@@ -2495,9 +2495,10 @@ cardSet[30032] = {
           break;
         }
     }
-    if (runner.AI._getCachedPotential(server) > 1.5 || anotherInGrip) {
+	//the !runner.AI check is in case the corp is doing the calculation
+    if (!runner.AI || runner.AI._getCachedPotential(server) > 1.5 || anotherInGrip) {
         result = result.concat(
-          runner.AI.rc.ImplementIcebreaker(
+          rc.ImplementIcebreaker(
             point,
             this,
             cardStrength,
@@ -2937,8 +2938,8 @@ cardSet[30038] = {
     availableWhenInactive: true,
     automatic: true,
   },
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
-	if (runner.AI.rc.precalculated.runnerInstalledCardsLength > 0) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
+	if (rc.precalculated.runnerInstalledCardsLength > 0) {
 	  //programs are run-critical. other things still not good but maybe ok
 	  var installedPrograms = ChoicesInstalledCards(
 		runner,
@@ -2955,11 +2956,11 @@ cardSet[30038] = {
 	else result.sr.push([["misc_serious"]]); //cannot steal or trash cards
 	return result;
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     if (this == iceAI.ice) {
         if (clicksLeft > 0) {
-          var breakresult = runner.AI.rc.SrBreak(this, iceAI, point, 1);
+          var breakresult = rc.SrBreak(this, iceAI, point, 1);
           for (var j = 0; j < breakresult.length; j++) {
             breakresult[j].runner_clicks_spent += 1;
           }
@@ -3121,15 +3122,15 @@ cardSet[30039] = {
     },
   ],
   activeForOpponent: true,
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
     result.sr = [[["misc_serious"]], [["endTheRun"]], [["endTheRun"]]];
 	return result;
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     if (this == iceAI.ice) {
         if (clicksLeft > 0) {
-          var breakresult = runner.AI.rc.SrBreak(this, iceAI, point, 1);
+          var breakresult = rc.SrBreak(this, iceAI, point, 1);
           for (var j = 0; j < breakresult.length; j++) {
             breakresult[j].runner_clicks_spent += 1;
           }
@@ -3302,7 +3303,9 @@ cardSet[30042] = {
   rezCost: 2,
   trashCost: 3,
   unique: true,
-  AIDefensiveValue:4, //arbitrary, observe and tweak
+  AIDefensiveValue: function(server) {
+	  return 4; //arbitrary, observe and tweak
+  },
   //Whenever the Runner approaches this server, end the run unless they either spend [click][click] or pay 5[c].
   //"The Runner approaches the server at step 4 of a run, and it is the final deciding factor for determining the success of a run." (see also run timing in FAQ)
   approachServer: {
@@ -3569,9 +3572,14 @@ cardSet[30046] = {
       visual: { y: 79, h: 66 },
     },
   ],
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
 	var secondEffect = "endTheRun";
 	var evenCardsInHand = 0;
+	//if corp is running the rc, skip hidden information
+	if (!runner.AI || runner.AI.rc !== rc) {
+		result.sr = [[["netDamage","misc_moderate"]]];
+		return result;
+	}	
 	for (var i = 0; i < runner.grip.length; i++) {
 	  var printedCost = 0;
 	  if (typeof runner.grip[i].installCost !== "undefined")
@@ -3638,7 +3646,7 @@ cardSet[30047] = {
       visual: { y: 87, h: 16 },
     },
   ],
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
 	result.sr = [
 	  [
 		["netDamage", "netDamage", "endTheRun"],
@@ -3724,7 +3732,15 @@ cardSet[30050] = {
   rezCost: 0,
   trashCost: 1,
   unique: true,
-  AIDefensiveValue:3, //arbitrary, observe and tweak
+  AIDefensiveValue: function(server) {
+	//don't install to create a new server
+	if (!server) return 0;
+	//don't install in central server
+	if (typeof server.cards != 'undefined') return 0;
+	//don't install if there isn't already some protection
+	if (server.ice.length < 1) return 0;
+	return 3; //arbitrary, observe and tweak
+  },
   //Whenever the Runner approaches this server, you may pay 2[c] and trash 2 cards from HQ.
   //If you do, end the run.
   //"The Runner approaches the server at step 4 of a run, and it is the final deciding factor for determining the success of a run." (see also run timing in FAQ)
@@ -4165,7 +4181,7 @@ cardSet[30054] = {
       visual: { y: 110, h: 31 },
     },
   ],
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
 	result.encounterEffects = [["endTheRun"], ["tag"]];
 	result.sr = [
 	  [["payCredits", "payCredits", "payCredits", "payCredits"], ["tag"]], //pay 4 credits
@@ -4205,7 +4221,7 @@ cardSet[30055] = {
       visual: { y: 102, h: 16 },
     },
   ],
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
     result.sr = [[["endTheRun"]]];
 	return result;
   },
@@ -4313,7 +4329,9 @@ cardSet[30058] = {
   rezCost: 1,
   trashCost: 3,
   unique: true,
-  AIDefensiveValue:2, //arbitrary, observe and tweak
+  AIDefensiveValue: function(server) {
+	  return 2; //arbitrary, observe and tweak
+  },
   AIIsScoringUpgrade: true,
   runnerStoleAgendasThisRun: false,
   serverThisWasInstalledIn: null,
@@ -4588,9 +4606,16 @@ cardSet[30062] = {
       },
     },
   ],
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
-	result.sr = [
-	  [["endTheRun"]], //oversimplifies it but may be sufficient
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
+	//If no programs are installed then corp will choose ETR
+	var installedPrograms = ChoicesInstalledCards(runner, function (card) {
+	  return CheckCardType(card, ["program"]);
+	});
+	if (installedPrograms.length > 0) result.sr = [
+	  [["misc_serious"]],
+	];
+	else result.sr = [
+	  [["endTheRun"]],
 	];
 	return result;
   },
@@ -4654,7 +4679,7 @@ cardSet[30063] = {
       visual: { y: 134, h: 16 },
     },
   ],
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
     result.sr = [[["tag"]], [["endTheRun"]], [["endTheRun"]]];
 	return result;
   },
@@ -5074,7 +5099,7 @@ cardSet[30072] = {
       visual: { y: 88, h: 16 },
     },
   ],
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
 	result.sr = [[["endTheRun"]]];
 	return result;
   },
@@ -5109,7 +5134,7 @@ cardSet[30073] = {
       visual: { y: 73, h: 16 },
     },
   ],
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
 	if (maxCorpCred > 4) {
 	  //i.e. corp has lots of credits (this threshold is arbitrary)
 	  result.sr = [[["netDamage"]], [["misc_minor"]]];
@@ -5149,7 +5174,7 @@ cardSet[30074] = {
       visual: { y: 80, h: 31 },
     },
   ],
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
 	result.sr = [
 	  [["loseCredits", "loseCredits", "loseCredits"]], //lose 3 credits
 	  [["iceSpecificEffect"],

@@ -1,5 +1,32 @@
 //AI decisionmaking
 
+//utilities (can be used without AI)
+
+//Helper functions for saving and restoring state for AI calculation
+function AIIceEncounterSaveState() {
+	var stored = {};
+	stored.encountering = encountering;
+	stored.attackedServer = attackedServer;
+	stored.approachIce = approachIce;
+	return stored;
+}
+//returns true if state was modified
+function AIIceEncounterModifyState(iceCard) {
+	var ics = GetServer(iceCard);
+	if (!ics) return false;
+	encountering = true;
+	attackedServer = ics;
+	approachIce = ics.ice.indexOf(iceCard);
+	return true;
+}
+function AIIceEncounterRestoreState(stored) {
+	encountering = stored.encountering;
+	attackedServer = stored.attackedServer;
+	approachIce = stored.approachIce;
+}
+  
+
+//actual class
 class RunnerAI {
   _log(message) {
     //just comment this line to suppress AI log
@@ -220,29 +247,6 @@ class RunnerAI {
 	  return ret;
   }
 
-  //Helper functions for saving and restoring state for AI calculation
-  IceEncounterSaveState() {
-	var stored = {};
-	stored.encountering = encountering;
-	stored.attackedServer = attackedServer;
-	stored.approachIce = approachIce;
-	return stored;
-  }
-  //returns true if state was modified
-  IceEncounterModifyState(iceCard) {
-	var ics = GetServer(iceCard);
-	if (!ics) return false;
-	encountering = true;
-	attackedServer = ics;
-	approachIce = ics.ice.indexOf(iceCard);
-	return true;
-  }
-  IceEncounterRestoreState(stored) {
-	encountering = stored.encountering;
-	attackedServer = stored.attackedServer;
-	approachIce = stored.approachIce;
-  }
-  
   //get an array of ice which have special breakers hosted
   _iceHostingSpecialBreakers() {
 	  var ret = [];
@@ -369,7 +373,7 @@ class RunnerAI {
 		//check for obvious defensives
 		for (var i=0; i<server.root.length; i++) {
 			if (PlayerCanLook(runner,server.root[i])) {
-				if (server.root[i].AIDefensiveValue) return true;
+				if (typeof server.root[i].AIDefensiveValue == 'function') return true;
 			}
 		}
 		return false;
@@ -884,6 +888,35 @@ class RunnerAI {
       }
     }
 	return priorityIceList;
+  }
+  
+  //sometimes a run recalculation is needed
+  RecalculateRunIfNeeded() {
+	  if (attackedServer) {
+		  //check if server is still worthwhile target
+		  var runStillWorthCompleting = false;
+		  //e.g. is central (this oversimplifies the situation but may be sufficient)
+		  if (typeof attackedServer.cards != 'undefined') runStillWorthCompleting = true;
+		  //or has cards in its root
+		  else if (attackedServer.root.length > 0) runStillWorthCompleting = true;
+		  //or we were never going to breach anyway
+		  else if (this._breachWouldBePrevented(ActiveCards(runner),attackedServer)) runStillWorthCompleting=true;
+		  //ideally complete run, unless the server target has become pointless
+		  var completeRun = false;
+		  if (runStillWorthCompleting) {
+			completeRun = runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, 0, null, approachIce); //null means no bonus breaker
+		  }
+		  //but if not, use an exit strategy (incomplete run)
+		  if (!completeRun) runner.AI._calculateBestExitStrategy(
+			attackedServer,
+			0,
+			0,
+			0,
+			0,
+			null, //no bonus breaker
+			approachIce
+		  );
+	  }
   }
 
   //recommend do this right after calculating run costs and priorities
