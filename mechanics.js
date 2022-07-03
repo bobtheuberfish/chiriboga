@@ -107,19 +107,9 @@ function Rez(card) {
 		var cardServer = GetServer(card);
 		if (GetApproachEncounterIce() == card || (attackedServer == cardServer && cardServer.ice.indexOf(card) > -1 && cardServer.ice.indexOf(card) < approachIce) ) {
 		*/
-		if (CheckCardType(card,["ice"]) && attackedServer) {
-		  //ideally complete run
-		  if (!runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, 0, null, approachIce)) //null means no bonus breaker
-		  //but if not, use an exit strategy (incomplete run)
-		  runner.AI._calculateBestExitStrategy(
-			attackedServer,
-			0,
-			0,
-			0,
-			0,
-			null, //no bonus breaker
-			approachIce
-		  );
+		if (CheckCardType(card,["ice"])) {
+		  //recalculate run if needed
+		  runner.AI.RecalculateRunIfNeeded();		  
 		}
 	  }
   });

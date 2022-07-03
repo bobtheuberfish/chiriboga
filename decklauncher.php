@@ -336,7 +336,7 @@
 			}
 
 			function Normalise(src) {
-				return src.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+				return src.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 			}
 
 			function GetCardIdFromTitle(title) {

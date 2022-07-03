@@ -1762,15 +1762,18 @@ function AdvancementRequirement(card) {
 function ValidateTriggerList(triggerList, callbackName, enumerateParams) {
   var ret = [];
   for (var i = 0; i < triggerList.length; i++) {
-    triggerList[i].id = i;
-    var choices = [{}]; //assume valid by default
-    if (typeof triggerList[i].card[callbackName].Enumerate === "function")
-      choices = triggerList[i].card[callbackName].Enumerate.apply(
-        triggerList[i].card,
-		enumerateParams
-      );
-    triggerList[i].choices = choices;
-    if (choices.length > 0) ret.push(triggerList[i]);
+	//re-check whether callback works e.g. has card become inactive?
+	if (CheckCallback(triggerList[i].card, callbackName)) {
+		triggerList[i].id = i;
+		var choices = [{}]; //assume valid by default
+		if (typeof triggerList[i].card[callbackName].Enumerate === "function")
+		  choices = triggerList[i].card[callbackName].Enumerate.apply(
+			triggerList[i].card,
+			enumerateParams
+		  );
+		triggerList[i].choices = choices;
+		if (choices.length > 0) ret.push(triggerList[i]);
+	}
   }
   return ret;
 }
@@ -1826,6 +1829,17 @@ function ChoicesActiveTriggers(callbackName, player = null) {
         ret.push(choice);
       }
     }
+  }
+  //and lingering effects (assumed active)
+  for (var i=0; i < lingeringEffects.length; i++) {
+	if (typeof lingeringEffects[i][callbackName] !== "undefined") {
+		//this is not strictly correct because it isn't a card
+		//but treating it as a pseudo card may be sufficient
+		var choice = { card: lingeringEffects[i] };
+        if (typeof lingeringEffects[i][callbackName].text !== "undefined")
+          choice.label = lingeringEffects[i][callbackName].text;
+        ret.push(choice);
+	}
   }
   return ret;
 }
@@ -2951,7 +2965,7 @@ function DeckBuild(
 	  //other cards (this currently includes extras of all the previous non-agenda cards too)
 	  var otherCards = economyCards.concat(iceCards);
 	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30058, 30061, 30066]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048, 31049]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,

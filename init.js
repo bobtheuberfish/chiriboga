@@ -33,6 +33,9 @@ var playerTurn = corp; //whose turn it is
 var opportunitiesGiven = false; //for player response to opportunity to act
 var actedThisPhase = false; //for use with above
 var checkedClick = false; //used to detect which abilities have click cost
+var lingeringEffects = []; //used for effects that apply independently of the source card
+function AddLingeringEffect(lingeringEffect) { lingeringEffects.push(lingeringEffect); }
+function RemoveLingeringEffect(lingeringEffect) { var l_idx = lingeringEffects.indexOf(lingeringEffect); if (l_idx > -1) lingeringEffects.splice(l_idx, 1); }
 //for use during callbacks
 var intended = {};
 intended.addTags = 0; //set when tags are to be added
@@ -1437,6 +1440,7 @@ function ExecuteChosen(chosenCommand) {
         else if (oldFooterText == "Trash") footerText = "Choose card to trash";
         else if (oldFooterText == "Drag to R&D") footerText = oldFooterText;
       }
+	  if (oldFooterText == "Choose piece of ice") footerText = oldFooterText;
     }
 
     $("#footer").html("<h2>" + footerText + "</h2>");

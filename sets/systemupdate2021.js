@@ -48,14 +48,14 @@ cardSet[31001] = {
       },
     },
   ],
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
 	if (!this.usedThisTurn) {
 		//can only use once
 		//you can put anything in persisents and it will stick around down the run path
 		//in this case we just store this card to show it has been used
-        if (!runner.AI.rc.PersistentsUse(point,this)) {
-			var results_to_concat = runner.AI.rc.ImplementIcebreaker(
+        if (!rc.PersistentsUse(point,this)) {
+			var results_to_concat = rc.ImplementIcebreaker(
 			  point,
 			  this,
 			  Infinity, //Quetzal doesn't actually have a strength...
@@ -414,10 +414,10 @@ cardSet[31006] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
-        runner.AI.rc.ImplementIcebreaker(
+        rc.ImplementIcebreaker(
           point,
           this,
           cardStrength,
@@ -572,10 +572,10 @@ cardSet[31008] = {
     automatic: true,
   },
   AIFixedStrength: true,
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
-        runner.AI.rc.ImplementIcebreaker(
+        rc.ImplementIcebreaker(
           point,
           this,
           cardStrength,
@@ -1236,7 +1236,7 @@ cardSet[31018] = {
 	if (server.ice.length < 1) return;
 	//store and change (replace outermost ice with a blank)
 	this.storedImplementIce = server.ice[server.ice.length-1].AIImplementIce;
-	server.ice[server.ice.length-1].AIImplementIce = function(result, maxCorpCred, incomplete) {
+	server.ice[server.ice.length-1].AIImplementIce = function(rc, result, maxCorpCred, incomplete) {
 		//intentionally empty
 		return result;
 	};
@@ -1425,14 +1425,14 @@ cardSet[31021] = {
     },
     automatic: true,
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//don't reuse if was trashed
 	//you can put anything in persisents and it will stick around down the run path
 	//in this case we store the card to show its trash ability was used, and info to indicate the bypass
-    if (!runner.AI.rc.PersistentsUse(point,this)) {
+    if (!rc.PersistentsUse(point,this)) {
 		//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
 		result = result.concat(
-			runner.AI.rc.ImplementIcebreaker(
+			rc.ImplementIcebreaker(
 			  point,
 			  this,
 			  cardStrength,
@@ -1449,8 +1449,9 @@ cardSet[31021] = {
 		//include trash-to-breach option (if it is a Code Gate)
 		if (iceAI.subTypes.includes("Code Gate")) {
 			//only use trash-breach for worthwhile targets (the 1.5 is arbitrary) with few clicks left
-			if (runner.AI._getCachedPotential(server) > 1.5 && !CheckClicks(2, runner)) {
-				var pointCopy = runner.AI.rc.CopyPoint(point);
+			//the !runner.AI check is in case corp is doing the run calculation
+			if (!runner.AI || (runner.AI._getCachedPotential(server) > 1.5 && !CheckClicks(2, runner)) ) {
+				var pointCopy = rc.CopyPoint(point);
 				pointCopy.persistents = pointCopy.persistents.concat([{use:this, target:iceAI.ice, iceIdx:point.iceIdx, action:"bypass", alt:this.abilities[2].alt}]);
 				pointCopy.effects = pointCopy.effects.concat([["misc_serious","misc_serious"]]); //this is arbitrary but basically take it seriously
 				result = result.concat([pointCopy]);
@@ -1623,10 +1624,10 @@ cardSet[31022] = {
   AIRestoreHypotheticalFromRC:function() {
 	this.chosenCard = null;
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
-        runner.AI.rc.ImplementIcebreaker(
+        rc.ImplementIcebreaker(
           point,
           this,
           cardStrength,
@@ -2324,10 +2325,10 @@ cardSet[31030] = {
 	if (htsi) {
 		//for Atman the strength match is important so we need to take into account potential encounter effects
 		//so we store encounter state, pretend we're encountering the ice, check strength, then restore state
-		var stored = runner.AI.IceEncounterSaveState();
-		runner.AI.IceEncounterModifyState(htsi);
+		var stored = AIIceEncounterSaveState();
+		AIIceEncounterModifyState(htsi);
 		var X = Strength(htsi) - Strength(this);
-		runner.AI.IceEncounterRestoreState(stored);
+		AIIceEncounterRestoreState(stored);
 	} else {
 		//ice are unknown, choose the strength needed for RC to consider it valid
 		var outermostUnknownIceInHighestPotentialServer = null;
@@ -2365,7 +2366,17 @@ cardSet[31030] = {
 	  return [];
 	},		
     Resolve: function (params) {
-		AddCounters(this, "power", params.id);		
+		var X = params.id;
+        SpendCredits(
+          runner,
+          X,
+          "using",
+          this,
+          function () {
+			AddCounters(this, "power", X);		
+          },
+          this
+        );
     },
   },
   //This program gets +1 strength for each hosted power counter, and it can only interface with ice of exactly equal strength.
@@ -2415,11 +2426,11 @@ cardSet[31030] = {
 	this.power = 0;
 	this.modifyStrength.availableWhenInactive=false;
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	if (cardStrength == iceStrength) {
 		//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
 		result = result.concat(
-			runner.AI.rc.ImplementIcebreaker(
+			rc.ImplementIcebreaker(
 			  point,
 			  this,
 			  cardStrength,
@@ -2455,12 +2466,12 @@ cardSet[31030] = {
 	//for Atman the strength match is important so we need to take into account potential encounter effects
 	//so we store encounter state, pretend we're encountering the ice, check strength, then restore state
 	var strengthMatches = false;
-	var stored = runner.AI.IceEncounterSaveState();
+	var stored = AIIceEncounterSaveState();
 	//state will not be modified if there is an issue (e.g. server not found)
 	//in which case can't continue with strength check because can't pretend encounter with no server yet
-	if (!runner.AI.IceEncounterModifyState(iceCard)) return null;
+	if (!AIIceEncounterModifyState(iceCard)) return null;
 	strengthMatches = CheckStrength(this);
-	runner.AI.IceEncounterRestoreState(stored);
+	AIIceEncounterRestoreState(stored);
 	if (strengthMatches) return this;
 	return null;
   },
@@ -2619,10 +2630,10 @@ cardSet[31031] = {
 		//for Chameleon the strength check is important so we need to take into account potential encounter effects
 		//so we store encounter state, pretend we're encountering the ice, check strength, then restore state
 		var sufficientStrength = false;
-		var stored = runner.AI.IceEncounterSaveState();
-		runner.AI.IceEncounterModifyState(iceCard);
+		var stored = AIIceEncounterSaveState();
+		AIIceEncounterModifyState(iceCard);
 		sufficientStrength = CheckStrength(this);
-		runner.AI.IceEncounterRestoreState(stored);
+		AIIceEncounterRestoreState(stored);
 		if (sufficientStrength) return this;
 	}
 	return null;
@@ -2651,10 +2662,10 @@ cardSet[31031] = {
 	if (runner.AI._getCachedPotential(runner.AI._highestPotentialServer()) < 1.5) return -1; //don't install
 	return 0; //do install
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
 	result = result.concat(
-		runner.AI.rc.ImplementIcebreaker(
+		rc.ImplementIcebreaker(
 		  point,
 		  this,
 		  cardStrength,
@@ -2812,10 +2823,10 @@ cardSet[31033] = {
       },
     },
   ],
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     result = result.concat(
-        runner.AI.rc.ImplementIcebreaker(
+        rc.ImplementIcebreaker(
           point,
           this,
           cardStrength,
@@ -3562,15 +3573,15 @@ cardSet[31043] = {
     },
   ],
   activeForOpponent: true,
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
     result.sr = [[["endTheRun"]], [["endTheRun"]]];
 	return result;
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     if (this == iceAI.ice) {
         if (clicksLeft > 0) {
-          var breakresult = runner.AI.rc.SrBreak(this, iceAI, point, 1);
+          var breakresult = rc.SrBreak(this, iceAI, point, 1);
           for (var j = 0; j < breakresult.length; j++) {
             breakresult[j].runner_clicks_spent += 1;
           }
@@ -3638,7 +3649,7 @@ cardSet[31044] = {
     },
   ],
   AIDisablesHostedPrograms: true,
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
     result.sr = [[["endTheRun"]]];
 	return result;
   },
@@ -3776,7 +3787,7 @@ cardSet[31045] = {
     },
   ],
   activeForOpponent: true,
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
 	//depends on what other bioroid ice are around
 	//compile a list of all rezzed cards
 	var installedCards = InstalledCards(corp);
@@ -3797,11 +3808,11 @@ cardSet[31045] = {
     result.sr = [[worstSR], [worstSR]];	
 	return result;
   },
-  AIImplementBreaker: function(result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     if (this == iceAI.ice) {
         if (clicksLeft > 0) {
-          var breakresult = runner.AI.rc.SrBreak(this, iceAI, point, 1);
+          var breakresult = rc.SrBreak(this, iceAI, point, 1);
           for (var j = 0; j < breakresult.length; j++) {
             breakresult[j].runner_clicks_spent += 1;
           }
@@ -3865,7 +3876,7 @@ cardSet[31046] = {
       visual: { y: 73, h: 16 },
     },
   ],
-  AIImplementIce: function(result, maxCorpCred, incomplete) {
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
     result.sr = [];
 	//No need to fear program trash if none are installed
 	var installedPrograms = ChoicesInstalledCards(runner, function (card) {
@@ -3927,6 +3938,212 @@ cardSet[31048] = {
 	GainClicks(corp,2);
   },
   AIFastAdvance:true, //is a card for fast advancing
+};
+
+cardSet[31049] = {
+  title: "Corporate Troubleshooter",
+  imageFile: "31049.png",
+  elo: 1555,
+  player: corp,
+  faction: "Haas-Bioroid",
+  influence: 1,
+  cardType: "upgrade",
+  rezCost: 0,
+  trashCost: 2,
+  AIDefensiveValue: function(server) {
+	//don't install to create a new server
+	if (!server) return 0;
+	//don't install if there isn't already decent protection
+	if (server.ice.length < 2) return 0;
+	//and if there's no rezzed ice then rez ice is higher priority
+	if (corp.AI._rezzedIce(server).length < 1) return 0;
+	return 2; //arbitrary, observe and tweak
+  },
+  //X[c],[trash]: Choose 1 rezzed piece of ice protecting this server.
+  //That ice gets +X strength for the remainder of the turn.
+  abilities: [
+    {
+      text: "Choose 1 rezzed piece of ice protecting this server",
+      Enumerate: function () {
+		var server = GetServer(this);
+		//not valid unless there is a rezzed piece of ice protecting this server
+		var rezzedIceProtectingThisServer = ChoicesInstalledCards(corp, function (card) {
+			return card.rezzed && CheckCardType(card, ["ice"]) && GetServer(card) == server;
+		});
+		if (rezzedIceProtectingThisServer.length < 1) return [];
+		var maxcred = AvailableCredits(corp, "using", this);
+		var choices = [];
+		for (var i=0; i<=maxcred; i++) {
+			choices.push({id:i, label:""+i});
+		}
+		//**AI code (in this case, implemented by including only the preferred option)
+		if (corp.AI) {
+			var X = this.AISharedPreferredX();
+			if (X > 0) return [{id:X, label:""+X}];
+			else return [];
+		}
+		return choices;
+      },
+      Resolve: function (params) {
+		var X = params.id;
+		var server = GetServer(this);
+		var rezzedIceProtectingThisServer = ChoicesInstalledCards(corp, function (card) {
+			return card.rezzed && CheckCardType(card, ["ice"]) && GetServer(card) == server;
+		});
+		//**AI code
+		if (corp.AI) {
+			//only use this on the currently approached ice
+			for (var i=0; i<rezzedIceProtectingThisServer.length; i++) {
+				if (rezzedIceProtectingThisServer[i].card == GetApproachEncounterIce()) rezzedIceProtectingThisServer = [rezzedIceProtectingThisServer[i]];
+			}
+		}
+        var decisionCallback = function (paramsB) {
+			SpendCredits(corp, X);
+			Trash(this, false, function(){ //false means it cannot be prevented (because it's a cost)
+				Log(GetTitle(paramsB.card)+" gets +"+X+" strength for the remainder of the turn");
+				AddLingeringEffect({
+				  chosenCard: paramsB.card,
+				  strengthBoost: X,
+				  modifyStrength: {
+					Resolve: function (card) {
+					  if (card == this.chosenCard) return this.strengthBoost;
+					  return 0; //no modification to strength
+					},
+				  },
+				  runnerDiscardEnds: {
+					Resolve: function () {
+					  RemoveLingeringEffect(this);
+					},
+					automatic: true,
+				  },
+				  cardUninstalled: {
+					Resolve: function (card) {
+					  if (card == this.chosenCard) {
+						RemoveLingeringEffect(this);
+					  }
+					},
+				  },
+				});
+				//if runner AI, need to recalculate run
+				if (runner.AI) runner.AI.RecalculateRunIfNeeded();
+			},this); 
+        };
+        DecisionPhase(
+            corp,
+            rezzedIceProtectingThisServer,
+            decisionCallback,
+			this.title,
+			"Choose piece of ice",
+			this
+        );
+      },
+    },
+  ],
+  AISharedPreferredX: function() {
+	//set up default options to send to rc
+	var rcOptions = { suppressOutput: true, avoidETR: false };
+	//these (below) are the effects we're trying to cause (numerical values are arbitrary)
+	//notice damage is worth more if grip is zero
+	const desired_effects = [
+		{ effectStr:"netDamage", numerical:runner.grip.length<1?2.0:1.0 },
+		{ effectStr:"meatDamage", numerical:runner.grip.length<1?2.0:1.0 },
+		{ effectStr:"brainDamage", numerical:2.0 },
+		{ effectStr:"tag", numerical:1.5 },
+		{ effectStr:"misc_serious", numerical:2.5 },
+	];
+	//end the run effect may also be of value
+	var etrNumerical = 0.5;
+	var etrIsCritical = false;
+	//critical if win condition (remember this effect lasts until EOT)
+	if (corp.AI._runnerMayWinIfServerBreached(attackedServer)) etrIsCritical = true;
+	//critical if repeating the run would tax the runner
+	if (approachIce == 0 && corp.AI._rezzedIce(attackedServer).length > 1) etrIsCritical = true;
+	if (etrIsCritical) {
+		etrNumerical=2.0;
+		rcOptions.avoidETR=true;
+	}
+	desired_effects.push({ effectStr:"endTheRun", numerical:etrNumerical });
+	//for run calculations we need to predict how many tags/how much damage the runner is willing to take
+	var damageLimit = runner.grip.length;
+	var tagLimit = Infinity; //this may not be best; test and tweak
+	
+	var iceCard = GetApproachEncounterIce();
+	if (!iceCard) return 0;
+	var maxX = AvailableCredits(corp, "using", this);
+	var rc = new RunCalculator();
+	
+	//start with original path, no applied strength boost
+	var paths = rc.Calculate(attackedServer, runner.clickTracker, runner.creditPool, AvailableCredits(runner) - runner.creditPool, damageLimit, tagLimit, true, null, approachIce, rcOptions);
+	var original_effect_numerical = 0;
+	if (paths.length > 0) {
+		var original_effects = rc.TotalEffect(paths[paths.length - 1][paths[paths.length - 1].length-1]);
+		desired_effects.forEach(function(value) { if (original_effects[value.effectStr]) original_effect_numerical+=value.numerical*original_effects[value.effectStr]; });
+	}
+	else return 0; //no valid path found (e.g. probably ETR'd)
+	
+	//now temporarily modify the ice's strength and recalculate with max possible spend
+	var strMod = {
+	  iceCard: iceCard,
+	  strengthBoost: maxX,
+	  modifyStrength: {
+		Resolve: function (card) {
+		  if (card == this.iceCard) return this.strengthBoost;
+		  return 0; //no modification to strength
+		},
+	  },
+	};
+	AddLingeringEffect(strMod);
+	paths = rc.Calculate(attackedServer, runner.clickTracker, runner.creditPool, AvailableCredits(runner) - runner.creditPool, damageLimit, tagLimit, true, null, approachIce, rcOptions);
+	RemoveLingeringEffect(strMod);
+	var max_effect_numerical = 0;
+	if (paths.length > 0) {
+		var max_effects = rc.TotalEffect(paths[paths.length - 1][paths[paths.length - 1].length-1]);
+		desired_effects.forEach(function(value) { if (max_effects[value.effectStr]) max_effect_numerical+=value.numerical*max_effects[value.effectStr]; });
+	}
+	else max_effect_numerical = etrNumerical; //no path found, assume ETR'd
+	
+	var diff_effect_numerical = max_effect_numerical - original_effect_numerical;
+	if (diff_effect_numerical < 2) {
+		corp.AI._log("Estimate run effect increase to "+max_effect_numerical+" from "+original_effect_numerical+", not worth using Corporate Troubleshooter");
+		return 0; //arbitrary but basically ensure some considerable effect
+	}
+	//loop up from 1 credit until max_effect_numerical reached
+	var new_effect_numerical = original_effect_numerical;
+	strMod.strengthBoost = 0;
+	while (new_effect_numerical < max_effect_numerical) {
+		strMod.strengthBoost++;
+		//recalculate
+		AddLingeringEffect(strMod);
+		paths = rc.Calculate(attackedServer, runner.clickTracker, runner.creditPool, AvailableCredits(runner) - runner.creditPool, damageLimit, tagLimit, true, null, approachIce, rcOptions);
+		RemoveLingeringEffect(strMod);
+		var new_effect_numerical = 0;
+		if (paths.length > 0) {
+			var new_effects = rc.TotalEffect(paths[paths.length - 1][paths[paths.length - 1].length-1]);
+			desired_effects.forEach(function(value) { if (new_effects[value.effectStr]) new_effect_numerical+=value.numerical*new_effects[value.effectStr]; });
+		}
+		else new_effect_numerical = etrNumerical; //no path found, assume ETR'd
+	}
+	corp.AI._log("Estimate run effect increase to "+new_effect_numerical+" from "+original_effect_numerical+" i.e. "+(max_effect_numerical-original_effect_numerical)+" increase for "+strMod.strengthBoost+" credits");
+	if (new_effect_numerical >= max_effect_numerical) return strMod.strengthBoost;
+	return 0;
+  },
+  RezUsability: function () {
+	//only worth rezzing if runner is about to encounter this piece of ice
+    if (currentPhase.identifier == "Run 2.2" && approachIce > -1 && attackedServer.ice[approachIce].rezzed) {
+	  //only worth rezzing if have credits to use its ability
+	  if (AvailableCredits(corp, "using", this) > 0) {
+		//and only this server
+		if (attackedServer == GetServer(this)) {
+			//AI will only rez if it's worth using
+			if (corp.AI) {
+				if (this.AISharedPreferredX() < 1) return false;
+			}			
+			return true;
+		}
+	  }
+    }
+    return false;
+  },
 };
 
 //TODO link (e.g. Reina)

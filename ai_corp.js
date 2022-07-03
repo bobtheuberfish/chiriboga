@@ -49,11 +49,22 @@ class CorpAI {
     return this._iceInCardsCommon(serverToInstallTo, false, cards);
   }
 
+  //array of unrezzed ice in server
   _unrezzedIce(server) {
     var ret = [];
     if (server == null) return ret;
     for (var i = 0; i < server.ice.length; i++) {
       if (!server.ice[i].rezzed) ret.push(server.ice[i]);
+    }
+    return ret;
+  }
+
+  //array of rezzed ice in server
+  _rezzedIce(server) {
+    var ret = [];
+    if (server == null) return ret;
+    for (var i = 0; i < server.ice.length; i++) {
+      if (server.ice[i].rezzed) ret.push(server.ice[i]);
     }
     return ret;
   }
@@ -197,11 +208,15 @@ class CorpAI {
 
   _shouldUpgradeServerWithCard(server, card) {
     if (CheckCardType(card, ["upgrade"])) {
-      //just in case
-      if (!this._uniqueCopyAlreadyInstalled(card)) {
+	  //it's usually either inefficient or illegal to have more than one of the same upgrade rezzed in the same server
+	  //for now we'll be even more restrictive and limit to one copy installed in general across all servers
+      if (!this._copyAlreadyInstalled(card)) {
         if (card.AIIsScoringUpgrade) {
           if (!this._isAScoringServer(server)) return false;
         }
+		if (typeof card.AIDefensiveValue == 'function') {
+		  if (card.AIDefensiveValue.call(card, server) < 1) return false;
+		}
         return true; //should be ok to install
       }
     }
@@ -369,6 +384,7 @@ class CorpAI {
   _agendaPointsInServer(
     server //returns int
   ) {
+	if (!server) return 0;
     var ret = 0;
     for (var i = 0; i < server.root.length; i++) {
       if (CheckCardType(server.root[i], ["agenda"])) ret+=server.root[i].agendaPoints;
@@ -384,6 +400,7 @@ class CorpAI {
   _agendasInServer(
     server //returns int
   ) {
+	if (!server) return 0;
     var ret = 0;
     for (var i = 0; i < server.root.length; i++) {
       if (CheckCardType(server.root[i], ["agenda"])) ret++;
@@ -583,10 +600,11 @@ class CorpAI {
 		}
 	}
 	else if (CheckCardType(card, ["upgrade"])) {
-		if (typeof(card.AIDefensiveValue) !== 'undefined') {
+		if (typeof card.AIDefensiveValue == 'function') {
+			var defensiveValue = card.AIDefensiveValue.call(card, GetServer(card));
 			//if unrezzed and can't afford to rez, consider to be no protection (just a simple check ignoring cost of other ice in server)
 			if ( card.rezzed || Credits(corp) >= RezCost(card)) {
-				ret += card.AIDefensiveValue;
+				ret += defensiveValue;
 			}
 		}
 	}
@@ -1352,6 +1370,7 @@ class CorpAI {
   }
 
   _runnerMayWinIfServerBreached(server) {
+	  if (!server) return false;
 	  if (AgendaPoints(runner) + this._agendaPointsInServer(server) >= AgendaPointsToWin()) return true;
 	  return false;
   }
@@ -1434,8 +1453,8 @@ class CorpAI {
 	  }
 	  //also consider if there is a defensive upgrade worth rezzing in this server instead
 	  for (var i=0; i<server.root.length; i++) {
-		if (typeof(server.root[i].AIDefensiveValue) !== 'undefined') {
-		  if (!server.root[i].rezzed) {
+		if (!server.root[i].rezzed) {
+		  if (typeof server.root[i].AIDefensiveValue == 'function' && server.root[i].AIDefensiveValue.call(server.root[i], server) > 0) {
 			if (!CheckCredits(currentRezCost+RezCost(server.root[i]), corp, "rezzing")) {
 			  if (this._cardProtectionValue(server.root[i]) > thisIceProtectionValue) {
 				this._log("Rez cost not worth it, need to save it for "+server.root[i].title+" in this server");
@@ -1537,11 +1556,26 @@ class CorpAI {
           }
         }
       }
-
       //non-ice cards to rez when approaching ice:
-      //(none at the moment)
+	  //currently only accepts cards which have RezUsability defined
+      for (var i=0; i<attackedServer.root.length; i++) {
+		  var card = attackedServer.root[i];
+		  if (typeof card.RezUsability == "function") {
+			  if (card.RezUsability.call(card)) {
+				return this._returnPreference(optionList, "rez", {
+				  cardToRez: card,
+				});
+			  }
+		  }
+	  }
     }
 
+	//something that could be triggered?
+	//for now assume trigger is always desired
+    if (optionList.indexOf("trigger") > -1) {
+		return optionList.indexOf("trigger");
+	}
+	  
     return optionList.indexOf("n");
   }
 
