@@ -684,7 +684,7 @@ var CardRenderer = {
         var hitDimensionsToUse = this.defaultMaskDimensions;
         var isEncounter = false;
         this.sprite.interactive = true;
-        if (GetApproachEncounterIce() == this.card) {
+        if (GetMostRelevantIce() == this.card) {
           if (CheckEncounter()) isEncounter = true;
           //no interaction if choosing subroutines
           if (OptionsAreOnlyUniqueSubroutines())
@@ -697,7 +697,7 @@ var CardRenderer = {
           !pixi_holdZoom &&
           !(
             OptionsAreOnlyUniqueSubroutines() &&
-            this.card === GetApproachEncounterIce()
+            this.card === GetMostRelevantIce()
           );
         var useCropped =
           (forceCropped || !this.zoomed) &&
@@ -993,7 +993,7 @@ var CardRenderer = {
           !pixi_holdZoom &&
           !(
             OptionsAreOnlyUniqueSubroutines() &&
-            this.card === GetApproachEncounterIce()
+            this.card === GetMostRelevantIce()
           )
         ) {
           scalingratio = 0.5; //this is different to forceCropped since it also unzooms dragging cards
@@ -1125,7 +1125,7 @@ var CardRenderer = {
       if (
         this.zoomed === true &&
         OptionsAreOnlyUniqueSubroutines() &&
-        this.card === GetApproachEncounterIce()
+        this.card === GetMostRelevantIce()
       ) {
         //stay zoomed
         this.glowSprite.parent.addChild(this.glowSprite);
@@ -1905,9 +1905,23 @@ var CardRenderer = {
 					src.chosenCard.renderer.sprite.addChild(src.renderer.chosenSprite);
 				}
 				else if (src.chosenServer) {
-					this.app.stage.addChild(src.renderer.chosenSprite);
-					src.renderer.chosenSprite.x = src.chosenServer.xEnd - 100;
-					src.renderer.chosenSprite.y = src.chosenServer.yCards + 190;
+					//if server is remote, check it exists
+					var serverExists = (typeof src.chosenServer.cards != 'undefined');
+					if (!serverExists) {
+						for (var j=0; j<corp.remoteServers.length; j++) {
+							if (corp.remoteServers[j] == src.chosenServer) {
+								serverExists=true;
+								break;
+							}
+						}
+					}
+					if (serverExists) {
+						this.app.stage.addChild(src.renderer.chosenSprite);
+						src.renderer.chosenSprite.x = src.chosenServer.xEnd - 100;
+						src.renderer.chosenSprite.y = src.chosenServer.yCards + 190;
+					} else {
+						src.chosenServer=null;
+					}
 				}
 				src.renderer.chosenSprite.visible = true;
 			}
