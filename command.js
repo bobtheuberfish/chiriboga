@@ -525,8 +525,9 @@ function CardEffectsForbid(id, card) {
 function EnumeratePhase() {
   validOptions = [];
   phaseOptions = [];
-  if (typeof currentPhase.preEnumerate === "function") {
-    currentPhase.preEnumerate();
+  if (typeof currentPhase.PreEnumerate === "function") {
+    currentPhase.PreEnumerate();
+	currentPhase.preEnumerated = true;
     Render(); //apparently this is necessary...
   }
   if (currentPhase.deferredHistoryBreak) {

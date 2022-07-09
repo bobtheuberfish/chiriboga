@@ -40,23 +40,6 @@ function CreatePhaseFromTemplate(template, player, title, identifier, next) {
   return ret;
 }
 
-//at beginning of many pseudophases we have a 'checkpoint' which may alter phase
-//returns false if phase was altered
-function PhaseCheckpointContinues() {
-	//check for remote attackingServer destroyed (run immediately ends, see Nisei CR1.5 4.6.8e)
-	if (attackedServer && currentPhase.identifier != "Run 6.4") {
-		if (typeof attackedServer.cards == 'undefined') {
-			if (attackedServer.ice.length == 0 && attackedServer.root.length == 0) {
-				//now end the run, the server is gone
-				attackedServer=null;
-				ChangePhase(phases.runEnds);
-				return false; //do not continue with current phase
-			}
-		}
-	}
-	return true; //continue with current phase
-}
-
 //mulligan template
 phaseTemplates.mulligan = {
   player: null,
@@ -80,9 +63,6 @@ phaseTemplates.mulligan = {
 //This template also contains some phase-specific checks to make things easier
 phaseTemplates.standardResponse = {
   Init: function () {
-	//some checkpoints cause phase change
-	if (!PhaseCheckpointContinues()) return;
-	
     if (!currentPhase.lessOpportunities) opportunitiesGiven = false;
     else opportunitiesGiven = true;
     actedThisPhase = false;
@@ -178,6 +158,22 @@ phaseTemplates.standardResponse = {
 
       if (activePlayer != currentPhase.player) opportunitiesGiven = true; //each player gets at least one chance to act
       if (opportunitiesGiven && !actedThisPhase) {
+		  
+		//checkpoint for remote attackingServer destroyed (run ends after paid ability window closes)
+		//see Nisei CR1.5 4.6.8e
+		//note that paid ability windows during run are: 2b, 3b, 4b, 4e
+		if (attackedServer && typeof attackedServer.cards == 'undefined') {
+			var runPaidAbilityWindows = ["Run 2.2", "Run 3.1", "Run 4.3", "Run 4.5"];
+			if (runPaidAbilityWindows.includes(currentPhase.identifier)) {
+				if (attackedServer.ice.length == 0 && attackedServer.root.length == 0) {
+					//end the run now, the server is gone
+					attackedServer=null;
+					ChangePhase(phases.runEnds);
+					return;
+				}
+			}
+		}
+
         //player declined to act, phase ends
         if (currentPhase.identifier == "Run 2.2") {
           //Run: Approach paid ability window (Nisei 2021 2.2)
@@ -274,7 +270,6 @@ phaseTemplates.corpScorableResponse.Enumerate.score = function () {
   return ret;
 };
 phaseTemplates.corpScorableResponse.Resolve.score = function (params) {
-  SetHistoryThumbnail(params.card.imageFile, "Score");
   Score(params.card);
 };
 //discard template
@@ -381,9 +376,6 @@ phaseTemplates.globalTriggers = {
   triggerEnumerateParams: [],
   triggerCallbackName: "NOT SET",
   Init: function () {
-	//some checkpoints cause phase change
-	if (!PhaseCheckpointContinues()) return;
-
     //follow priority rules
     //https://ancur.fandom.com/wiki/Timing_Priority
     activePlayer = currentPhase.player = playerTurn;
@@ -437,13 +429,16 @@ phaseTemplates.globalTriggers = {
       }
     }
 	
+    //build trigger list
+    BuildGlobalTriggerList();
+  },
+  PreEnumerate: function () {
+	//only do this once
+	if (currentPhase.preEnumerated) return;
 	//log run end
 	if (currentPhase.identifier == "Run 6.4") {
 		Log("Run ends");
 	}
-
-    //build trigger list
-    BuildGlobalTriggerList();
   },
   Enumerate: {
     trigger: function () {
@@ -552,7 +547,7 @@ function CombineResponseWithPhase(
   responsePhase.backupStored = false;
   responsePhase.combineWith = combineWith;
   responsePhase.exceptionCondition = exceptionCondition;
-  responsePhase.preEnumerate = function () {
+  responsePhase.PreEnumerate = function () {
     //since this is post-action, this is also where we clean up any resolving cards that still remain
     while (corp.resolvingCards.length > 0) {
       MoveCard(corp.resolvingCards[0], corp.archives.cards);
@@ -576,8 +571,10 @@ function CombineResponseWithPhase(
     //special things to simplify UI when playing as Corp
     //specifically, we add the properties of currentPhase.combineWith into currentPhase
     //a more simple approach would be to use a pre-created phase for this - but then anything that modified either phase wouldn't affect it
+	currentPhase.phaseNotCombined=true;
     if (corp.AI == null && !forcePreventCombinePhase) {
       if (combineResponse) {
+		currentPhase.phaseNotCombined=false;
         //if the current phase has not yet been backed up, store any properties that will be overwritten
         //do this by iterating through currentPhase.combineWith and storing currentPhases's property, if defined
         if (!currentPhase.backupStored) {
@@ -1173,8 +1170,8 @@ phases.runnerActionMain.historyBreak = {
   style: "large",
 };
 
-//Run step numbers are from NISEI Comprehensive Rules v1.5
-//For now you could start thinking about it here: https://nisei.net/blog/quick-notes-comprehensive-rules-1-5/
+//Run step numbers are from NISEI Comprehensive Rules v1.5 (although listed as a,b,c, instead of .1, .2, .3)
+//https://nisei.net/wp-content/uploads/2021/10/NISEI-Comprehensive-Rules-v1.5-clean.pdf p122-123
 //Run: approach ice (the template actually contains some specific checks for Run 2.1) (Nisei 2021 2.1)
 phases.runApproachIce = CreatePhaseFromTemplate(
   phaseTemplates.noRezResponse,
@@ -1195,7 +1192,7 @@ phases.runRezApproachedIce = CreatePhaseFromTemplate(
 );
 phases.runRezApproachedIce.lessOpportunities = true; //this phase is sort of treated like a corp response to previous phase
 
-//Run: encounter ice (the template actually contains some specific checks for Run 3.1) (Nisei 2021 3.1)
+//Run: encounter ice (the template actually contains some specific checks for Run 3.1) (Nisei 2021 3.1 and 3.2)
 phases.runEncounterIce = CreatePhaseFromTemplate(
   phaseTemplates.noRezResponse,
   runner,
@@ -1698,6 +1695,7 @@ function ChangePhase(src, skipInit = false) {
     else currentPhase.deferredHistoryBreak = playerTurn;
 
     //init the new phase
+	currentPhase.preEnumerated = false;
     if (typeof currentPhase.Init == "function") currentPhase.Init();
 
     //identifier can be used to trigger tutorial actions

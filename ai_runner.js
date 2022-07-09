@@ -903,11 +903,13 @@ class RunnerAI {
 		  else if (this._breachWouldBePrevented(ActiveCards(runner),attackedServer)) runStillWorthCompleting=true;
 		  //ideally complete run, unless the server target has become pointless
 		  var completeRun = false;
-		  if (runStillWorthCompleting) {
-			completeRun = runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, 0, null, approachIce); //null means no bonus breaker
+		  completeRun = runner.AI._calculateBestCompleteRun(attackedServer, 0, 0, 0, 0, null, approachIce); //null means no bonus breaker
+		  //if run cost is very low then run is still worth completing just for the successful effect (arbitrary value)
+		  if (completeRun && !runStillWorthCompleting && this.rc.PathCost(completeRun) < 0.8) {
+			  runStillWorthCompleting = true;
 		  }
-		  //but if not, use an exit strategy (incomplete run)
-		  if (!completeRun) runner.AI._calculateBestExitStrategy(
+		  //if no complete run, or run not worth it, use an exit strategy (incomplete run)
+		  if (!completeRun || !runStillWorthCompleting) runner.AI._calculateBestExitStrategy(
 			attackedServer,
 			0,
 			0,
@@ -975,9 +977,13 @@ class RunnerAI {
 	}
 	//triggered card abilities that modify the bonus credits (e.g. Ken Tenma)
 	var activeCards = ActiveCards(runner);
+	var runEventDiscount = 0;
     for (var i = 0; i < activeCards.length; i++) {
 	    if (typeof activeCards[i].AIRunPoolCreditOffset == 'function') {
 			poolCreditOffset += activeCards[i].AIRunPoolCreditOffset.call(activeCards[i],server,runEventCardToUse);
+		}
+	    if (typeof activeCards[i].AIRunEventDiscount == 'function') {
+			runEventDiscount += activeCards[i].AIRunEventDiscount.call(activeCards[i],server,runEventCardToUse);
 		}
 	}
 	//if a bonus breaker is defined, a click is needed to install it, and a card slot (reduce max damage by 1)
@@ -999,8 +1005,10 @@ class RunnerAI {
 		if (typeof runEventCardToUse.AIRunEventExtraCredits != 'undefined') {
 			extraCredits += runEventCardToUse.AIRunEventExtraCredits;
 		}
-		//for now we assume pool credit is used to play the card
-		poolCreditOffset -= runEventCardToUse.playCost;
+		//for now we assume pool credit is used to play the card, minus the discount
+		var playCost = runEventCardToUse.playCost - runEventDiscount;
+		if (playCost < 0) playCost = 0;
+		poolCreditOffset -= playCost;
 		//take into account one less card in grip
 		damageOffset -= 1;
 	}
@@ -1683,8 +1691,9 @@ console.log(this.preferred);
       for (var i = 0; i < corp.remoteServers.length; i++) {
         this.serverList.push({ server: corp.remoteServers[i] });
       }
-      for (var i = 0; i < this.serverList.length; i++) {
+      for (var i = 0; i < this.serverList.length; i++) {		  
         var server = this.serverList[i].server;
+
         //determine potential value
         this.serverList[i].potential = 0;
         if (typeof server.cards !== "undefined") {

@@ -1271,6 +1271,11 @@ function MoveCardTriggers(card, locationfrom, locationto) {
         }
       }
     }
+	
+	//update run calculation, if affected
+	if (runner.AI && attackedServer) {
+		if (locationfrom == attackedServer.root) runner.AI.RecalculateRunIfNeeded();
+	}
   }
   card.cardLocation = locationto;
 }
@@ -2292,9 +2297,10 @@ function CamelToSentence(src) {
  * @param [Object] enumerateParams to send to Enumerate functions
  * @param {function} afterOpportunity called after pseudophase completes
  * @param {String} [title] given to the pseudophase, defaults to CamelToSentence(callbackName)
+ * @param {Object} [historyBreak] given to the pseudophase
  * @returns {Phase} the pseudophase created
  */
-function TriggeredResponsePhase(player, callbackName, enumerateParams, afterOpportunity, title) {
+function TriggeredResponsePhase(player, callbackName, enumerateParams, afterOpportunity, title, historyBreak=null) {
   var printableCallbackName = CamelToSentence(callbackName);
   if (typeof title !== "undefined") printableCallbackName = title;
   var responsePhase = CreatePhaseFromTemplate(
@@ -2311,6 +2317,7 @@ function TriggeredResponsePhase(player, callbackName, enumerateParams, afterOppo
     GlobalTriggersPhaseCommonResolveN(true, afterOpportunity); //when done, this will return to original phase (true skips init) and then fire afterOpportunity
   };
   responsePhase.next = currentPhase;
+  if (historyBreak) responsePhase.historyBreak = historyBreak;
   ChangePhase(responsePhase);
   return responsePhase;
 }

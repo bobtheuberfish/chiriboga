@@ -841,6 +841,33 @@ class RunCalculator {
 			  }
 			}
 		  }
+		  //simple check (not comprehensive, that would be complex e.g. random access, R&D could be shuffled, etc)
+		  var mightAccessAnAgenda = true;
+		  if (typeof server.cards == 'undefined' && knownCardsInServer.length == server.root.length) {
+			mightAccessAnAgenda = false;
+			for (var i = 0; i < server.root.length; i++) {
+			  if (CheckCardType(server.root[i], ["agenda"])) {
+				  mightAccessAnAgenda = true;
+				  break;
+			  }
+			}
+		  }
+		  //if Corp is Jinteki:PE, unless all cards are known to be non-agenda or steal would win, account for min 1 net damage
+		  if (mightAccessAnAgenda && corp.identityCard.title=="Jinteki: Personal Evolution") {
+			if (AgendaPoints(runner) + 1 < AgendaPointsToWin()) {
+				//skip this if net damage is already being assumed
+				var alreadyNetDamage = false;
+				for (var i=0; i<approachEffects.length; i++) {
+				  if (approachEffects[i].includes("netDamage")) {
+					alreadyNetDamage = true;
+					break;
+				  }
+				}
+				if (!alreadyNetDamage) {
+					approachEffects.push(["netDamage"]);
+				}
+			}
+		  }
 		  //calculate any required trash payment, taking into account potential discount (just considering max for one known card trash cost with just one discounting ability atm)
 		  //note cards in server (e.g. in corp hand) are not considered atm
 		  var highestTrashCost = 0;

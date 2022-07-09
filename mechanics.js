@@ -1172,13 +1172,34 @@ function Score(card, afterScore, context) {
     MoveCard(intended.score, corp.scoreArea);
     intended.score.faceUp = true;
     if (runner.AI != null) runner.AI.LoseInfoAboutHQCards(intended.score);
+	var historyBreak = {
+      title: currentPhase.title,
+      style: "small",
+	};
+	//for phase 3.1 we need to do the history break first (since there is no combined phase)
+	if (currentPhase.phaseNotCombined) {
+		var storedHistoryBreak = null;
+		if (currentPhase.historyBreak) storedHistoryBreak = currentPhase.historyBreak;
+		currentPhase.historyBreak = historyBreak;
+		AddHistoryBreakIfRequired(corp);
+		if (storedHistoryBreak) currentPhase.historyBreak = storedHistoryBreak;
+		else currentPhase.historyBreak = null;
+		historyBreak = null;
+	}
+	//main phases are normally large history icon so we'll force the small one here
+	$("#history").children().first().removeClass("historyentry-corp").addClass("historyentry-corp-small");
+	//but then restore normal icon afterwards
+	if (historyBreak && currentPhase.historyBreak) historyBreak.style = currentPhase.historyBreak.style;
     Log(GetTitle(intended.score, true) + " scored");
+    SetHistoryThumbnail(intended.score.imageFile, "Score");
 	//currently giving whoever's turn it is priority...not sure this is always going to be right
-    TriggeredResponsePhase(playerTurn, "scored", [], function () {
+    var responsePhase = TriggeredResponsePhase(playerTurn, "scored", [], function () {
       intended.score.advancement = 0;
       intended.score = null;
       if (typeof afterScore === "function") afterScore.call(context);
-    });
+    },
+	"Score",
+	historyBreak);
   });
 }
 

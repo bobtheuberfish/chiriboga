@@ -1351,13 +1351,9 @@ function NicelyFormatCommand(cmdstr) {
     } else if (
       viewingPlayer == corp &&
       currentPhase.identifier == "Runner 2.2"
-    ) {
-      //for usability when human playing Corp
-      if (corp.AI == null) {
-        cmdstr = "Begin turn";
-        phases.corpStartDraw.corpSkip = true;
-      } else cmdstr = "End of Runner's turn";
-    } else if (viewingPlayer == corp && currentPhase.identifier == "Corp 1.1")
+    )
+	  cmdstr = "End of Runner's turn";
+    else if (viewingPlayer == corp && currentPhase.identifier == "Corp 1.1")
       cmdstr = "Begin turn";
     else if (currentPhase.identifier == "Corp 2.1")
       cmdstr = "Continue to first action";

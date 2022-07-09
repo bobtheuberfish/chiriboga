@@ -3195,9 +3195,10 @@ cardSet[31038] = {
 	  }
 	  return Math.min(eventCardsInGripWithPlayCost,2);
   },
-  AIRunPoolCreditOffset: function(server,runEventCardToUse) {
-	  if (runEventCardToUse && runEventCardToUse.playCost > 0) return this.credits; //bonus credits
-	  return 0; //no bonus credit
+  AIRunEventDiscount: function(server,runEventCardToUse) {
+	  //no need to check here whether the discount is greater than the card cost, that will be handled in runner.AI._commonRunCalculationChecks
+	  if (runEventCardToUse) return this.credits; //discount
+	  return 0; //no discount
   },
   AIWastefulToInstall: function() {
 	  var numInstalledAlready = 0;
@@ -4145,6 +4146,30 @@ cardSet[31049] = {
     return false;
   },
 };
+
+cardSet[31050] = {
+  title: "Jinteki: Personal Evolution",
+  imageFile: "31050.png",
+  elo: 1732,
+  player: corp,
+  faction: "Jinteki",
+  cardType: "identity",
+  deckSize: 45,
+  influenceLimit: 15,
+  subTypes: ["Megacorp"],
+  //Whenever an agenda is scored or stolen, do 1 net damage.
+  scored: {
+    Resolve: function () {
+      NetDamage(1);
+    },
+  },
+  stolen: {
+    Resolve: function () {
+      NetDamage(1);
+    },
+  },
+};
+
 
 //TODO link (e.g. Reina)
 
