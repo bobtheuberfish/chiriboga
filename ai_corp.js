@@ -381,6 +381,51 @@ class CorpAI {
 	  return optionList[0];
   }
 
+  //this damage is potential because the run could jack out/prevent, not because we don't know the cards
+  //this function assumes the runner is mid-run on this server
+  _potentialDamageOnBreach(server) {
+	var ret = 0;
+	//1 if it is contains an agenda and identity is Jinteki:PE
+	if (this._agendaPointsInServer(server) > 0 && corp.identityCard.title=="Jinteki: Personal Evolution") ret++;
+	//2+advancement if it is an active Urtica
+	var urtica = this._copyOfCardExistsIn("Urtica Cipher", server.root);
+	if (urtica) ret+=2+urtica.advancement;
+	//1 for each scored House of Knives that has at least 1 counter and hasn't been used this run
+	for (var i=0; i<corp.scoreArea.length; i++) {
+		if (corp.scoreArea[i].title == "House of Knives" && !corp.scoreArea[i].usedThisRun) ret++;
+	}
+	//TODO Hokusai Grid
+	//TODO Snare
+	this._log("Could do "+ret+" damage on breach");
+	return ret;
+  }
+
+  //NOTE: a copy of this exists in ai_runner so duplicate changes there
+  _breachWouldBePrevented(activeCards, server) {
+	var ret = false;
+	for (var j = 0; j < activeCards.length; j++) {
+		if (typeof activeCards[j].AIPreventBreach == 'function') {
+		  if (activeCards[j].AIPreventBreach.call(activeCards[j],server)) {
+			  return true;
+		  }
+		}
+	}
+    return ret;		
+  }
+  
+  _serverContainsUnknownCards(server) {
+	if (!server) return false;
+	for (var i=0; i<server.root.length; i++) {
+		if (!PlayerCanLook(runner,server.root[i])) return true;
+	}
+	if (typeof server.cards != 'undefined') {
+		for (var i=0; i<server.cards.length; i++) {
+			if (!PlayerCanLook(runner,server.cards[i])) return true;
+		}
+	}
+	return false;
+  }
+
   _agendaPointsInServer(
     server //returns int
   ) {
@@ -812,6 +857,7 @@ class CorpAI {
     return ret;
   }
 
+  //returns card
   _copyOfCardExistsIn(title, cards) {
     for (var i = 0; i < cards.length; i++) {
       if (GetTitle(cards[i]) == title) return cards[i];

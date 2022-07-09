@@ -544,7 +544,7 @@
 					</div>
 				</div>
 				<div class="leftrow">
-					<button id="exittomenu" onclick="window.location.href='index.html';" class="button">Exit to main menu</button>
+					<button id="exittomenu" onclick="window.location.href='index.php';" class="button">Exit to main menu</button>
 					<button id="launch" class="button" onclick="window.location.href=$(this).prop('href');">Launch</button>
 				</div>
 				<div class="leftrow toprow">

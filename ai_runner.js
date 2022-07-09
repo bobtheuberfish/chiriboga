@@ -1074,6 +1074,7 @@ class RunnerAI {
     return runner.grip.length - MaxHandSize(runner);
   }
   
+  //NOTE: a copy of this exists in ai_corp so duplicate changes there
   _breachWouldBePrevented(activeCards, server) {
 	var ret = false;
 	for (var j = 0; j < activeCards.length; j++) {

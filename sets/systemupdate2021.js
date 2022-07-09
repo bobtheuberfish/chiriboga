@@ -4170,6 +4170,71 @@ cardSet[31050] = {
   },
 };
 
+cardSet[31051] = {
+  title: "House of Knives",
+  imageFile: "31051.png",
+  player: corp,
+  faction: "Jinteki",
+  cardType: "agenda",
+  subTypes: ["Security"],
+  agendaPoints: 1,
+  advancementRequirement: 3,
+  //When you score this agenda, place 3 agenda counters on it.
+  scored: {
+    Resolve: function () {
+	  if (intended.score == this) {
+		  AddCounters(this, "agenda", 3);
+	  }
+    },
+	automatic: true,
+  },
+  //Hosted agenda counter: Do 1 net damage. Use this ability only during a run and only once per run.
+  usedThisRun:false,
+  runBegins: {
+    Resolve: function (server) {
+      this.usedThisRun = false;
+    },
+    automatic: true,
+  },
+  abilities: [
+    {
+      text: "Do 1 net damage.",
+      Enumerate: function () {
+		if (attackedServer) {
+			if (!this.usedThisRun) {
+				if (CheckCounters(this, "agenda", 1)) {
+					//**AI code
+					if (corp.AI) {
+						//only on approach to server (4e) and if runner would breach, for maximum effect
+						if (currentPhase.identifier == "Run 4.5" && approachIce < 1 && !corp.AI._breachWouldBePrevented(ActiveCards(runner),attackedServer)) {
+							//always activate if it will allow a win condition or this run would steal the winning agenda
+							if (corp.AI._runnerMayWinIfServerBreached(attackedServer)) return [{}];
+							else if (corp.AI._potentialDamageOnBreach(attackedServer) > runner.grip.length) return [{}];
+							//otherwise only when there is more than one counter left and it will feel threatening
+							//i.e. only if there are unknown cards in server
+							//also, to not make it too easy for the runner, only if there is at least 1 rezzed ice
+							if (CheckCounters(this, "agenda", 2)) {
+								if (corp.AI._rezzedIce(attackedServer).length > 0) {
+									if (corp.AI._serverContainsUnknownCards(attackedServer)) return [{}];
+								}
+							}
+						}
+						return [];
+					}
+					return [{}];
+				}
+			}
+		}
+        return [];
+      },
+      Resolve: function (params) {
+		this.usedThisRun = true;
+		RemoveCounters(this, "agenda", 1);
+		NetDamage(1);
+      },
+    },
+  ],
+};
 
 //TODO link (e.g. Reina)
 
@@ -4178,6 +4243,7 @@ cardSet[31061] = {
   title: "License Acquisition",
   imageFile: "31061.jpg",
   player: corp,
+  faction: "NBN",
   cardType: "agenda",
   subTypes: ["Expansion"],
   agendaPoints: 1,
@@ -4243,6 +4309,7 @@ cardSet[31071] = {
   title: "Hostile Takeover",
   imageFile: "31071.jpg",
   player: corp,
+  faction: "Weyland Consortium",
   cardType: "agenda",
   subTypes: ["Expansion"],
   agendaPoints: 1,
