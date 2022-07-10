@@ -163,7 +163,7 @@ phaseTemplates.standardResponse = {
 		//see Nisei CR1.5 4.6.8e
 		//note that paid ability windows during run are: 2b, 3b, 4b, 4e
 		if (attackedServer && typeof attackedServer.cards == 'undefined') {
-			var runPaidAbilityWindows = ["Run 2.2", "Run 3.1", "Run 4.3", "Run 4.5"];
+			var runPaidAbilityWindows = ["Run 2.1", "Run 3.1", "Run 4.3", "Run 4.5"];
 			if (runPaidAbilityWindows.includes(currentPhase.identifier)) {
 				if (attackedServer.ice.length == 0 && attackedServer.root.length == 0) {
 					//end the run now, the server is gone
@@ -175,7 +175,7 @@ phaseTemplates.standardResponse = {
 		}
 
         //player declined to act, phase ends
-        if (currentPhase.identifier == "Run 2.2") {
+        if (currentPhase.identifier == "Run 2.1") {
           //Run: Approach paid ability window (Nisei 2021 2.2)
           if (attackedServer.ice[approachIce].rezzed) {
             ChangePhase(phases.runEncounterIce); //ice at this position is rezzed, encounter it (Nisei 2021 2.3.1)
@@ -1172,25 +1172,15 @@ phases.runnerActionMain.historyBreak = {
 
 //Run step numbers are from NISEI Comprehensive Rules v1.5 (although listed as a,b,c, instead of .1, .2, .3)
 //https://nisei.net/wp-content/uploads/2021/10/NISEI-Comprehensive-Rules-v1.5-clean.pdf p122-123
-//Run: approach ice (the template actually contains some specific checks for Run 2.1) (Nisei 2021 2.1)
+//Run: approach ice (the template actually contains some specific checks for Run 2.1) (Nisei 2021 2.1 and 2.2)
 phases.runApproachIce = CreatePhaseFromTemplate(
-  phaseTemplates.noRezResponse,
+  phaseTemplates.standardResponse,
   runner,
   "Run: Approach Ice",
   "Run 2.1",
   null
 );
 phases.runApproachIce.historyBreak = { title: "Run: Ice", style: "run" };
-
-//Run: rez approached ice (the standardResponse template actually contains a specific check for Run 2.2) (Nisei 2021 2.2)
-phases.runRezApproachedIce = CreatePhaseFromTemplate(
-  phaseTemplates.standardResponse,
-  corp,
-  "Run: Rez Approached Ice",
-  "Run 2.2",
-  null
-);
-phases.runRezApproachedIce.lessOpportunities = true; //this phase is sort of treated like a corp response to previous phase
 
 //Run: encounter ice (the template actually contains some specific checks for Run 3.1) (Nisei 2021 3.1 and 3.2)
 phases.runEncounterIce = CreatePhaseFromTemplate(
@@ -1554,8 +1544,7 @@ phases.runnerDiscardStart.next = phases.runnerDiscardResponse; //"Runner 2.1"
 phases.runnerDiscardResponse.next = phases.runnerEndOfTurn; //"Runner 2.2"
 phases.runnerEndOfTurn.next = phases.corpStartDraw; //"Runner 2.3"
 //Run (these phases are coded as part of a run...make a custom copy to use outside of a run)
-phases.runApproachIce.next = phases.runRezApproachedIce; //"Run 2.1"
-phases.runRezApproachedIce.next = phases.runEncounterIce; //"Run 2.2"
+phases.runApproachIce.next = phases.runEncounterIce; //"Run 2.1"
 phases.runEncounterIce.next = phases.runSubroutines; //"Run 3.1"
 phases.runSubroutines.next = phases.runEncounterEnd; //"Run Subroutines"
 phases.runEncounterEnd.next = phases.runPassesIce; //"Run 3.5"

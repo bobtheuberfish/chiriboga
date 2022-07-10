@@ -2397,7 +2397,7 @@ class CorpAI {
       //opportunity to act at end of runner turn
       else if (currentPhase.title == "Trash Before Install")
         ret = this.Phase_TrashBeforeInstall(optionList);
-      else if (currentPhase.identifier == "Run 2.2")
+      else if (currentPhase.identifier == "Run 2.1")
         ret = this.Phase_Approaching(optionList);
       else if (currentPhase.identifier == "Run 4.5")
         ret = this.Phase_Movement(optionList);

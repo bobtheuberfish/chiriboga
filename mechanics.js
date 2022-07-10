@@ -1143,7 +1143,6 @@ function RunUnsuccessful() {
  * @method EndTheRun
  */
 function EndTheRun() {
-  Log("Run ended");
   RunUnsuccessful();
 }
 

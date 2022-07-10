@@ -4130,7 +4130,7 @@ cardSet[31049] = {
   },
   RezUsability: function () {
 	//only worth rezzing if runner is about to encounter this piece of ice
-    if (currentPhase.identifier == "Run 2.2" && approachIce > -1 && attackedServer.ice[approachIce].rezzed) {
+    if (currentPhase.identifier == "Run 2.1" && approachIce > -1 && attackedServer.ice[approachIce].rezzed) {
 	  //only worth rezzing if have credits to use its ability
 	  if (AvailableCredits(corp, "using", this) > 0) {
 		//and only this server
@@ -4203,6 +4203,8 @@ cardSet[31051] = {
 		if (attackedServer) {
 			if (!this.usedThisRun) {
 				if (CheckCounters(this, "agenda", 1)) {
+					//for usability we will only use this on approach
+					if (currentPhase.identifier != "Run 4.5" || approachIce > 0) return [];
 					//**AI code
 					if (corp.AI) {
 						//only on approach to server (4e) and if runner would breach, for maximum effect
@@ -4231,6 +4233,63 @@ cardSet[31051] = {
 		this.usedThisRun = true;
 		RemoveCounters(this, "agenda", 1);
 		NetDamage(1);
+      },
+    },
+  ],
+};
+
+cardSet[31052] = {
+  title: "Nisei MK II",
+  imageFile: "31052.png",
+  player: corp,
+  faction: "Jinteki",
+  cardType: "agenda",
+  subTypes: ["Initiative"],
+  agendaPoints: 2,
+  advancementRequirement: 4,
+  //When you score this agenda, place 1 agenda counter on it.
+  scored: {
+    Resolve: function () {
+	  if (intended.score == this) {
+		  AddCounters(this, "agenda", 1);
+	  }
+    },
+	automatic: true,
+  },
+  //Hosted agenda counter: End the run.
+  abilities: [
+    {
+      text: "End the run.",
+      Enumerate: function () {
+		if (attackedServer) {
+			if (CheckCounters(this, "agenda", 1)) {
+				//for usability we will only use this on approach
+				if (currentPhase.identifier != "Run 4.5" || approachIce > 0) return [];
+				//**AI code
+				if (corp.AI) {
+					//only on approach to server (4e) for maximum effect
+					if (currentPhase.identifier == "Run 4.5" && approachIce < 1) {
+						//save this for something crucial e.g. the runner might win
+						if (corp.AI._runnerMayWinIfServerBreached(attackedServer)) {
+							//for R&D save for wasting The Maker's Eye
+							if (attackedServer == corp.RnD) {
+								if (corp.AI._copyOfCardExistsIn("The Maker's Eye", runner.resolvingCards)) return [{}];
+								return [];
+							}
+							//other servers, just use it
+							return [{}];
+						}
+					}
+					return [];
+				}
+				return [{}];
+			}
+		}
+        return [];
+      },
+      Resolve: function (params) {
+		RemoveCounters(this, "agenda", 1);
+		EndTheRun();
       },
     },
   ],

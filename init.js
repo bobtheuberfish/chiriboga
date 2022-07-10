@@ -1335,14 +1335,18 @@ function NicelyFormatCommand(cmdstr) {
     else if (accessingCard != null) cmdstr = "End";
     else if (currentPhase.title == "Trash Before Install") {
       cmdstr = "Finish install (trash no more cards)";
-    } else if (currentPhase.identifier == "Run 2.2") {
+    } else if (currentPhase.identifier == "Run 2.1") {
       if (attackedServer.ice[approachIce].rezzed)
         cmdstr = "Continue to Encounter Phase";
-      else cmdstr = "Continue to Movement Phase";
+      else cmdstr = "Continue without rezzing ice";
     } else if (currentPhase.identifier == "Run 3.1") {
       if (ChoicesEncounteredSubroutines().length > 0)
         cmdstr = "Resolve unbroken subroutines";
-      else cmdstr = "Continue";
+      else cmdstr = "Continue to Movement Phase";
+	} else if (currentPhase.identifier == "Run 4.3") {
+	  if (viewingPlayer == corp) {
+		cmdstr = "Runner may jack out";
+	  } else cmdstr = "Continue";
     } else if (currentPhase.identifier == "Run 4.5") {
       if (viewingPlayer == corp) {
         if (approachIce > 0) cmdstr = "Continue to Approach Ice Phase";

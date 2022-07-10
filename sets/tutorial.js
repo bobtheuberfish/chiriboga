@@ -841,7 +841,7 @@ tutorial[2] = {
     },
     {
       //Corp opportunity to rez
-      str: "Run 2.2",
+      str: "Run 2.1",
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
@@ -920,7 +920,7 @@ tutorial[2] = {
     },
     {
       //Explain interface
-      str: "Run 2.2",
+      str: "Run 2.1",
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
