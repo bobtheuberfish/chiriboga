@@ -1621,6 +1621,19 @@ var CardRenderer = {
           pixi_subroutineDelay = 20; //tweak to work well
         }
 		
+		//or animate to make clearer
+		const dfortime = new Date();
+		let timeinms = dfortime.getTime();
+		var gryscl = Math.round((Math.cos(timeinms*0.005)+1) * 40 + 175);
+		var hex = gryscl.toString(16);
+		if (hex.length == 1) hex = "0" + hex;
+		var srtintcol = parseInt(hex+hex+hex,16);
+        for (var i = 0; i < this.subroutineChoices.length; i++) {
+		  if (this.subroutineChoices[i].visible && this.subroutineChoices[i].tint != 0xD800FF) {
+			this.subroutineChoices[i].tint = srtintcol;
+		  }
+	    }
+		
 		//update counter rotations each frame (but not text, the true here skips that)
 		this.UpdateCounters(true); //doing this every frame might cost us a millisecond or so, that's worth it
       }, this);
@@ -2002,7 +2015,7 @@ var CardRenderer = {
               this.subroutineChoices[i].scale.y = subroutine.visual.h / 149.0; //149.0 is the height of broken.png
             }
             this.subroutineChoices[i].visible = true;
-            this.subroutineChoices[i].tint = parseInt("FFFFFF", 16); //white
+            this.subroutineChoices[i].tint = parseInt("FFFFFF", 16); //white by default
           }
         }
       }
