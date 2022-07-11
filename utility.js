@@ -2972,7 +2972,7 @@ function DeckBuild(
 	  //other cards (this currently includes extras of all the previous non-agenda cards too)
 	  var otherCards = economyCards.concat(iceCards);
 	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30058, 30061, 30066]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048, 31049]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048, 31049, 31053]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,

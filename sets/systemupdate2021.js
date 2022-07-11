@@ -4173,6 +4173,7 @@ cardSet[31050] = {
 cardSet[31051] = {
   title: "House of Knives",
   imageFile: "31051.png",
+  elo: 1698,
   player: corp,
   faction: "Jinteki",
   cardType: "agenda",
@@ -4241,6 +4242,7 @@ cardSet[31051] = {
 cardSet[31052] = {
   title: "Nisei MK II",
   imageFile: "31052.png",
+  elo: 1873,
   player: corp,
   faction: "Jinteki",
   cardType: "agenda",
@@ -4293,6 +4295,52 @@ cardSet[31052] = {
       },
     },
   ],
+};
+
+cardSet[31053] = {
+  title: "Ronin",
+  imageFile: "31053.png",
+  elo: 1686,
+  player: corp,
+  faction: "Jinteki",
+  influence: 4,
+  cardType: "asset",
+  subTypes: ["Hostile"],
+  rezCost: 0,
+  canBeAdvanced: true,
+  trashCost: 2,
+  advancement: 0,
+  advancementRequirement: 4, //for usability
+  //[click],[trash]: Do 3 net damage. Use this ability only if there are 4 or more hosted advancement counters.
+  abilities: [
+    {
+      text: "Do 3 net damage.",
+      Enumerate: function () {
+        if (!CheckCounters(this, "advancement", 4)) return [];
+        if (!CheckActionClicks(corp, 1)) return [];
+        return [{}];
+      },
+      Resolve: function (params) {
+        SpendClicks(corp, 1);
+        Trash(this, false); //false means it cannot be prevented (because it's a cost)
+        NetDamage(3);
+      },
+    },
+  ],
+  RezUsability: function () {
+	//only when could use the ability
+	if (!CheckCounters(this, "advancement", 4)) return false;
+	if (!CheckClicks(corp, 1)) return false;
+	return true;
+  },
+  AITriggerWhenCan: true,
+  AIRushToFinish: function() {
+	//only rush to finish if there will be a click left to use it and runner.grip.length < 3
+	if (runner.grip.length < 3) {
+		if (corp.AI._potentialAdvancement(this,true,corp.HQ.cards,corp.clickTracker-1)) return true;
+	}
+	return false; //don't use economy advance to get to limit
+  },
 };
 
 //TODO link (e.g. Reina)

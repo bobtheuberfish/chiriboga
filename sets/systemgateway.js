@@ -4490,7 +4490,9 @@ cardSet[30061] = {
   AIAdvancementLimit: function() {
 	  return MaxHandSize(runner)+1;
   },
-  AIRushToFinish: true, //use economy advance to get to limit
+  AIRushToFinish: function() {
+	  return true; //always use economy advance to get to limit
+  },
   corpTurnBegin: {
     Enumerate: function () {
       if (CheckCounters(this, "advancement", 1)) return [{}];

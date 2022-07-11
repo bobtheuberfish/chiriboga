@@ -1174,6 +1174,7 @@ class CorpAI {
       { title: "Manegarm Skunkworks", cost: 2 },
       { title: "Anoetic Void", cost: 0 },
       { title: "Clearinghouse", cost: 0 },
+	  { title: "Ronin", cost: 0 },
     ];
     for (var i = 0; i < corp.remoteServers.length; i++) {
       for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
@@ -1740,7 +1741,7 @@ class CorpAI {
       //list of cards (by title) to rez post-action
       var cardsToRezPostAction = [];
       if (this._clicksLeft() > 0)
-        cardsToRezPostAction.push("Regolith Mining License");
+        cardsToRezPostAction.push("Regolith Mining License", "Ronin");
       for (var i = 0; i < cardsToRezPostAction.length; i++) {
         var copyOfCard = this._copyOfCardExistsIn(
           cardsToRezPostAction[i],
@@ -1887,12 +1888,13 @@ class CorpAI {
   }
 
   //if null card is specified, this is a generic "what if one was to be installed?" check
-  //(in which case it will assume a click less)
-  _potentialAdvancement(card,thisTurn=true,fastAdvanceArray) {
+  //(in which case it will assume a click less) unless assumeClicks (int) is specified
+  _potentialAdvancement(card,thisTurn=true,fastAdvanceArray,assumeClicks) {
 	  if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards; //source of fast advance cards
 	  var ret = 0;
 	  var clicksLeft = this._clicksLeft();
 	  if (!card) clicksLeft--;
+	  if (typeof assumeClicks != 'undefined') clicksLeft=assumeClicks;
 	  //basic advance
 	  if (thisTurn) ret += Math.min(clicksLeft, Credits(corp));
 	  else ret += Credits(corp);
@@ -2002,6 +2004,12 @@ class CorpAI {
 	var cardToPlay = null; //used for checks
 
 	var sufficientEconomy = this._sufficientEconomy();
+
+	//check for cards to rez (folded in from 2.1, probably)
+	if (optionList.includes("rez")) {
+	  var paRet = this.Phase_PostAction(optionList);
+	  if (paRet != optionList.indexOf("n")) return paRet;
+	}
 
 	//check for priority triggers
 	if (optionList.includes("trigger")) {
@@ -2179,7 +2187,11 @@ class CorpAI {
 						}
 					}
 				  }
-				  if ( cardToPlay && (card == almostDoneAgenda) || card.AIRushToFinish ) { //for now let's just use Seamless for finishing agendas or specific cards
+				  var rushToFinish = false;
+				  if (typeof card.AIRushToFinish == 'function') {
+					rushToFinish = card.AIRushToFinish.call(card);
+				  }
+				  if ( cardToPlay && (card == almostDoneAgenda) || rushToFinish ) { //for now let's just use Seamless for finishing agendas or specific cards
 					this._log("there is an card that will help advance");
 					if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
 					    this._log("I intend to play it");
