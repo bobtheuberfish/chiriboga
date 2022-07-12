@@ -526,7 +526,7 @@ function EnumeratePhase() {
   validOptions = [];
   phaseOptions = [];
   if (typeof currentPhase.PreEnumerate === "function") {
-    currentPhase.PreEnumerate();
+    currentPhase.PreEnumerate.call(currentPhase);
 	currentPhase.preEnumerated = true;
     Render(); //apparently this is necessary...
   }
@@ -549,7 +549,7 @@ function EnumeratePhase() {
           //if it has an inbuilt check
           if (typeof currentPhase.Enumerate[id] === "function") {
             LogDebug("Enumerating " + id);
-            phaseOptions[id] = currentPhase.Enumerate[id]();
+            phaseOptions[id] = currentPhase.Enumerate[id].call(currentPhase);
 			//label with command in case we need to distinguish later
 			for (var j=0; j<phaseOptions[id].length; j++) {
 				phaseOptions[id][j].command=id;

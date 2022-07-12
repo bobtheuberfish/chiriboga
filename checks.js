@@ -579,6 +579,7 @@ function CheckCallback(card, callbackName) {
     if (
       CheckActive(card) || card[callbackName].availableWhenInactive || 
       (callbackName == "cardAccessed" && card == accessingCard) ||
+      (callbackName == "accessed" && card == accessingCard) ||
       (callbackName == "stolen" && card == intended.steal)
     ) {
 	  //to prevent infinite loop, canHaveAbilities is assumed true when checking modifyHasAbilities

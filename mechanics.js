@@ -999,8 +999,10 @@ function RemoveTags(num) {
  *
  * @method AddTags
  * @param {int} num number of tags to add
+ * @param {function} [afterTags] to call after tags taken (or prevented)
+ * @param {Object} [context] for calling afterTags
  */
-function AddTags(num) {
+function AddTags(num, afterTags, context) {
   if (num < 1) {
     Log("No tags added");
     return;
@@ -1012,7 +1014,12 @@ function AddTags(num) {
     else Log(intended.addTags + " tags added");
     UpdateCounters();
 	//currently giving whoever's turn it is priority...not sure this is always going to be right
-    TriggeredResponsePhase(playerTurn, "tagsTaken");
+    TriggeredResponsePhase(playerTurn, "tagsTaken", [], function() {
+		if (typeof afterTags=='function') {
+			if (typeof context != 'undefined') afterTags.call(context);
+			else afterTags();
+		}
+	});
   });
 }
 
@@ -1294,10 +1301,13 @@ function Expose(card) {
  * @param {Card} card the card to reveal
  * @param {function} callback called after reveal
  * @param {Object} [context] context for function to be called in
+ * @param {Player} [playerToRevealTo] when the card is being revealed to its owner
+ * @param {boolean} [skipHumanInput] for when this Continue button isn't required
  */
-function Reveal(card, callback, context) {
+function Reveal(card, callback, context, playerToRevealTo, skipHumanInput=false) {
   var otherPlayer = corp;
   if (card.player == corp) otherPlayer = runner;
+  if (typeof playerToRevealTo != 'undefined') otherPlayer=playerToRevealTo;
   //temporarily turn card face up
   card.faceUp = true;
   if (!card.renderer.zoomed) card.renderer.ToggleZoom();
@@ -1312,7 +1322,7 @@ function Reveal(card, callback, context) {
     [{}],
     decisionCallback,
     "Revealing " + GetTitle(card)
-  ).requireHumanInput = true; //finish viewing revealed card
+  ).requireHumanInput = !skipHumanInput; //finish viewing revealed card
 }
 
 /**

@@ -4343,6 +4343,82 @@ cardSet[31053] = {
   },
 };
 
+cardSet[31054] = {
+  title: "Snare!",
+  imageFile: "31054.png",
+  elo: 1771,
+  player: corp,
+  faction: "Jinteki",
+  influence: 2,
+  cardType: "asset",
+  subTypes: ["Ambush"],
+  rezCost: 0,
+  trashCost: 0,
+  //While the Runner is accessing this card from R&D, they must reveal it.
+  //When the Runner accesses this card from anywhere except Archives, you may pay 4credit. If you do, give the Runner 1 tag and do 3 net damage.
+  accessed: {
+    Enumerate: function () {
+      if (accessingCard == this && this.cardLocation != corp.archives.cards) return [{}];
+      return [];
+    },
+    Resolve: function () {
+      var canAfford = CheckCredits(4, corp, "using", this);
+	  this.storedFaceUp = this.faceUp;
+	  var SnareImplementation = function() {
+		var decisionCallback = function(params) {
+			if (params.id == 0) {
+				SpendCredits(
+				  corp,
+				  4,
+				  "using",
+				  this,
+				  function () {
+					AddTags(1, function() {
+					  NetDamage(3, function() {}, this);
+					}, this);
+				  },
+				  this
+				);
+			}
+		};
+		var choices = [];
+		if (canAfford) choices.push({ id:0, button:"4[c]: 1 tag and 3 net damage", label:"4[c]: 1 tag and 3 net damage"});
+		choices.push({ id:1, button:"Continue", label:"Continue"});
+		DecisionPhase(
+		  corp,
+		  choices,
+		  decisionCallback,
+		  this.title,
+		  this.title,
+		  this
+		);
+		if (corp.AI) corp.AI.preferred = { title: this.title, option: choices[0] };
+	  }
+	  //give runner a chance to take a look first so they're not bamboozled
+	  var rdp = DecisionPhase(runner,[{button:"Continue",label:"Continue"}],function(){
+		  if (this.cardLocation == corp.RnD.cards) Reveal(this, function(){
+			//keep card faceup until accessing is complete
+			this.faceUp = true;
+			SnareImplementation.call(this);
+		  }, this, corp, canAfford);
+		  else SnareImplementation.call(this);
+	  },this.title,this.title,this);
+	  rdp.requireHumanInput=canAfford;
+    },
+  },
+  cardAccessComplete: {
+    Resolve: function (card) {
+      if (card == this) if (!this.storedFaceUp) this.faceUp = false;
+    },
+    automatic: true,
+	availableWhenInactive: true,
+  },
+  RezUsability: function () {
+	//never
+	return false;
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*

@@ -996,50 +996,54 @@ function Shuffle(array) {
  *
  * @method CreateAccessCardList
  */
-function CreateAccessCardList(additional) {
+function CreateAccessCardList() {
   accessList = [];
   var num = 0;
   //first, check if central server - each has special rules for how many from .cards
-  if (attackedServer == corp.archives) {
-    //archives: access all cards in archives
-    num = attackedServer.cards.length;
-  } else if (attackedServer == corp.HQ) {
-    //HQ: access 1 (+ effects) at random
-    Shuffle(corp.HQ.cards);
-    num = 1 + additional;
-  } else if (attackedServer == corp.RnD) num = 1 + additional; //RnD: access 1 (+ effects)
-  if (num > 0) {
-    //i.e. is a central server
-    if (num > attackedServer.cards.length) num = attackedServer.cards.length; //don't try to access more cards than there are!
-    for (var i = 0; i < num; i++) {
-      var cardIndex = attackedServer.cards.length - i - 1;
-      accessList.push(attackedServer.cards[cardIndex]); //card move triggers not required, this is just a reference list (copy) not move
-      if (attackedServer == corp.archives)
-        attackedServer.cards[cardIndex].faceUp = true;
-    }
+  if (typeof attackedServer.cards != 'undefined') {
+	  //trigger breach modifiers (number of additional cards to access)
+	  var additional = ModifyingTriggers("breachServer", null, 0); //null means no parameter is sent, lower limit of 0 means the total will not be any lower than zero
+	  if (attackedServer == corp.archives) {
+		//archives: access all cards in archives
+		num = attackedServer.cards.length;
+	  } else if (attackedServer == corp.HQ) {
+		//HQ: access 1 (+ effects) at random
+		Shuffle(corp.HQ.cards);
+		num = 1 + additional;
+	  } else if (attackedServer == corp.RnD) num = 1 + additional; //RnD: access 1 (+ effects)
+	  //take into account accesses that have already happened
+	  num -= accessedCards.cards.length;
+      if (num > 0) {
+		if (num > attackedServer.cards.length) num = attackedServer.cards.length; //don't try to access more cards than there are!
+		for (var i = 0; i < num; i++) {
+		  var cardIndex = attackedServer.cards.length - i - 1;
+		  if (!accessedCards.cards.includes(attackedServer.cards[cardIndex])) {
+			  accessList.push(attackedServer.cards[cardIndex]); //card move triggers not required, this is just a reference list (copy) not move
+			  if (attackedServer == corp.archives)
+				attackedServer.cards[cardIndex].faceUp = true;
+		  }
+		  else {
+			  //invalid candidate, try next card
+			  if (num < attackedServer.cards.length - 1) num++;
+		  }
+		}
+	  }
+	  //now some usability and AI code
+	  if (attackedServer == corp.HQ) {
+		if (runner.AI != null) runner.AI.GainInfoAboutHQCards(accessList); //an obvious limitation here is that the cards will be known before accessing all cards...slight cheat
+		Shuffle(corp.HQ.cards); //this is unnecessary (it's after making the list) but is a better visualisation of randomness
+	  }
   }
-  if (attackedServer == corp.HQ) {
-    if (runner.AI != null) runner.AI.GainInfoAboutHQCards(accessList); //an obvious limitation here is that the cards will be known before accessing all cards...slight cheat
-    Shuffle(corp.HQ.cards); //this is unnecessary but is a better visualisation of randomness
-  }
-  //for all servers, access all cards in root
+  //for all servers, access all cards in root (except cards that have already been accessed)
   for (var i = 0; i < attackedServer.root.length; i++) {
-    accessList.push(attackedServer.root[i]); //card move triggers not required, this is just a reference list (copy) not move
+    if (!accessedCards.root.includes(attackedServer.root[i])) accessList.push(attackedServer.root[i]); //card move triggers not required, this is just a reference list (copy) not move
   }
-}
-/**
- * Output to log the list of cards for accessing and unzoom them ready for choice.<br/>No return value.
- *
- * @method PrepareAccessList
- */
-function PrepareAccessList() {
-  var outStr = "";
+  //prepare the cards for access
   for (var i = 0; i < accessList.length; i++) {
     if (accessList[i].renderer.zoomed) accessList[i].renderer.ToggleZoom();
-    outStr += "[" + i + "]";
-    if (!(accessList[i].rezzed || accessList[i].faceUp)) outStr += "unrezzed ";
-    else outStr += '"' + GetTitle(accessList[i], true) + '" ';
   }
+  //under current implementation, the currently accessed card is also on the list
+  if (accessingCard && !accessList.includes(accessingCard)) accessList = [accessingCard].concat(accessList);
 }
 
 /**
@@ -1062,8 +1066,10 @@ function AccessAllInArchives() {
 function ResolveAccess(originalLocation) {
   if (originalLocation != corp.HQ.cards) accessingCard.knownToRunner = true;
   var ret = accessingCard;
-  accessList.splice(accessList.indexOf(accessingCard), 1);
+  var ioac = accessList.indexOf(accessingCard);
+  if (ioac > -1) accessList.splice(ioac, 1);
   accessingCard = null;
+  AutomaticTriggers("cardAccessComplete", ret);
   if (ret.renderer.zoomed) ret.renderer.ToggleZoom();
   if (accessList.length > 0) {
     //still cards to access
@@ -1277,6 +1283,8 @@ function MoveCardTriggers(card, locationfrom, locationto) {
 		if (locationfrom == attackedServer.root) runner.AI.RecalculateRunIfNeeded();
 	}
   }
+  
+  //do this last because above parts use it as it was
   card.cardLocation = locationto;
 }
 /**
@@ -2972,7 +2980,7 @@ function DeckBuild(
 	  //other cards (this currently includes extras of all the previous non-agenda cards too)
 	  var otherCards = economyCards.concat(iceCards);
 	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30058, 30061, 30066]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048, 31049, 31053]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048, 31049, 31053, 31054]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,

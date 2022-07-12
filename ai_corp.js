@@ -16,7 +16,15 @@ class CorpAI {
   ) {
     if (typeof cards == "undefined") cards = corp.HQ.cards; //usually installing from hand but this makes other options possible
     var extraCost = 0;
-    if (serverToInstallTo != null) extraCost += serverToInstallTo.ice.length; //take into account install cost if not first ice in server
+    if (serverToInstallTo != null) {
+		//take into account install cost if not first ice in server
+		extraCost += serverToInstallTo.ice.length;
+		//and unrezzed ice already in the server
+		var uri = this._unrezzedIce(serverToInstallTo);
+		for (var i=0; i<uri.length; i++) {
+			extraCost += RezCost(uri[i]);
+		}
+	}
     var relevantIceInCards = [];
     for (var i = 0; i < cards.length; i++) {
       if (cards[i].cardType == "ice") {
@@ -394,8 +402,14 @@ class CorpAI {
 	for (var i=0; i<corp.scoreArea.length; i++) {
 		if (corp.scoreArea[i].title == "House of Knives" && !corp.scoreArea[i].usedThisRun) ret++;
 	}
+	//3 for Snare! if affordable (for now, assumes exactly one will be accessed)
+	var snare = null;
+	if (this._copyOfCardExistsIn("Snare!", server.root)) snare = true;
+	else if (typeof server.cards != 'undefined') {
+		if (this._copyOfCardExistsIn("Snare!", server.cards)) snare = true;
+	}
+	if (snare && AvailableCredits(corp,"using",snare) > 3) ret+=3;
 	//TODO Hokusai Grid
-	//TODO Snare
 	this._log("Could do "+ret+" damage on breach");
 	return ret;
   }
@@ -1350,6 +1364,13 @@ class CorpAI {
       serverToInstallTo = this._serverToProtect();
 	ret = ret.concat(this._iceInstallOptions(serverToInstallTo, cards, priorityOnly));
 	
+	//or even maybe...these?
+	var snare = this._copyOfCardExistsIn("Snare!",cards);
+	if (snare && !PlayerCanLook(runner,snare) && AvailableCredits(corp,"using",snare) > 3) ret.push({
+		cardToInstall: snare,
+		serverToInstallTo: strongestEmptyRemote,
+	});
+	
 	/*
 	if (priorityOnly) console.error("-Priority only-");
 	else console.error("-Any priority-");
@@ -1453,7 +1474,15 @@ class CorpAI {
 			iceToCompareList.push({card:server.ice[i], server:server, cost:RezCost(server.ice[i]), value:thisServerValue});
 		  }
 		}
-	  }
+	    //include ambushes with costs as pretend ice of infinite value in this server
+		var costyAmbushes = [{title:"Snare!",cost:4}];
+		for (var i=0; i<costyAmbushes.length; i++) {
+			var arrayToCheck = server.root;
+			if (typeof server.cards != 'undefined') arrayToCheck = arrayToCheck.concat(server.cards);
+			var cocin = this._copyOfCardExistsIn(costyAmbushes[i].title,arrayToCheck);
+			if (cocin) iceToCompareList.push({card:cocin, server:server, cost:costyAmbushes[i].cost, value:Infinity});
+		}
+	  }	  
 	  //in another server (if Runner has clicks to potentially run it)
 	  if (runner.clickTracker > 0) {
 		  //start by making a list of servers to compare

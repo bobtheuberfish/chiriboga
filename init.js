@@ -26,6 +26,7 @@ var encountering = false; //if encountering ice
 var movement = false; //if in movement phase
 var subroutine = -1; //for resolving subroutines
 var accessList = []; //list of cards to access (runner chooses which order to resolve access, except for HQ which is random and RnD which is in order)
+var accessedCards = {root: [], cards: []}; //these cards can no longer be access candidates during this breach
 var accessingCard = null; //card being accessed
 var autoAccessing = false; //used to simplify accessing lots of cards in archives
 //for activating abilities, following priority rules, etc.

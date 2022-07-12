@@ -68,6 +68,7 @@
  .runEnds (note this is the phase after runSuccessful/runUnsuccessful i.e. not equivalent to triggering in both)
  .corpDiscardEnds
  .runnerDiscardEnds
+ .accessed //called when a card is accessed (accessingCard is the card being accessed, use cardAccessed instead if you need automatic)
  .stolen //called after a card is stolen (intended.steal will still be available to use)
  .scored //called after a card is scored (intended.score will still be available to use)
  .installed //called when a card is installed (Enumerate takes the installed card as an input, use cardInstalled instead if you need automatic)
@@ -97,6 +98,7 @@
  .cardUninstalled //called with input (card) when a card becomes uninstalled (currently treats all as automatic)
  .cardRezzed //called with input (card) after a card is rezzed (currently treats all as automatic)
  .cardAccessed //called with input (card) when a card is accessed (currently treats all as automatic) even if card not active (special case in CheckCallback)
+ .cardAccessComplete //called with input (card) when a card access complete (currently treats all as automatic) note accessingCard will be null
  .cardEncountered //called with input (card) when a card is encountered (currently treats all as automatic)
  .cardTrashed //called with input (card) when a card is trashed (currently treats all as automatic)
  .cardAdvanced //called with input (card) when a card is advanced (currently treats all as automatic)
@@ -739,7 +741,7 @@ function LoadDecks() {
   //PASTE REPLICATION CODE HERE (and/or customise code below)
   debugging = false; //set true to pause execution on error
   //mainLoopDelay = 50; //for speedy AI vs AI testing (any faster than this and funny things happen at end-of-game)
-
+ 
   /*
 	RunnerTestField(31002, //identity
 		[], //heapCards

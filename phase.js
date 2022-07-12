@@ -1331,10 +1331,8 @@ phases.runBreachServer = {
   title: "Run: Breach", //was 'Access' (i.e. access cards in server) but Nisei changed it so it's not confused with each individual access
   identifier: "Run 5.2",
   Init: function () {
-    //trigger breach modifiers (number of additional cards to access)
-    var additionalToAccess = ModifyingTriggers("breachServer", null, 0); //null means no parameter is sent, lower limit of 0 means the total will not be any lower than zero
-    CreateAccessCardList(additionalToAccess);
-    PrepareAccessList();
+	accessedCards = {root: [], cards: []};
+    CreateAccessCardList();
   },
   Enumerate: {
     access: function () {
@@ -1363,7 +1361,12 @@ phases.runAccessingCard = {
   requireHumanInput: true,
   title: "Run: Access",
   identifier: "Run Accessing",
+  storedAccessZone: null,
   Init: function () {
+	this.storedAccessZone = accessingCard.cardLocation;
+	//add to accessed list to prevent accessing it a second time
+    if (accessingCard.cardLocation == attackedServer.root) accessedCards.root.push(accessingCard);
+	else accessedCards.cards.push(accessingCard);
     if (viewingPlayer == runner) {
       accessingCard.renderer.canView = true;
       SetHistoryThumbnail(accessingCard.imageFile, "Access");
@@ -1375,9 +1378,18 @@ phases.runAccessingCard = {
     //since archived cards are already face up we can skip the flip-and-look-on-access step
     if (attackedServer == corp.archives) this.requireHumanInput = false;
     else this.requireHumanInput = true;
+	
+	//and the non-automatic triggers
+    TriggeredResponsePhase(playerTurn, "accessed", [], function () {});
   },
+  PreEnumerate: function() {
+	  //refresh accessList in case the candidates have changed
+	  CreateAccessCardList();
+  },
+  //Notice the checks for card moved: once a card being accessed moves to another zone, the access ends immediately. (NRDB Q&A for NBN:Reality Plus)
   Enumerate: {
     trash: function () {
+	  if (accessingCard.cardLocation != this.storedAccessZone) return [];
       if (CheckTrash(accessingCard)) {
 		//this option is only available if the card has a printed trash cost
         if (typeof accessingCard.trashCost != "undefined") {
@@ -1395,13 +1407,18 @@ phases.runAccessingCard = {
       return [];
     },
     steal: function () {
+	  if (accessingCard.cardLocation != this.storedAccessZone) return [];
       if (CheckSteal()) return [{}];
       return [];
     },
     trigger: function () {
+	  if (accessingCard.cardLocation != this.storedAccessZone) return [];
       return ChoicesTriggerableAbilities(runner, "access"); //access abilities only
     },
     n: function () {
+	  if (accessingCard.cardLocation != this.storedAccessZone) {
+		  return [{}];
+	  }
       if (CheckSteal()) return [];
       return [{}];
     },
