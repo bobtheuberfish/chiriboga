@@ -1892,13 +1892,21 @@ function ModifyingTriggers(
   upperLimit
 ) {
   var ret = 0; //default is no modification
+  //special cases
+  var canBeLowered = true;
+  if (callbackName == "modifyStrength") {
+	if (parameter) {
+		if (parameter.strengthCannotBeLowered) canBeLowered = false;
+	}
+  }
   //any relevant triggers (assume automatic for now, if you want player choice use TriggeredResponsePhase)
   var triggerList = ChoicesActiveTriggers(callbackName);
   for (var i = 0; i < triggerList.length; i++) {
-    ret += triggerList[i].card[callbackName].Resolve.call(
+	var mod = triggerList[i].card[callbackName].Resolve.call(
       triggerList[i].card,
       parameter
     );
+	if (mod > 0 || canBeLowered) ret += mod;
   }
   if (typeof lowerLimit !== "undefined") {
     if (ret < lowerLimit) ret = lowerLimit;
@@ -2955,7 +2963,7 @@ function DeckBuild(
 	  var iceCards = [];
 	  if (setIdentifiers.includes('sg')) iceCards = iceCards.concat([30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074]);
 	  if (setIdentifiers.includes('su21')) {
-		  iceCards = iceCards.concat([31043, 31044, 31046]);
+		  iceCards = iceCards.concat([31043, 31044, 31046, 31055]);
 		  //don't include Ravana 1.0 unless there's likely to be other Bioroid ice (for now just assume Haas-Bioroid decks will have them and other factions won't)
 		  if (identityCard.faction == "Haas-Bioroid") iceCards = iceCards.concat([31045]);
 	  }

@@ -4419,6 +4419,35 @@ cardSet[31054] = {
   },
 };
 
+cardSet[31055] = {
+  title: "Lotus Field",
+  imageFile: "31055.png",
+  elo: 1551,
+  player: corp,
+  faction: "Jinteki",
+  influence: 1,
+  cardType: "ice",
+  rezCost: 5,
+  strength: 4,
+  subTypes: ["Code Gate"],
+  strengthCannotBeLowered: true,
+  //subroutines:
+  //End the run.
+  subroutines: [
+    {
+      text: "End the run.",
+      Resolve: function () {
+        EndTheRun();
+      },
+      visual: { y: 88, h: 16 },
+    },
+  ],
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
+	result.sr = [[["endTheRun"]]];
+	return result;
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*

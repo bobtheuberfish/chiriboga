@@ -620,6 +620,7 @@ cardSet[30008] = {
       Enumerate: function () {
         if (!CheckEncounter()) return [];
         if (!CheckCounters(this, "virus", 1)) return [];
+		if (GetApproachEncounterIce().strengthCannotBeLowered) return [];
         if (ChoicesEncounteredSubroutines().length == 0) return []; //for usability only, not strictly required
         return [{}];
       },
@@ -697,6 +698,7 @@ cardSet[30008] = {
 	  return false;
   },
   AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	if (iceAI.ice.strengthCannotBeLowered) return result;
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
       var str_mod_by_this = 0;
       for (var i = 0; i < point.card_str_mods.length; i++) {
