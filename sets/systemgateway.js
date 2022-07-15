@@ -2433,6 +2433,7 @@ cardSet[30032] = {
         if (!CheckEncounter()) return [];
         if (!CheckCredits(1, runner, "using", this)) return [];
         if (!CheckStrength(this)) return [];
+		if (GetApproachEncounterIce().cannotBreakUsingAIPrograms) return [];
         return ChoicesEncounteredSubroutines();
       },
       Resolve: function (params) {
@@ -2454,6 +2455,7 @@ cardSet[30032] = {
       Enumerate: function () {
         if (!CheckEncounter()) return []; //technically you can +1 strength outside encounters but I'm putting this here for interface usability
         if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
+		if (GetApproachEncounterIce().cannotBreakUsingAIPrograms) return []; //for usability not legality
         if (!CheckUnbrokenSubroutines()) return []; //as above
         if (!CheckCredits(1, runner, "using", this)) return [];
         return [{}];
@@ -2488,6 +2490,7 @@ cardSet[30032] = {
     },
   },
   AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	if (iceAI.ice.cannotBreakUsingAIPrograms) return result;
 	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
     //unless have a spare, only use Mayfly for worthwhile targets (the 1.5 is arbitrary)
     var anotherInGrip = false;

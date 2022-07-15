@@ -576,7 +576,11 @@ class CorpAI {
     var installedRunnerCards = InstalledCards(runner);
     for (var i = 0; i < installedRunnerCards.length; i++) {
       if (CheckSubType(installedRunnerCards[i], "Icebreaker")) {
-        if (CheckSubType(installedRunnerCards[i], "AI")) return true;
+        if (
+		  CheckSubType(installedRunnerCards[i], "AI") &&
+		  !iceCard.cannotBreakUsingAIPrograms
+		) 
+		  return true;
         if (
           CheckSubType(installedRunnerCards[i], "Killer") &&
           CheckSubType(iceCard, "Sentry")
@@ -604,7 +608,11 @@ class CorpAI {
     var installedCorpCards = InstalledCards(corp);
     for (var i = 0; i < installedCorpCards.length; i++) {
       if (CheckCardType(installedCorpCards[i], ["ice"])) {
-        if (CheckSubType(breakerCard, "AI")) ret++;
+        if (
+		  CheckSubType(breakerCard, "AI") &&
+		  !installedCorpCards[i].cannotBreakUsingAIPrograms
+		)
+		  ret++;
         if (
           CheckSubType(breakerCard, "Killer") &&
           CheckSubType(installedCorpCards[i], "Sentry")

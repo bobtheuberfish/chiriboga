@@ -2406,7 +2406,10 @@ function BreakerMatchesIce(breakerCard, iceCard) {
   if (typeof breakerCard.BreakerMatchesIce == 'function') {
 	return breakerCard.BreakerMatchesIce.call(breakerCard, iceCard);
   }
-  else if (CheckSubType(breakerCard, "AI")) return true;
+  else if (CheckSubType(breakerCard, "AI")) {
+	if (iceCard.cannotBreakUsingAIPrograms) return false;
+	return true;
+  }
   else if (
     CheckSubType(breakerCard, "Decoder") &&
     CheckSubType(iceCard, "Code Gate")
@@ -2963,7 +2966,7 @@ function DeckBuild(
 	  var iceCards = [];
 	  if (setIdentifiers.includes('sg')) iceCards = iceCards.concat([30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074]);
 	  if (setIdentifiers.includes('su21')) {
-		  iceCards = iceCards.concat([31043, 31044, 31046, 31055]);
+		  iceCards = iceCards.concat([31043, 31044, 31046, 31055, 31056]);
 		  //don't include Ravana 1.0 unless there's likely to be other Bioroid ice (for now just assume Haas-Bioroid decks will have them and other factions won't)
 		  if (identityCard.faction == "Haas-Bioroid") iceCards = iceCards.concat([31045]);
 	  }

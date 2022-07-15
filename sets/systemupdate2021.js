@@ -2395,6 +2395,7 @@ cardSet[31030] = {
         if (!CheckEncounter()) return [];
         if (!CheckCredits(1, runner, "using", this)) return [];
         if (!CheckStrength(this)) return []; //the must-be-equal check is done in CheckStrength because this.onlyInterfaceEqualStrength is true
+		if (GetApproachEncounterIce().cannotBreakUsingAIPrograms) return [];
         return ChoicesEncounteredSubroutines();
       },
       Resolve: function (params) {
@@ -2427,6 +2428,7 @@ cardSet[31030] = {
 	this.modifyStrength.availableWhenInactive=false;
   },
   AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	if (iceAI.ice.cannotBreakUsingAIPrograms) return result;
 	if (cardStrength == iceStrength) {
 		//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
 		result = result.concat(
@@ -4444,6 +4446,69 @@ cardSet[31055] = {
   ],
   AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
 	result.sr = [[["endTheRun"]]];
+	return result;
+  },
+};
+
+cardSet[31056] = {
+  title: "Swordsman",
+  imageFile: "31056.png",
+  elo: 1592,
+  player: corp,
+  faction: "Jinteki",
+  influence: 1,
+  cardType: "ice",
+  rezCost: 3,
+  strength: 2,
+  subTypes: ["Sentry", "AP", "Destroyer"],
+  //The Runner cannot break subroutines on this ice using AI programs.
+  cannotBreakUsingAIPrograms: true,
+  //subroutines:
+  //Trash 1 installed AI program.
+  //Do 1 net damage.
+  subroutines: [
+    {
+      text: "Trash 1 installed AI program.",
+      Resolve: function () {
+        var choices = ChoicesInstalledCards(runner, function (card) {
+          //only include trashable AI programs
+          if (CheckCardType(card, ["program"]) && CheckSubType(card, "AI") && CheckTrash(card)) return true;
+          return false;
+        });
+        if (choices.length > 0) {
+          var decisionCallback = function (params) {
+            Trash(params.card, true); //true means can be prevented
+          };
+          DecisionPhase(
+            corp,
+            choices,
+            decisionCallback,
+            "Swordsman",
+            "Trash",
+            this,
+            "trash"
+          );
+        }
+      },
+      visual: { y: 88, h: 16 },
+    },
+    {
+      text: "Do 1 net damage.",
+      Resolve: function () {
+        NetDamage(1);
+      },
+      visual: { y: 104, h: 16 },
+    },
+  ],
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
+    result.sr = [];
+	//No need to fear AI program trash if none are installed
+	var installedAIPrograms = ChoicesInstalledCards(runner, function (card) {
+	  return CheckCardType(card, ["program"]) && CheckSubType(card, "AI");
+	});
+	if (installedAIPrograms.length > 0) result.sr.push([["misc_serious"]]);
+	else result.sr.push([[]]); //push a blank sr so that indices match
+	result.sr.push([["endTheRun"]]);
 	return result;
   },
 };
