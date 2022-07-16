@@ -2222,7 +2222,9 @@ function ChoicesAbility(card, limitTo = "") {
  */
 function FullCheckPlay(card,requireActionPhase=true) {
   if (card == null) return false;
-  if ((!requireActionPhase && CheckClicks(card.player, 1)) || CheckActionClicks(card.player, 1)) {
+  var clicksRequired = 1;
+  if (CheckSubType(card, "Double")) clicksRequired = 2;
+  if ((!requireActionPhase && CheckClicks(card.player, clicksRequired)) || CheckActionClicks(card.player, clicksRequired)) {
     if (CheckPlay(card)) {
       if (CheckCredits(card.playCost, card.player, "playing", card)) {
         if (typeof card.Enumerate !== "undefined") {
@@ -2594,12 +2596,10 @@ function DeckBuildRandomly(
         if (destination[j].title == cardSet[indices[i]].title) countSoFar[i]++;
       }
       //otherwise destination is indices
-      {
-        if (destination[j] == indices[i]) countSoFar[i]++;
-      }
+	  else if (destination[j] == indices[i]) countSoFar[i]++;
     }
   }
-  
+
   //determine highest influence in pool
   var maxedIndices = [];
   var highestInfInPool = 0;
@@ -2945,7 +2945,7 @@ function DeckBuild(
 	  //economy
 	  var economyCards = []; //(credit economy only)
 	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30037, 30048, 30056, 30064, 30071, 30075]);
-	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31042]);
+	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31042, 31057]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		economyCards,
@@ -2988,8 +2988,8 @@ function DeckBuild(
 		identityCard,
 		cardsAdded
 	  );
-	  //other cards (this currently includes extras of all the previous non-agenda cards too)
-	  var otherCards = economyCards.concat(iceCards);
+	  //other cards (this currently includes, by concatenation of the previous arrays, extras of all the previous non-agenda cards too)
+	  var otherCards = economyCards.concat(iceCards); //so be careful not to include cards both here AND above or you'll get 4+ copies sometimes
 	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30058, 30061, 30066]);
 	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048, 31049, 31053, 31054]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(

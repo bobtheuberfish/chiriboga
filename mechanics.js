@@ -1310,6 +1310,7 @@ function Reveal(card, callback, context, playerToRevealTo, skipHumanInput=false)
   if (typeof playerToRevealTo != 'undefined') otherPlayer=playerToRevealTo;
   //temporarily turn card face up
   card.faceUp = true;
+  card.renderer.FaceUp(); //in case Render is not forthcoming
   if (!card.renderer.zoomed) card.renderer.ToggleZoom();
   Log(GetTitle(card) + " revealed");
   function decisionCallback(params) {

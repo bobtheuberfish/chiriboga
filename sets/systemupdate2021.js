@@ -4513,6 +4513,132 @@ cardSet[31056] = {
   },
 };
 
+cardSet[31057] = {
+  title: "Celebrity Gift",
+  imageFile: "31057.png",
+  elo: 1718,
+  player: corp,
+  faction: "Jinteki",
+  influence: 3,
+  cardType: "operation",
+  subTypes: ["Double"],
+  playCost: 3,
+  //As an additional cost to play this operation, spend 1 click.
+  //Reveal up to 5 cards in HQ. Gain 2 credits for each card you revealed this way.
+  Enumerate: function () {
+	//multi-choice, but not this card
+	var thisCard = this;
+	var choices = ChoicesHandCards(corp, function(card) {
+		return card!=thisCard;
+	});
+	if (choices.length < 1) return [];
+	//**AI code (in this case, implemented by setting and returning the preferred option)
+	if (corp.AI) {
+		//decide whether to use
+		//make best economic use of it
+		if (choices.length < 5) return [];
+		//if we decide to use this, always reveal five
+		//if there are more than five choices, remove cards until it is small enough
+		if (choices.length > 5) {
+			//just sharing discard logic for now (reveal the 5 cards most likely to be discarded)
+			choices = corp.AI._reducedDiscardList(choices,5).slice(0,5);
+		}
+		var theFive = [];
+		choices.forEach(function(item) {
+			theFive.push(item.card);
+		});
+		var ret = [{ cards:theFive }];
+		//count the cards of various categorisations and distinct ice cards in hand
+		var agendasInHand = 0;
+		var operationsInHand = 0;
+		var upgradesInHand = 0;
+		var hostileAssetsInHand = 0;
+		var ambushAssetsInHand = 0;
+		var otherAssetsInHand = 0;
+		var iceTitlesInHand = [];
+		choices.forEach(function(item) {
+			if (CheckCardType(item.card,["agenda"])) agendasInHand++;
+			else if (CheckCardType(item.card,["operation"])) operationsInHand++;
+			else if (CheckCardType(item.card,["upgrade"])) upgradesInHand++;
+			else if (CheckCardType(item.card,["asset"])) {
+				if (CheckSubType(item.card,"Hostile")) hostileAssetsInHand++;
+				else if (CheckSubType(item.card,"Ambush")) ambushAssetsInHand++;
+				else otherAssetsInHand++;
+			}
+			else {
+				if (!iceTitlesInHand.includes(item.card.title)) iceTitlesInHand.push(item.card.title);
+			}
+		});
+		//not safe if there are too many agendas in hand
+		if (agendasInHand > choices.length - 3) return []; //the -3 is arbitary
+		//don't use if we're not going to be able to use the credits this turn
+		//unless there is unrezzed ice on HQ or no agendas in hand
+		//or rezzed ice and only one agenda in hand
+		if (corp.clickTracker < 3) {
+			if (agendasInHand > 0 && corp.AI._unrezzedIce(corp.HQ).length < 1) {
+				if (agendasInHand > 1 || corp.AI._rezzedIce(corp.HQ).length < 1) return [];
+			}
+		}
+		//if they're all operations, this is pretty safe
+		if (operationsInHand == choices.length) return ret;
+		//don't do it if there is no variety of root-installable cards (otherwise the next installed card is too obvious)
+		var rootVariety = (agendasInHand > 0?1:0) + (upgradesInHand > 0?1:0) + (hostileAssetsInHand > 0?1:0) + (ambushAssetsInHand > 0?1:0) + (otherAssetsInHand > 0?1:0);
+		//also don't do it if there is only one distinct ice in hand (don't want to ruin the surprise of next install)
+		var iceVariety = iceTitlesInHand.length;
+		corp.AI._log("Hand variety scores (root,ice): ("+rootVariety+","+iceVariety+")");
+		//although we might draw fresh cards next turn so only don't do it if we might install anything this turn
+		if (corp.clickTracker > 2) {
+		  if (rootVariety == 1 || iceVariety == 1) return [];
+		}
+		return ret;
+	}
+	choices.push({
+      id: choices.length,
+      label: "Reveal",
+      button: "Reveal",
+    });
+	for (var i = 0; i < choices.length; i++) {
+	  choices[i].cards = Array(Math.min(5,choices.length-1)).fill(null);
+	}
+	return choices;
+  },
+  ResolveCommon: function(toReveal,original) {
+	//first, check if there are no cards left to reveal
+	if (toReveal.length < 1) {
+		GainCredits(corp,2*original.length);
+		original.forEach(function(item) {
+		  item.faceUp = false;
+		})
+		if (runner.AI != null) runner.AI.GainInfoAboutHQCards(original);
+		return;
+	}
+	//reveal recursively
+	//assumes each index of cards is a card (i.e. defined and not null)
+	Reveal(toReveal[0], function(){
+		toReveal[0].faceUp = true; //see note about 1.21.6
+		//reveal next card
+		toReveal.splice(0,1);
+		this.ResolveCommon(toReveal,original);
+	}, this);
+  },
+  //Note from Nisei CR 1.5 1.21.6: "If a resolving ability directs one or both players to look at or reveal a card or set of cards, each such card remains visible to the relevant player(s) until the entire ability is finished resolving or the card moves to a different location."
+  Resolve: function (params) {
+	//no need to spend the extra click, it's handled by the general code by being a Double
+	//create a list containing no nulls
+	var toReveal = [];
+	params.cards.forEach(function(item) {
+		if (item) toReveal.push(item);
+	});
+	if (toReveal.length < 1) {
+		Log("No cards revealed");
+		Log("Corp gained 0[c]");
+		return;
+	}
+	//reveal them all
+	this.ResolveCommon(toReveal,toReveal.concat([]));
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*

@@ -489,6 +489,28 @@
 			  $("#launch").html("Launch");
 			  UpdateLaunchStrings();
 			}
+			
+			//function for testing and debugging
+			function TestGeneration(seed=0) {
+				Math.seedrandom(seed);
+				$('#identityselect').change();
+				console.log(json.cards);
+			}
+			function TestGenerationBulk(start=0, end=100) {
+				for (var j=start; j<=end; j++) {
+					TestGeneration(j);
+					//convert generated deck into counts
+					var counts = {};
+					for (var i = 0; i < json.cards.length; i++) {
+						if (typeof counts[json.cards[i]] == 'undefined') counts[json.cards[i]]=1;
+						else {
+							counts[json.cards[i]]++;
+							//report any over-amounts
+							if (counts[json.cards[i]] > 3) console.log(j);
+						}
+					}
+				}
+			}
 		</script>
 		<style>
 			img {
@@ -544,7 +566,8 @@
 					</div>
 				</div>
 				<div class="leftrow">
-					<button id="exittomenu" onclick="window.location.href='index.php';" class="button">Exit to main menu</button>
+					<button id="exittomenu" onclick="window.location.href='index.php';" class="button">Exit</button>
+					<button id="randomise" onclick="$('#identityselect').change();" class="button">Random</button>
 					<button id="launch" class="button" onclick="window.location.href=$(this).prop('href');">Launch</button>
 				</div>
 				<div class="leftrow toprow">

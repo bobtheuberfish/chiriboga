@@ -883,7 +883,8 @@ phases.corpActionMain = {
         params.card,
         function () {
           SetHistoryThumbnail(params.card.imageFile, "Play");
-          SpendClicks(corp, 1);
+		  if (CheckSubType(params.card, "Double")) SpendClicks(corp, 2);
+          else SpendClicks(corp, 1);
           SpendCredits(
             corp,
             params.card.playCost,
@@ -1107,7 +1108,8 @@ phases.runnerActionMain = {
         params.card,
         function () {
           SetHistoryThumbnail(params.card.imageFile, "Play");
-          SpendClicks(runner, 1);
+		  if (CheckSubType(params.card, "Double")) SpendClicks(runner, 2);
+          else SpendClicks(runner, 1);
           SpendCredits(
             runner,
             params.card.playCost,

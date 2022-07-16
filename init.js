@@ -855,7 +855,8 @@ function Render() {
   FanHand(runner);
   
   //corp resolving cards and hand on top
-  corpResolvingCascade.Apply(cardRenderer.app, w * 0.5, 0, 0.5, 0.25, hostingX);
+  //we're putting resolving cards between HQ and R&D to minimise obscuring of things (but change this if it isn't great)
+  corpResolvingCascade.Apply(cardRenderer.app, corp.HQ.xStart, rootHeight + serverCardsHeight, 0.5, 0.25, hostingX);
   var corpHandX =
     (w - corpHeaderFooter * fieldZoom + arbitraryMenubarSpacer) * 0.5;
   corpHandCascade.Apply(cardRenderer.app, corpHandX, 0, 0.5, 0.5, hostingX);

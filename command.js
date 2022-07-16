@@ -177,9 +177,11 @@ function GetAvailability(renderer) {
       available = validOptions[i].host == renderer.card;
     else available = validOptions[i].card == renderer.card;
     if (available) {
-      //check if it is toggled on in a selection list
+      //check if it is in a multi-select list (we're toggling, no dragging)
       if (typeof validOptions[i].cards !== "undefined") {
-        if (validOptions[i].cards.indexOf(renderer.card) > -1) return 3;
+		//if it's toggled on, highlight purple to indicate that
+		if (validOptions[i].cards.indexOf(renderer.card) > -1) return 3;
+		else return 1;
       }
       //if it is an available card in hand, you can drag the card to play it
       if (renderer.card.player == viewingPlayer) {

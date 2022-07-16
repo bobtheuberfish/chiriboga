@@ -249,6 +249,7 @@ class CorpAI {
     return ret;
   }
 
+  //this modifies the input array
   _reducedDiscardList(
     optionList,
     minCount = 1 //reduces optionList (only include ones we are ok to discard) but keeps list size at or above minCount
@@ -273,6 +274,8 @@ class CorpAI {
 
   _bestDiscardOption(optionList) {
     this._log("considering discard options...");
+	//importantly, this modifies the input array to length 1
+	//so that the choice of index 0 is the best option (ideally the only one left)
     optionList = this._reducedDiscardList(optionList);
     return 0; //just arbitrary for now
   }
@@ -970,10 +973,11 @@ class CorpAI {
 
     //if an economy card is in hand, play/install it (this list is in order of preference)
     //list of economy cards (by title)
-    //could implement these on-card instead? (e.g. as AIEconomyCard)
+    //could implement these on-card instead? (e.g. as AIEconomyCard) and move the check functions to there or Enumerate
     var canPlay = optionList.indexOf("play") > -1;
     var canInstall = optionList.indexOf("install") > -1;
     var economyCards = [];
+	economyCards.push("Celebrity Gift"); //we have this first because playing other cards first would reduce cards in hand
     economyCards.push("Government Subsidy");
     economyCards.push("Hedge Fund");
     if (this._agendasInHand() < corp.HQ.cards.length - 1)
