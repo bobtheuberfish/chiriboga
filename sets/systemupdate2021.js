@@ -4339,7 +4339,7 @@ cardSet[31053] = {
   AIRushToFinish: function() {
 	//only rush to finish if there will be a click left to use it and runner.grip.length < 3
 	if (runner.grip.length < 3) {
-		if (corp.AI._potentialAdvancement(this,true,corp.HQ.cards,corp.clickTracker-1)) return true;
+		if (corp.AI._potentialAdvancement(this,true,corp.HQ.cards.concat(corp.resolvingCards),corp.clickTracker-1) + Counters(this,"advancement") > 3) return true;
 	}
 	return false; //don't use economy advance to get to limit
   },
@@ -4638,6 +4638,88 @@ cardSet[31057] = {
 	this.ResolveCommon(toReveal,toReveal.concat([]));
   },
 };
+
+cardSet[31058] = {
+  title: "Trick of Light",
+  imageFile: "31058.png",
+  elo: 1665,
+  player: corp,
+  faction: "Jinteki",
+  influence: 3,
+  cardType: "operation",
+  playCost: 1,
+  //Choose 1 installed card you can advance. Move up to 2 advancement counters from 1 other card to the chosen card.
+  Enumerate: function () {
+	  var sources = ChoicesInstalledCards(corp, function(card) {
+		  return CheckCounters(card, "advancement", 1);
+	  });
+	  //don't use this if there are no advanced cards
+	  if (sources.length == 0) return [];
+	  var targets = ChoicesInstalledCards(corp, function(card) {
+		  //enforce 'other' card (if there is only 1 source card, it cannot be a target card)
+		  return CheckAdvance(card) && (sources.length > 1 || card !== sources[0].card);
+	  });
+	  //**AI code (in this case, implemented by setting and returning only the preferred options)
+	  if (corp.AI) {
+		  //only permit sources with 2 or more counters (else it would be more efficient to just click to advance)
+		  var bestsourcechoices=[];
+		  sources.forEach(function(item){
+			  if (CheckCounters(item.card, "advancement", 2)) bestsourcechoices.push(item);
+		  });
+		  if (bestsourcechoices.length == 0) return [];
+		  //only target finishable agendas & rushworthy hostiles
+		  var besttargetchoices=[];
+		  targets.forEach(function(item){
+			if (bestsourcechoices.length > 1 || bestsourcechoices[0].card !== item.card) {
+			  if (corp.AI._cardShouldBeFastAdvanced(item.card)) besttargetchoices.push(item);
+			}
+		  });
+		  return besttargetchoices;
+	  }
+	  return targets;
+  },
+  Resolve: function (params) {
+	var sources = ChoicesInstalledCards(corp, function(card) {
+		//**AI code (in this case, implemented by setting and returning only the preferred options)		
+		if (corp.AI) {
+			//only use sources which have 2 or more counters
+			return card !== params.card && CheckCounters(card, "advancement", 2);
+		}
+		return card !== params.card && CheckCounters(card, "advancement", 1);
+	});
+	function sourceDecisionCallback(sourceParams) {
+		var upToChoices = [{id:0, label:"Move 1", button:"Move 1"}];
+		//**AI code (in this case, implemented by setting the choices to only the preferred option)		
+		if (corp.AI) {
+			//remove the choice to move only 1 counter
+			upToChoices = []; 
+		}
+		if (CheckCounters(sourceParams.card, "advancement", 2)) upToChoices.push({id:1, label:"Move 2", button:"Move 2"});
+		function upToDecisionCallback(upToParams) {
+			RemoveCounters(sourceParams.card, "advancement", upToParams.id+1);
+			AddCounters(params.card, "advancement", upToParams.id+1);
+		}
+		DecisionPhase(
+		  corp,
+		  upToChoices,
+		  upToDecisionCallback,
+		  this.title,
+		  this.title,
+		  this
+		);
+	}
+	DecisionPhase(
+	  corp,
+	  sources,
+	  sourceDecisionCallback,
+	  this.title,
+	  "Choose card to move from",
+	  this
+	);
+  },
+  AIFastAdvance:true, //is a card for fast advancing
+};
+
 
 //TODO link (e.g. Reina)
 

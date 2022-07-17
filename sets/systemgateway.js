@@ -3177,9 +3177,13 @@ cardSet[30040] = {
 			//**AI code
 			if (corp.AI != null)
 			{
+				return corp.AI._cardShouldBeFastAdvanced(card);
+				//old code didn't include advanceable assets (e.g. finish a hostile)
+				/*
 				if (typeof(card.AIAdvancementLimit) == 'function') {
 					if (card.AIOverAdvance || CheckCounters(card, "advancement", card.AIAdvancementLimit()-1)) return false; //don't overadvance unless appropriate
 				}
+				*/
 			}
 			return true;
 		}
@@ -4496,7 +4500,9 @@ cardSet[30061] = {
 	  return MaxHandSize(runner)+1;
   },
   AIRushToFinish: function() {
-	  return true; //always use economy advance to get to limit
+	  //use economy advance to get to limit if it is likely to be protected until start of turn
+	  //this might not be the best check to use but it might be ok
+	  return (corp.AI._serverToProtect() != GetServer(this));
   },
   corpTurnBegin: {
     Enumerate: function () {
