@@ -1443,6 +1443,7 @@ function ExecuteChosen(chosenCommand) {
         else if (oldFooterText == "Drag to R&D") footerText = oldFooterText;
       }
 	  if (oldFooterText == "Choose piece of ice") footerText = oldFooterText;
+	  if (oldFooterText == "Choose card to move from") footerText = oldFooterText;
     }
 
     $("#footer").html("<h2>" + footerText + "</h2>");

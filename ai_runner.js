@@ -1420,13 +1420,15 @@ console.log(this.preferred);
       else if (optionList.includes("steal")) return optionList.indexOf("steal");
 	  //assume the remaining options relate to trashing
 	  else {
-		  //never trash installed ambushes, even with card ability
-		  var accessedCardIsInstalledAmbush = (
+		  //generally don't trash installed ambushes
+		  var noNeedToTrashAccessedCard = (
 			  CheckSubType(accessingCard, "Ambush") &&
+			  //unless it might be kept for Trick of Light
+			  !CheckAdvance(accessingCard) &&
 			  CheckInstalled(accessingCard) &&
 			  optionList.includes("n")
 		  );
-		  if (!accessedCardIsInstalledAmbush) {
+		  if (!noNeedToTrashAccessedCard) {
 			  //priority > 2: card trigger preferred over trash cost
 			  if (highestPriorityTriggerValue > 2) prioritiseTriggerCard = highestPriorityTriggerCard;
 			  //priority 2: trash cost

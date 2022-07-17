@@ -484,6 +484,9 @@ class CorpAI {
   }
   
   _isHVT(card) { //agendas, ambushes, hostiles. 
+    //obselete bluffs are no longer HVTs
+	if (this._obsoleteBluff(card)) return false;
+	//otherwise...
 	return (
 		CheckCardType(card, ["agenda"]) ||
 		CheckSubType(card, "Ambush") ||
@@ -571,6 +574,14 @@ class CorpAI {
 		}
 	}
     return false;
+  }
+  
+  _obsoleteBluffInstalledInServer(server) {
+	if (!server) return false;
+	for (var i=0; i<server.root.length; i++) {
+		if (this._obsoleteBluff(server.root[i])) return true;
+	};
+	return false;
   }
 
   _aCompatibleBreakerIsInstalled(
@@ -695,6 +706,9 @@ class CorpAI {
 	if (options.ignoreBackdoorFromArchives) archivesIsBackdoorToHQ = false;
     //for 'protecting' check we build a score considering how much ice and how effective the ice is
     var ret = 0;
+	//servers with obsolete bluffs get bonus protection score (they don't really need protecting)
+	if (this._obsoleteBluffInstalledInServer(server)) ret += 5; //the value is arbitrary, test and tweak
+	//protection score depends on ice protecting
     for (var i = 0; i < server.ice.length; i++) {
       ret += this._cardProtectionValue(server.ice[i]);
     }
@@ -802,8 +816,11 @@ class CorpAI {
       var hasRoom = true;
       for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
         if (CheckCardType(corp.remoteServers[i].root[j], ["agenda", "asset"])) {
+		  //replace obsolete bluffs
           if (!this._obsoleteBluff(corp.remoteServers[i].root[j]))
             hasRoom = false;
+		  //but keep if useful for Trick of Light
+		  else if (CheckCounters(corp.remoteServers[i].root[j], "advancement", 2) && this._copyOfCardExistsIn("Trick of Light",corp.HQ.cards.concat(corp.RnD.cards))) hasRoom = false;
         }
       }
       if (corp.remoteServers[i].ice.length > 0 && hasRoom) {
@@ -873,11 +890,11 @@ class CorpAI {
     return false;
   }
 
-  //returns int
+  //returns array of cards
   _copiesOfCardIn(title, cards) {
-	var ret=0;
+	var ret=[];
     for (var i = 0; i < cards.length; i++) {
-      if (GetTitle(cards[i]) == title) ret++;
+      if (GetTitle(cards[i]) == title) ret.push(cards[i]);
     }
     return ret;
   }
@@ -1928,10 +1945,37 @@ class CorpAI {
     });
   }
 
+  //returns array of advanced cards as {card,advancement} ranked by most advancement first
+  //takes input of min advancement and a card to exclude
+  _advancedCards(min=1,exclude=null) {
+	var installedCards = InstalledCards(corp);
+	var ret = [];
+	installedCards.forEach(function(item){
+	  if (item != exclude) {
+	    var adv = Counters(item, "advancement");
+	    var obj = { card:item, advancement:adv };
+	    if (adv >= min) {
+		  var inserted = false;
+		  //insert at correct position
+		  for (var i=0; i<ret.length; i++) {
+		    if (adv > ret[i].advancement) {
+			  ret.splice(i, 0, obj);
+			  inserted = true;
+			  break;
+		    }
+		  }
+		  //or just on end
+		  if (!inserted) ret.push(obj);
+	    }
+	  }
+	});
+	return ret;
+  }
+
   //if null card is specified, this is a generic "what if one was to be installed?" check
   //(in which case it will assume a click less) unless assumeClicks (int) is specified
   _potentialAdvancement(card,thisTurn=true,fastAdvanceArray,assumeClicks) {
-	  if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards; //source of fast advance cards
+	  if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards.concat(corp.resolvingCards); //source of fast advance cards
 	  var ret = 0;
 	  var clicksLeft = this._clicksLeft();
 	  if (!card) clicksLeft--;
@@ -1940,6 +1984,7 @@ class CorpAI {
 	  if (thisTurn) ret += Math.min(clicksLeft, Credits(corp));
 	  else ret += Credits(corp);
 	  var creditCostSoFar = ret;
+	  var baseUsables = ret; //the max number of playable economy advances
 	  //some things can be done if card is already installed
 	  if (card) {
 		  //check if any Seamless Launch in hand
@@ -1947,9 +1992,42 @@ class CorpAI {
 		  var slih = this._copyOfCardExistsIn("Seamless Launch",fastAdvanceArray);
 		  if (slih) {
 			  if (!thisTurn || !slih.cardsInstalledThisTurn.includes(card)) {
-				//plus one for each Seamless Launch if it can be used
-				ret += this._copiesOfCardIn("Seamless Launch",fastAdvanceArray);
+				//plus one for each Seamless Launch if it can be used (or is being used)
+				var seamlesses = this._copiesOfCardIn("Seamless Launch",fastAdvanceArray);
+				seamlesses.forEach(function(item){
+				  if (corp.resolvingCards.includes(item)) ret++;
+				  else if (baseUsables > 0 || !thisTurn) {
+					ret++;
+					baseUsables--;
+				  }
+				});
 			  }
+		  }
+		  //check if any Trick of Light in hand (or being played)
+		  //these replace normal advance (in terms of credit cost) so don't add to creditCostSoFar
+		  var tolih = this._copyOfCardExistsIn("Trick of Light",fastAdvanceArray);
+		  if (tolih) {
+			  //BUT are only useful up to the number of times 2 advancement can be taken from cards (other than card)
+			  var advCards = this._advancedCards(2,card); //takes input of minimum advancement and one card to exclude
+			  var maxTricks = 0;
+			  advCards.forEach(function(item) {
+				item.advancement -= item.advancement % 2; //advancement will be taken in twos so if there are cards with an odd number, that isn't included
+				maxTricks += item.advancement * 0.5; //one trick for each two tokens
+			  });
+			  var tricks = this._copiesOfCardIn("Trick of Light",fastAdvanceArray);
+			  tricks.forEach(function(item){
+				if (maxTricks > 0) {
+				  if (corp.resolvingCards.includes(item)) {
+					ret++;
+					maxTricks--;
+				  }
+				  else if (baseUsables > 0 || !thisTurn) {
+				    ret++;
+				    maxTricks--;
+				    baseUsables--;
+				  }
+				}
+			  });
 		  }
 	  }
 	  //check for Biotic Labor possibility
@@ -1957,17 +2035,38 @@ class CorpAI {
 	  if (blih) {
 		var creditsLeft = Credits(corp) - creditCostSoFar;
 		var copiesAfford = Math.floor(creditsLeft * 0.2); //number of full amounts of 5 credits (4 for card, 1 for extra advance)
-		ret += Math.min(copiesAfford, this._copiesOfCardIn("Biotic Labor",fastAdvanceArray));
+		ret += Math.min(copiesAfford, this._copiesOfCardIn("Biotic Labor",fastAdvanceArray).length);
 	  }
 	  return ret;
+  }
+
+  //check if a card should be fast advanced (true or false)
+  _cardShouldBeFastAdvanced(card) {
+	  if (this._isFullyAdvanceableAgenda(card)) return true;
+	  else if (typeof card.AIRushToFinish == 'function') {
+		if (card.AIRushToFinish.call(card)) return true;
+	  }
+	  return false;
   }
   
   _advancementRequired(card) {
 	  return AdvancementRequirement(card) - Counters(card,"advancement");
   }
 
+  _isFullyAdvanceableHostileAsset(card,fastAdvanceArray) { //can be finished and used this turn
+    if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards.concat(corp.resolvingCards); //source of fast advance cards
+	if (!CheckCardType(card, ["asset"]) || !CheckSubType(card,"Hostile")) return false;
+	if (typeof card.AIRushToFinish == 'function') {
+		if (card.AIRushToFinish.call(card)) {
+			if (typeof card.AIAdvancementLimit == 'function') return this._potentialAdvancement(card,true,fastAdvanceArray) >= card.AIAdvancementLimit.call(card) - Counters(card,"advancement");
+			if (typeof card.advancementRequirement != 'undefined') return this._potentialAdvancement(card,true,fastAdvanceArray) >= card.advancementRequirement - Counters(card,"advancement");
+		}
+	}
+	return false;
+  }
+
   _isFullyAdvanceableAgenda(card,fastAdvanceArray) { //can be finished and scored this turn
-    if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards; //source of fast advance cards
+    if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards.concat(corp.resolvingCards); //source of fast advance cards
 	if (!CheckCardType(card, ["agenda"])) return false;
 	if (!CheckScore(card,true)) return false; //the true means ignore advancement requirement
 	var canFullyAdvance = this._potentialAdvancement(card,true,fastAdvanceArray) >= this._advancementRequired(card);
@@ -2065,9 +2164,11 @@ class CorpAI {
 	  }
 	}
 
-	//check for an almost-done agenda, if so prioritise it for advancing
+	//check for an almost-done agenda/hostile asset, if so prioritise it for advancing
 	var almostDoneAgenda = null;
+	var almostDoneHostileAsset = null;
 	if (optionList.indexOf("advance") > -1) {
+		//agendas first
 		for (var i = 0; i < corp.remoteServers.length; i++) {
 			for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
 			  if (CheckAdvance(corp.remoteServers[i].root[j]) && this._isFullyAdvanceableAgenda(corp.remoteServers[i].root[j])) {
@@ -2081,13 +2182,25 @@ class CorpAI {
 				  }
 				  else {
 					  almostDoneAgenda = corp.remoteServers[i].root[j];
-					  this._log("I could get this done this turn");
+					  this._log("I could get an agenda done this turn");
 				  }
 			  }
 			}
 		}
+
+		//then hostile assets
+		for (var i = 0; i < corp.remoteServers.length; i++) {
+			for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
+			  if (CheckAdvance(corp.remoteServers[i].root[j]) && this._isFullyAdvanceableHostileAsset(corp.remoteServers[i].root[j])) {
+				  //for now we'll just choose the first one found
+				  almostDoneHostileAsset = corp.remoteServers[i].root[j];
+				  this._log("I could get a hostile done this turn");
+			  }
+			}
+		}		
 	}
-	if (!almostDoneAgenda) {
+
+	if (!almostDoneAgenda && !almostDoneHostileAsset) {
 		//take advantage of a temporary window of opportunity (i.e., play right away)
 		if (optionList.includes("play")) {
 		  //these are in order of priority, most critical first
@@ -2147,7 +2260,7 @@ class CorpAI {
 	}
 
     //is there something I could advance?
-    if ( (almostDoneAgenda || sufficientEconomy) && optionList.indexOf("advance") > -1) {		
+    if ( (almostDoneAgenda || almostDoneHostileAsset || sufficientEconomy) && optionList.indexOf("advance") > -1) {		
       //agendas and assets
       for (var i = 0; i < corp.remoteServers.length; i++) {
         for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
@@ -2191,13 +2304,23 @@ class CorpAI {
 				) {
 				  this._log("I could advance a card");
 				  //if there is an economy advance card in hand, consider using it
-				  //don't waste Seamless by overadvancing an ordinary advancement target
+				  //don't waste these by overadvancing an ordinary advancement target
                   if (Counters(card,"advancement") < advancementLimit - 1 ||
 					card.AIOverAdvance) {
-					  cardToPlay = this._copyOfCardExistsIn(
+					//prefer Seamless over Trick if the agenda was not installed this turn
+					cardToPlay = this._copyOfCardExistsIn(
 					  "Seamless Launch",
 					  corp.HQ.cards
 				    );
+					if (cardToPlay && cardToPlay.cardsInstalledThisTurn.includes(card)) cardToPlay=null;
+					//but if Seamless impossible then maybe Trick?
+					if (!cardToPlay) {
+						cardToPlay = this._copyOfCardExistsIn(
+						  "Trick of Light",
+						  corp.HQ.cards
+						);
+						if (cardToPlay && this._advancedCards(2,card).length == 0) cardToPlay = null;
+					}
 				  }
 				  //or an expensive fast advance (if needed or punishment combo exists)
 				  if (!cardToPlay) {
@@ -2232,7 +2355,7 @@ class CorpAI {
 				  if (typeof card.AIRushToFinish == 'function') {
 					rushToFinish = card.AIRushToFinish.call(card);
 				  }
-				  if ( cardToPlay && (card == almostDoneAgenda) || rushToFinish ) { //for now let's just use Seamless for finishing agendas or specific cards
+				  if ( cardToPlay && (card == almostDoneAgenda) || rushToFinish ) { //for now let's just use economy advance for finishing agendas or specific cards
 					this._log("there is an card that will help advance");
 					if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
 					    this._log("I intend to play it");

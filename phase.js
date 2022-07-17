@@ -872,7 +872,12 @@ phases.corpActionMain = {
         null,
         false,
         function () {
-          SetHistoryThumbnail("Corp_back.png", "Install");
+		  if (CheckCardType(params.card,["ice"])) SetHistoryThumbnail(
+			"Corp_back.png",
+			"Install",
+			"transform: rotate(90deg);"
+		  );
+          else SetHistoryThumbnail("Corp_back.png", "Install");
           SpendClicks(corp, 1);
         },
         this
@@ -1739,7 +1744,7 @@ function SetHistoryThumbnail(imageFile, text = "", style = "") {
       style +
       '"/>';
   if (text != "")
-    outstr += '<span style="grid-column: 1;  grid-row: 1;">' + text + "</span>";
+    outstr += '<span style="grid-column: 1; grid-row: 1; z-index: 1;">' + text + "</span>";
   $("#history").children().first().children().first().html(outstr);
 }
 
