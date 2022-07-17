@@ -686,9 +686,14 @@ var CardRenderer = {
         this.sprite.interactive = true;
         if (GetMostRelevantIce() == this.card) {
           if (CheckEncounter()) isEncounter = true;
-          //no interaction if choosing subroutines
-          if (OptionsAreOnlyUniqueSubroutines())
+          //no interaction if choosing subroutines, and enforce zoom
+          if (OptionsAreOnlyUniqueSubroutines()) {
             this.sprite.interactive = false;
+			if (!this.zoomed) {
+				pixi_subroutineDelay = -1; //we are still choosing subroutines
+				this.ToggleZoom();
+			}
+		  }
         }
         //apply visual rules for when card is cropped
         var forceCropped =
