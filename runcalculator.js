@@ -806,10 +806,27 @@ class RunCalculator {
       var approachCredits = 0;
       var approachEffects = [];
       var approachTags = 0;
-      var knownCardsInServer = []; //actually cards INSTALLED in
+      var knownCardsInRoot = [];
+	  var numUnknownCardsInRoot = 0;
 	  
       var runnerAI = runner.AI;
       if (runnerAI == null) runnerAI = runner.testAI;
+	  
+	  //effects that might happen regardless of breach
+	  //1 net damage for each House of Knives that hasn't been used this run
+	  var activeHOKs = 0;
+	  corp.scoreArea.forEach(function(item){
+		if (!attackedServer || !item.usedThisRun) {
+			if (CheckCounters(item, "agenda", 1)) activeHOKs++;
+		}
+	  });
+	  var hokEffect = [];
+	  if (activeHOKs > 0) {
+		for (var j = 0; j < activeHOKs; j++) {
+		  hokEffect.push("netDamage");
+		}
+		approachEffects.push(hokEffect);
+	  }
 	  
 	  //currently assumes the only cards that would prevent breach are installed Runner cards
 	  var breach = !runnerAI._breachWouldBePrevented(installedRunnerCards,server);
@@ -818,7 +835,7 @@ class RunCalculator {
 	  if (breach) {
 		  for (var i = 0; i < server.root.length; i++) {
 			if (server.root[i].rezzed || server.root[i].knownToRunner)
-			  knownCardsInServer.push(server.root[i]);
+			  knownCardsInRoot.push(server.root[i]);
 			else {
 			  var advancement = Counters(server.root[i], "advancement");
 			  if (advancement > 4 && corp.identityCard.faction == "Weyland Consortium") {
@@ -839,11 +856,12 @@ class RunCalculator {
 				}
 				approachEffects.push(approachEffect);
 			  }
+			  else numUnknownCardsInRoot++;
 			}
 		  }
 		  //simple check (not comprehensive, that would be complex e.g. random access, R&D could be shuffled, etc)
 		  var mightAccessAnAgenda = true;
-		  if (typeof server.cards == 'undefined' && knownCardsInServer.length == server.root.length) {
+		  if (typeof server.cards == 'undefined' && knownCardsInRoot.length == server.root.length) {
 			mightAccessAnAgenda = false;
 			for (var i = 0; i < server.root.length; i++) {
 			  if (CheckCardType(server.root[i], ["agenda"])) {
@@ -868,16 +886,30 @@ class RunCalculator {
 				}
 			}
 		  }
+
+		  //effects from upgrade
+		  var mightHitHokusai = false;
+		  if (numUnknownCardsInRoot > 0) mightHitHokusai = true;
+		  else {
+			for (var i = 0; i < server.root.length; i++) {
+			  if (server.root[i].title == "Hokusai Grid") {
+				  mightHitHokusai = true;
+				  break;
+			  }
+			}
+		  }
+		  if (mightHitHokusai) approachEffects.push(["netDamage"]);
+
 		  //calculate any required trash payment, taking into account potential discount (just considering max for one known card trash cost with just one discounting ability atm)
 		  //note cards in server (e.g. in corp hand) are not considered atm
 		  var highestTrashCost = 0;
 		  var htcCard = null;
-		  for (var i = 0; i < knownCardsInServer.length; i++) {
-			if (typeof knownCardsInServer[i].trashCost !== "undefined") {
-			  var kctc = TrashCost(knownCardsInServer[i]);
+		  for (var i = 0; i < knownCardsInRoot.length; i++) {
+			if (typeof knownCardsInRoot[i].trashCost !== "undefined") {
+			  var kctc = TrashCost(knownCardsInRoot[i]);
 			  if (kctc > highestTrashCost) {
 				  highestTrashCost = kctc;
-				  htcCard = knownCardsInServer[i];
+				  htcCard = knownCardsInRoot[i];
 			  }
 			}
 		  }
@@ -905,7 +937,7 @@ class RunCalculator {
 
       //Manegarm creates additional path forks
       if (
-        runnerAI._copyOfCardExistsIn("Manegarm Skunkworks", knownCardsInServer)
+        runnerAI._copyOfCardExistsIn("Manegarm Skunkworks", knownCardsInRoot)
       ) {
         //create a fork
         approachOptions.push({

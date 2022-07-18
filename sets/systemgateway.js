@@ -3317,6 +3317,11 @@ cardSet[30042] = {
   },
   //Whenever the Runner approaches this server, end the run unless they either spend [click][click] or pay 5[c].
   //"The Runner approaches the server at step 4 of a run, and it is the final deciding factor for determining the success of a run." (see also run timing in FAQ)
+  AIWouldTrigger: function () {
+	//almost always yes, unless nonbo with kill condition
+	if (corp.AI._potentialDamageOnBreach(attackedServer) > runner.grip.length) return false;
+    return true;
+  },
   approachServer: {
     Enumerate: function () {
       if (attackedServer == GetServer(this)) return [{}];

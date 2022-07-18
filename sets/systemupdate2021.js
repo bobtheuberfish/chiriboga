@@ -3953,6 +3953,10 @@ cardSet[31049] = {
   cardType: "upgrade",
   rezCost: 0,
   trashCost: 2,
+  AILimitPerServer: function(server) {
+	//this arbitrary but basically to increase the chance it could be useful
+	return Math.ceil(corp.AI._rezzedIce(server).length *0.33);
+  },
   AIDefensiveValue: function(server) {
 	//don't install to create a new server
 	if (!server) return 0;
@@ -4137,6 +4141,10 @@ cardSet[31049] = {
 	  if (AvailableCredits(corp, "using", this) > 0) {
 		//and only this server
 		if (attackedServer == GetServer(this)) {
+			//don't rez if there is already one rezzed in this server
+			for (var i=0; i<attackedServer.root.length; i++) {
+				if (attackedServer.root[i].rezzed && attackedServer.root[i].title==this.title) return false;
+			}
 			//AI will only rez if it's worth using
 			if (corp.AI) {
 				if (this.AISharedPreferredX() < 1) return false;
@@ -4720,6 +4728,40 @@ cardSet[31058] = {
   AIFastAdvance:true, //is a card for fast advancing
 };
 
+cardSet[31059] = {
+  title: "Hokusai Grid",
+  imageFile: "31059.png",
+  elo: 1682,
+  player: corp,
+  faction: "Jinteki",
+  influence: 2,
+  cardType: "upgrade",
+  subTypes: ["Region"],
+  rezCost: 2,
+  trashCost: 4,
+  AIDefensiveValue: function(server) {
+	  return 2; //arbitrary, observe and tweak
+  },
+  //Whenever the Runner makes a successful run on this server, do 1 net damage.
+  AIWouldTrigger: function () {
+    return true;
+  },
+  runSuccessful: {
+    Enumerate() {
+	  if (attackedServer == GetServer(this)) return [{}];
+      return []; //no valid options to use this ability
+    },
+    Resolve: function (params) {
+	  NetDamage(1);
+    },
+  },  
+  RezUsability: function () {
+    if (currentPhase.identifier == "Run 4.5" && approachIce < 1) {
+      if (attackedServer == GetServer(this)) return true;
+    }
+    return false;
+  },
+};
 
 //TODO link (e.g. Reina)
 

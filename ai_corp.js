@@ -216,17 +216,31 @@ class CorpAI {
 
   _shouldUpgradeServerWithCard(server, card) {
     if (CheckCardType(card, ["upgrade"])) {
-	  //it's usually either inefficient or illegal to have more than one of the same upgrade rezzed in the same server
-	  //for now we'll be even more restrictive and limit to one copy installed in general across all servers
-      if (!this._copyAlreadyInstalled(card)) {
-        if (card.AIIsScoringUpgrade) {
-          if (!this._isAScoringServer(server)) return false;
-        }
-		if (typeof card.AIDefensiveValue == 'function') {
-		  if (card.AIDefensiveValue.call(card, server) < 1) return false;
-		}
-        return true; //should be ok to install
+	  //although we could install more than one copy of a unique card, let's not
+	  if (this._uniqueCopyAlreadyInstalled(card)) return false;
+	  if (server) {
+		  //limit 1 region per server
+		  if (CheckSubType(card, "Region")) {
+			for (var i=0; i<server.root.length; i++) {
+			  if (CheckSubType(server.root[i], "Region")) return false;
+			};
+		  }
+		  //or some other limit, if defined
+		  if (typeof card.AILimitPerServer == 'function') {
+			var numberThatWouldBeInServer = 1; //for this one we're installing
+			server.root.forEach(function(item) {
+			  if (item.title == card.title) numberThatWouldBeInServer++;
+			});
+			if (numberThatWouldBeInServer > card.AILimitPerServer.call(card,server)) return false;
+		  }
+	  }
+	  if (card.AIIsScoringUpgrade) {
+        if (!this._isAScoringServer(server)) return false;
       }
+	  if (typeof card.AIDefensiveValue == 'function') {
+		if (card.AIDefensiveValue.call(card, server) < 1) return false;
+	  }
+      return true; //should be ok to install
     }
     return false;
   }
@@ -395,9 +409,12 @@ class CorpAI {
   //this damage is potential because the run could jack out/prevent, not because we don't know the cards
   //this function assumes the runner is mid-run on this server
   _potentialDamageOnBreach(server) {
+	if (!server) return 0;
 	var ret = 0;
-	//1 if it is contains an agenda and identity is Jinteki:PE
-	if (this._agendaPointsInServer(server) > 0 && corp.identityCard.title=="Jinteki: Personal Evolution") ret++;
+	//1 if it is contains an agenda and identity is Jinteki:PE (unless Runner wins before PE fires)
+	if (this._agendaPointsInServer(server) > 0 && corp.identityCard.title=="Jinteki: Personal Evolution") {
+		if (!this._runnerMayWinIfServerBreached(server)) ret++;
+	}
 	//2+advancement if it is an active Urtica
 	var urtica = this._copyOfCardExistsIn("Urtica Cipher", server.root);
 	if (urtica) ret+=2+urtica.advancement;
@@ -411,8 +428,16 @@ class CorpAI {
 	else if (typeof server.cards != 'undefined') {
 		if (this._copyOfCardExistsIn("Snare!", server.cards)) snare = true;
 	}
-	if (snare && AvailableCredits(corp,"using",snare) > 3) ret+=3;
-	//TODO Hokusai Grid
+	var creditsLeft = AvailableCredits(corp);
+	if (snare && creditsLeft > 3) {
+		creditsLeft -= 4;
+		ret+=3;
+	}
+	//1 for Hokusai Grid if affordable (is region so limited to 1)
+	if (this._copyOfCardExistsIn("Hokusai Grid", server.root) && creditsLeft > 1) {
+		creditsLeft -= 2;
+		ret++;
+	}
 	this._log("Could do "+ret+" damage on breach");
 	return ret;
   }
@@ -1207,7 +1232,7 @@ class CorpAI {
       totalCost += rezCosts[i];
     }
 
-    //can I afford to spring all my ambushes and hostiles?
+    //can I afford to spring all my ambushes/upgrades and hostiles?
     var ambushCosts = [
       { title: "Aggressive Secretary", cost: 2 },
       { title: "Ghost Branch", cost: 0 },
@@ -1218,6 +1243,7 @@ class CorpAI {
       { title: "Anoetic Void", cost: 0 },
       { title: "Clearinghouse", cost: 0 },
 	  { title: "Ronin", cost: 0 },
+      { title: "Hokusai Grid", cost: 2 },
     ];
     for (var i = 0; i < corp.remoteServers.length; i++) {
       for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
@@ -1694,7 +1720,7 @@ class CorpAI {
         var wouldTriggerThis = false;
         if (typeof card.AIWouldTrigger == "function")
           wouldTriggerThis = card.AIWouldTrigger.call(card);
-        if (GetTitle(card) == "Manegarm Skunkworks" || wouldTriggerThis) {
+        if (wouldTriggerThis) {
           //make sure we can do it
           if (CheckRez(card, ["upgrade","asset"])) {
             //does not check cost...
