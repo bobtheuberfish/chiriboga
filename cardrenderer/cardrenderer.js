@@ -901,8 +901,10 @@ var CardRenderer = {
         }
 		if (this.forceIceRotation) destRot = Math.PI * 0.5;
         if (this.zoomed === true) {
-		  this.sprite.x = this.storedPosition.x;
-		  this.sprite.y = this.storedPosition.y;
+		  if (!this.sprite.dragging) {
+			  this.sprite.x = this.storedPosition.x;			  
+			  this.sprite.y = this.storedPosition.y;
+		  }
           dispDiff.x = this.destinationPosition.x - this.storedPosition.x;
           dispDiff.y = this.destinationPosition.y - this.storedPosition.y;
         } else {
