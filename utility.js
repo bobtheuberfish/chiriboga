@@ -464,6 +464,23 @@ function GetTitle(card, hideHidden) {
 }
 
 /**
+ * Get the distinct cards in an option list (ignoring items which have .card undefined or null)
+ *
+ * @method CardsInOptionList
+ * @param {Params[]} src option list to get cards from
+ * @returns {Card[]} list of cards from the list
+ */
+function CardsInOptionList(src) {
+	var ret=[];
+	src.forEach(function(item){
+		if (item.card) {
+			if (!ret.includes(item.card)) ret.push(item.card);
+		}
+	});
+	return ret;
+}
+
+/**
  * Create a new server object.<br/>Used during initialisation and for creating remote servers.
  *
  * @method NewServer
@@ -2161,10 +2178,12 @@ function ChoicesArrayInstall(src, ignoreCreditCost = false, cardCheck) {
  *
  * @method ChoicesHandInstall
  * @param {Player} player corp or runner
+ * @param {Boolean} ignoreCreditCost to assume install cost is zero (runner only)
+ * @param {function} cardCheck to apply to each card (takes card as input, return true or false)
  * @returns {Params[]} list of cards to choose from (each object has at least .card and .label)
  */
-function ChoicesHandInstall(player) {
-  return ChoicesArrayInstall(PlayerHand(player));
+function ChoicesHandInstall(player, ignoreCreditCost = false, cardCheck) {
+  return ChoicesArrayInstall(PlayerHand(player), ignoreCreditCost, cardCheck);
 }
 
 /**
@@ -2335,7 +2354,9 @@ function TriggeredResponsePhase(player, callbackName, enumerateParams, afterOppo
     GlobalTriggersPhaseCommonResolveN(true, afterOpportunity); //when done, this will return to original phase (true skips init) and then fire afterOpportunity
   };
   responsePhase.next = currentPhase;
-  if (historyBreak) responsePhase.historyBreak = historyBreak;
+  if (historyBreak) {
+	  responsePhase.historyBreak = historyBreak;
+  }
   ChangePhase(responsePhase);
   return responsePhase;
 }
@@ -2932,7 +2953,7 @@ function DeckBuild(
 	  //agendas
 	  var agendaCards = [];
 	  if (setIdentifiers.includes('sg')) agendaCards = agendaCards.concat([30060, 30044, 30036, 30067, 30068, 30069, 30070, 30052]);
-	  if (setIdentifiers.includes('su21')) agendaCards = agendaCards.concat([31041,31051,31052]);
+	  if (setIdentifiers.includes('su21')) agendaCards = agendaCards.concat([31041,31051,31052,31061]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomAgendas(
 		identityCard,
 		agendaCards,

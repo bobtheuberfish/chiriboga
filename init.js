@@ -1444,6 +1444,8 @@ function ExecuteChosen(chosenCommand) {
       }
 	  if (oldFooterText == "Choose piece of ice") footerText = oldFooterText;
 	  if (oldFooterText == "Choose card to move from") footerText = oldFooterText;
+	  if (oldFooterText == "Choose card to reveal") footerText = oldFooterText;
+	  if (oldFooterText == "Drag card to install") footerText = oldFooterText;
     }
 
     $("#footer").html("<h2>" + footerText + "</h2>");

@@ -219,7 +219,9 @@ function Install(
   var oldLocation = installingCard.cardLocation; //in case of cancel
   var oldPhase = currentPhase; //in case of cancel
   MoveCard(installingCard, installingCard.player.installingCards); //installing cards are kept here instead of resolvingCards, so they sit where you put them while they resolve
-
+  //update destination so card doesn't ʒoop back after drop
+  installingCard.renderer.destinationPosition.x = installingCard.renderer.sprite.x;
+  installingCard.renderer.destinationPosition.y = installingCard.renderer.sprite.y;
   var host = null;
   if (installingCard.player == corp) {
     if (destination == null) {
@@ -1204,10 +1206,11 @@ function Score(card, afterScore, context) {
     var responsePhase = TriggeredResponsePhase(playerTurn, "scored", [], function () {
       intended.score.advancement = 0;
       intended.score = null;
+	  currentPhase.historyBreak = historyBreak;
+	  AddHistoryBreakIfRequired(corp);
       if (typeof afterScore === "function") afterScore.call(context);
     },
-	"Score",
-	historyBreak);
+	"Score");
   });
 }
 

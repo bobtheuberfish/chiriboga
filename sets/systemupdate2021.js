@@ -4797,59 +4797,135 @@ cardSet[31060] = {
   },
 };
 
-//TODO link (e.g. Reina)
-
-/*
 cardSet[31061] = {
   title: "License Acquisition",
-  imageFile: "31061.jpg",
+  imageFile: "31061.png",
+  elo: 1445,
   player: corp,
   faction: "NBN",
   cardType: "agenda",
   subTypes: ["Expansion"],
   agendaPoints: 1,
   advancementRequirement: 3,
+  //When you score this agenda, you may reveal 1 asset or upgrade in HQ or Archives. Install and rez that card, ignoring all costs.
+  cardToRez: null, //so when the install is finished, rez the card
+  installed: {
+	Enumerate: function(card) {
+      if (card == this.cardToRez) return [{}];
+	  return [];
+	},		
+    Resolve: function (params) {
+		Rez(this.cardToRez);
+		this.cardToRez = null;
+    },
+  },
+  AISharedBestFromOptions: function(src) {
+	var ret = [];
+	if (src.length > 0) {
+		src.forEach(function(item){
+		  var considerThis = false;
+		  //choose by highest printed trash cost first, break ties by highest printed rez cost
+		  if (ret.length < 1) considerThis = true;
+		  else if (item.card.trashCost > ret[0].card.trashCost) considerThis = true;
+		  else if (item.card.trashCost == ret[0].card.trashCost && item.card.rezCost > ret[0].card.rezCost) considerThis = true;
+		  if (considerThis) {
+			//only cards the AI would have a plan for installing
+			var instIdx = corp.AI._bestInstallOption(ChoicesCardInstall(item.card));
+		    if (instIdx > -1) ret = [item];
+		  }
+		});
+	}
+	return ret;
+  },
   scored: {
     Resolve: function () {
       if (intended.score == this) {
-		//TODO "may", limit to assets/upgrades, and also reveal it first and hence change the button wording (this is copied from Ansel pretty much atm)
+		var assetOrUpgrade = function(card) {
+			if (CheckCardType(card, ["asset","upgrade"])) {
+				//**AI code (in this case, implemented by setting and returning only the preferred options)
+				if (corp.AI) {
+					//current idea is that zero-printed-rez-cost cards are not worth using this for (e.g. hostiles/ambushes)
+					return (card.rezCost > 0);
+				}
+				else return true;
+			}
+			return false;
+		};
         var choicesA = [];
-        var handOptions = ChoicesHandInstall(corp);
+        var handOptions = ChoicesHandCards(corp, assetOrUpgrade);
 		var handChoice = {
             id: 0,
-            label: "Install from HQ",
-            button: "Install from HQ",
-          };
-        if (handOptions.length > 0) choicesA.push(handChoice);
-        var archivesOptions = ChoicesArrayInstall(corp.archives.cards);
+            label: "Reveal from HQ",
+            button: "Reveal from HQ",
+        };
+		//**AI code (in this case, implemented by including only the preferred option, if any)
+		if (corp.AI) handOptions = this.AISharedBestFromOptions(handOptions);
+		corp.AI._log("I know this one");
+		corp.AI._log("Reasonable options from hand: "+JSON.stringify(CardsInOptionList(handOptions)));
+        if (handOptions.length > 0) {
+			choicesA.push(handChoice);
+		}
+        var archivesOptions = ChoicesArrayCards(corp.archives.cards, assetOrUpgrade);
 		var archivesChoice = {
             id: 1,
-            label: "Install from Archives",
-            button: "Install from Archives",
-          };
-        if (archivesOptions.length > 0) choicesA.push(archivesChoice);
-        choicesA.push({ id: 2, label: "Continue", button: "Continue" });
-        function decisionCallbackA(params) {
-          if (params.id < 2) {
+            label: "Reveal from Archives",
+            button: "Reveal from Archives",
+        };
+		//**AI code (in this case, implemented by including only the preferred option, if any)
+		if (corp.AI) archivesOptions = this.AISharedBestFromOptions(archivesOptions);
+		corp.AI._log("Reasonable options from archives: "+JSON.stringify(CardsInOptionList(archivesOptions)));
+        if (archivesOptions.length > 0) {
+			choicesA.push(archivesChoice);
+		}
+		var continueChoice = { id: 2, label: "Continue", button: "Continue" };
+        choicesA.push(continueChoice);
+        function decisionCallbackA(paramsA) {
+          if (paramsA.id == 2) {
+			Log("Corp chose not to reveal a card");
+		  } else {
             //i.e. didn't continue
             var choicesB = handOptions;
-            if (params.id == 1) {
+			choicesB.forEach(function(item){
+				item.cards=[null]; //this is just to prevent player needing to drag-to-choose
+			});
+            if (paramsA.id == 1) {
               choicesB = archivesOptions;
-              Log("Corp chose to install 1 card from Archives");
-            } else Log("Corp chose to install 1 card from HQ");
-            //choose the card to install
-            function decisionCallbackB(params) {
-              if (params.card !== null) Install(params.card, params.server);
-            }
-            DecisionPhase(
-              corp,
-              choicesB,
-              decisionCallbackB,
-              "License Acquisition",
-              "Install",
-              this,
-              "install"
-            );
+              Log("Corp chose to reveal 1 card from Archives");
+            } else Log("Corp chose to reveal 1 card from HQ");
+            //choose the card to reveal
+            function decisionCallbackB(paramsB) {
+				//move card so it's clear what card is being revealed (and so it is available to be dragged for install)
+				MoveCard(paramsB.card, corp.resolvingCards);
+				Reveal(paramsB.card, function() {
+				  paramsB.card.faceUp = true; //CR 1.21.6 it stays revealed until resolving is complete
+				  //choose where to install the card
+				  var choicesC = ChoicesCardInstall(paramsB.card);
+				  function decisionCallbackC(paramsC) {
+					this.cardToRez = paramsC.card;
+					//true means ignore all costs
+				    Install(paramsC.card, paramsC.server, true);
+					//we don't rez here because we need to wait for all the install triggers to fire
+					//instead it's implemented in this.installed (hence this.cardToRez)
+				  }
+				  DecisionPhase(
+				    corp,
+				    choicesC,
+				    decisionCallbackC,
+				    "License Acquisition",
+				    "Drag card to install",
+				    this,
+				    "install"
+				  );
+				},this);
+			}
+			DecisionPhase(
+			  corp,
+			  choicesB,
+			  decisionCallbackB,
+			  "License Acquisition",
+			  "Choose card to reveal",
+			  this
+			);		
           }
         }
         DecisionPhase(
@@ -4860,11 +4936,23 @@ cardSet[31061] = {
           "License Acquisition",
           this
         );
+		//**AI code
+		if (corp.AI) {
+			corp.AI._log("I know this one");
+			var choice = continueChoice;
+			//recur free from archives is nice always
+			if (archivesOptions.length > 0) choice = archivesChoice;
+			//but from hand, might be better to keep it secret for now if the Runner would easily trash it (the 2 is arbitrary, test and tweak)
+			else if (handOptions.length > 0 && handOptions[0].card.trashCost > 2) choice = handChoice;
+			corp.AI.preferred = { title: "License Acquisition", option: choice }; //title must match currentPhase.title for AI to fire
+		}
       }
     },
   },
 };
-*/
+
+//TODO link (e.g. Reina)
+
 /*
 cardSet[31071] = {
   title: "Hostile Takeover",
