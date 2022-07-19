@@ -4859,9 +4859,10 @@ cardSet[31061] = {
             button: "Reveal from HQ",
         };
 		//**AI code (in this case, implemented by including only the preferred option, if any)
-		if (corp.AI) handOptions = this.AISharedBestFromOptions(handOptions);
-		corp.AI._log("I know this one");
-		corp.AI._log("Reasonable options from hand: "+JSON.stringify(CardsInOptionList(handOptions)));
+		if (corp.AI) {
+			handOptions = this.AISharedBestFromOptions(handOptions);
+			corp.AI._log("Reasonable options from hand: "+JSON.stringify(CardsInOptionList(handOptions)));
+		}
         if (handOptions.length > 0) {
 			choicesA.push(handChoice);
 		}
@@ -4872,8 +4873,10 @@ cardSet[31061] = {
             button: "Reveal from Archives",
         };
 		//**AI code (in this case, implemented by including only the preferred option, if any)
-		if (corp.AI) archivesOptions = this.AISharedBestFromOptions(archivesOptions);
-		corp.AI._log("Reasonable options from archives: "+JSON.stringify(CardsInOptionList(archivesOptions)));
+		if (corp.AI) {
+			archivesOptions = this.AISharedBestFromOptions(archivesOptions);
+			corp.AI._log("Reasonable options from archives: "+JSON.stringify(CardsInOptionList(archivesOptions)));
+		}
         if (archivesOptions.length > 0) {
 			choicesA.push(archivesChoice);
 		}
