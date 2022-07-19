@@ -103,6 +103,7 @@
  .cardTrashed //called with input (card) when a card is trashed (currently treats all as automatic)
  .cardAdvanced //called with input (card) when a card is advanced (currently treats all as automatic)
  .cardPlayed //called with input (card) after a card is played (currently treats all as automatic)
+ .serverCreated //called with input (server) after a new remote server is created (currently treats all as automatic)
  .purged //called with input (number of virus counters removed) when virus counters are purged (currently treats all as automatic)
  .cannot //called with input (string, card) where the string is a phase option (e.g. "score"), if true is returned, Check<String> will return false (all automatic)
 */
@@ -741,13 +742,13 @@ function LoadDecks() {
   //PASTE REPLICATION CODE HERE (and/or customise code below)
   debugging = false; //set true to pause execution on error
   //mainLoopDelay = 50; //for speedy AI vs AI testing (any faster than this and funny things happen at end-of-game)
- 
+
   /*
 	RunnerTestField(31002, //identity
 		[], //heapCards
 		[30014,30014,30014,30014], //stackCards
 		[31003,30014,30014,30014,30014], //gripCards
-		[30003,30026], //installed
+		[30006], //installed
 		[], //stolen
 		cardBackTexturesRunner,glowTextures,strengthTextures);
 	
@@ -756,22 +757,22 @@ function LoadDecks() {
 		[30073,30072,30047,30073,30073,30039], //rndCards
 		[30065], //hqCards
 		[], //archivesInstalled
-		[30072,30073], //rndInstalled
+		[30039], //rndInstalled
 		[], //hqInstalled
 		[[30069]], //remotes (array of arrays)
 		[], //scored
 		cardBackTexturesCorp,glowTextures,strengthTextures);
-    
-  //GainCredits(runner,12);
+
+  GainCredits(runner,8);
   GainCredits(corp,14);
-  ChangePhase(phases.corpStartDraw);
-  //ChangePhase(phases.runnerStartResponse);
+  ChangePhase(phases.runnerStartResponse);
+  */
   //ChangePhase(phases.runnerEndOfTurn);
-  AddTags(2);
+  //AddTags(2);
   //runner.clickTracker = 1;
   //ChangePhase(phases.corpDiscardStart);
   //MakeRun(corp.remoteServers[0]);
   //attackedServer = corp.RnD;
   //ChangePhase(phases.runApproachServer); //i.e. skip all the ice
-  */
+  
 }

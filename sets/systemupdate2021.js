@@ -4763,6 +4763,40 @@ cardSet[31059] = {
   },
 };
 
+cardSet[31060] = {
+  title: "Near-Earth Hub: Broadcast Center",
+  imageFile: "31060.png",
+  elo: 1837,
+  player: corp,
+  faction: "NBN",
+  cardType: "identity",
+  deckSize: 45,
+  influenceLimit: 17,
+  subTypes: ["Division"],
+  //The first time each turn you create a remote server, draw 1 card.
+  createdNewRemoteServerThisTurn: false,
+  runnerTurnBegin: {
+    Resolve: function () {
+      this.createdNewRemoteServerThisTurn = false;
+    },
+    automatic: true,
+  },
+  corpTurnBegin: {
+    Resolve: function () {
+      this.createdNewRemoteServerThisTurn = false;
+    },
+    automatic: true,
+  },
+  serverCreated: {
+    Resolve: function (server) {
+      if (!this.createdNewRemoteServerThisTurn) {
+		this.createdNewRemoteServerThisTurn=true;
+		Draw(corp,1);		
+	  }
+    },
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*

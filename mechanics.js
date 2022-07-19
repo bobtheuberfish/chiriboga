@@ -225,6 +225,8 @@ function Install(
     if (destination == null) {
       destination = NewServer("Remote " + corp.serverIncrementer++, false);
       corp.remoteServers.push(destination);
+	  Log("Corp created a new remote server");
+	  AutomaticTriggers("serverCreated", destination);
     }
   } else {
     installingCard.faceUp = true;
