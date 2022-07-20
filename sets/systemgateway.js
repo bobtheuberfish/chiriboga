@@ -1905,13 +1905,13 @@ cardSet[30024] = {
       if (this.runningWithThis && attackedServer == corp.RnD) {
         ret += Counters(this, "virus"); //access X additional cards
       }
-      this.runningWithThis = false;
       return ret;
     },
   },
   //Whenever a successful run on R&D ends, you may place 1 virus counter on this program
   runEnds: {
 	Enumerate: function() {
+		this.runningWithThis = false;
 		if (attackedServer == corp.RnD && this.runWasSuccessful) return [{}];
 		return [];
 	},

@@ -4954,6 +4954,40 @@ cardSet[31061] = {
   },
 };
 
+cardSet[31062] = {
+  title: "Project Beale",
+  imageFile: "31062.png",
+  elo: 1886,
+  player: corp,
+  faction: "NBN",
+  cardType: "agenda",
+  subTypes: ["Research"],
+  agendaPoints: 2,
+  advancementRequirement: 3,
+  //When you score this agenda, place 1 agenda counter on it for every 2 hosted advancement counters past 3.
+  advancement: 0,
+  scored: {
+    Resolve: function (params) {
+	  if (intended.score == this) {
+		  var advancementOverThree = this.advancement - 3;
+		  if (advancementOverThree > 1) AddCounters(this, "agenda", Math.floor(advancementOverThree*0.5));
+		  //This agenda is worth 1 more agenda point for each hosted agenda counter.
+		  //(may need to make this dynamic, the points would change if the counters change)
+		  this.agendaPoints = 2 + Counters(this,"agenda");
+		  this.originalAgendaPoints = 2; //so it renders
+	  }
+    },
+	automatic:true,
+  },
+  AIOverAdvance: true, //load 'em up
+  AIAdvancementLimit: function() {
+	var maxThisTurn = corp.AI._potentialAdvancement(this)+this.advancement;
+	//even numbers are no good
+	if (maxThisTurn%2 == 0) maxThisTurn--;
+	return Math.max(3,maxThisTurn);
+  },
+}
+
 //TODO link (e.g. Reina)
 
 /*
