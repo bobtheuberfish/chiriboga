@@ -789,6 +789,10 @@ var CardRenderer = {
 		  
 		  this.typeText.x = -55;
 		  this.typeText.y = -150;
+		  if (this.agendaPointsText) {
+			this.agendaPointsText.x=-130;
+			this.agendaPointsText.y=37;
+		  }
         } //zoomed or being approached/encountered
         else {
           //correct sprite positioning
@@ -853,6 +857,10 @@ var CardRenderer = {
 		
 		  this.typeText.x = -130;
 		  this.typeText.y = -150;
+		  if (this.agendaPointsText) {
+			this.agendaPointsText.x=-131;
+			this.agendaPointsText.y=-51;
+		  }
         }
         //show visible effect for broken subroutines when relevant
         if (typeof this.brokenSprites !== "undefined") {
@@ -1891,6 +1899,7 @@ var CardRenderer = {
       emitter.playOnceAndDestroy();
     }
 
+	//chosens but also other custom text
 	RenderChosens(chosenTextStyle) {
 		var allCards = AllCards();
 		for (var i=0; i<allCards.length; i++) {
@@ -1957,6 +1966,25 @@ var CardRenderer = {
 				//then update word choice
 				src.renderer.chosenText.text = src.chosenWord;
 				src.renderer.chosenText.visible = true;
+			}
+			else if (typeof src.originalAgendaPoints != 'undefined' && src.originalAgendaPoints != src.agendaPoints) {
+				//first, create the text if needed
+				var agendaPointsStyle = new PIXI.TextStyle({
+					fontFamily: "PlayBoldNisei",
+					fontSize: 48,
+					fill: "#DBDBDB",
+					stroke: "#000000",
+					strokeThickness: 6,
+				});
+				if (typeof src.renderer.agendaPointsText == 'undefined') {
+					src.renderer.agendaPointsText = new PIXI.Text("", agendaPointsStyle);
+					src.renderer.agendaPointsText.x=-131;
+					src.renderer.agendaPointsText.y=-51;
+					src.renderer.sprite.addChild(src.renderer.agendaPointsText);
+				}
+				//then update word choice
+				src.renderer.agendaPointsText.text = src.agendaPoints;
+				src.renderer.agendaPointsText.visible = true;
 			}
 			else if (src.renderer.chosenSprite) {
 				//no longer chosen, hide the icon
