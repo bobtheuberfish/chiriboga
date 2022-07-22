@@ -602,6 +602,17 @@ class CorpAI {
     return this._agendasInServer(corp.HQ,ignoreCards);
   }
 
+  //optionally, specific an array of cards to ignore 
+  _HVTsInHand(ignoreCards=[]) { //returns int
+    var ret = 0;
+	for (var i=0; i<corp.HQ.cards.length; i++) {
+		if (!ignoreCards.includes(corp.HQ.cards[i])) {
+			if (this._isHVT(corp.HQ.cards[i])) ret++;
+		}
+	}
+    return ret;
+  }
+
   _faceDownCardsOrAgendasExistInArchives() {
     for (var i = 0; i < corp.archives.cards.length; i++) {
       if (!IsFaceUp(corp.archives.cards[i])) return true;
@@ -991,7 +1002,7 @@ class CorpAI {
       if (CheckRez(card, ["upgrade", "asset"])) {
         //does not check cost...
         var currentRezCost = RezCost(card); //...so we check that here
-        if (CheckCredits(currentRezCost, corp, "rezzing", card)) ret.push(card);
+        if (CheckCredits(corp, currentRezCost, "rezzing", card)) ret.push(card);
       }
     }
     return ret;
@@ -1210,7 +1221,7 @@ class CorpAI {
           //is an economy card
           var currentRezCost = RezCost(installedCards[i]);
           if (
-            CheckCredits(currentRezCost, corp, "rezzing", installedCards[i])
+            CheckCredits(corp, currentRezCost, "rezzing", installedCards[i])
           ) {
             //can afford to rez for econ
             if (optionList.includes("rez")) {
@@ -1252,7 +1263,7 @@ class CorpAI {
             //is an draw card
             var currentRezCost = RezCost(installedCards[i]);
             if (
-              CheckCredits(currentRezCost, corp, "rezzing", installedCards[i])
+              CheckCredits(corp, currentRezCost, "rezzing", installedCards[i])
             ) {
               //can afford to rez for draw
                 this._log("Rez might help draw");
@@ -1345,6 +1356,7 @@ class CorpAI {
       { title: "Clearinghouse", cost: 0 },
 	  { title: "Ronin", cost: 0 },
       { title: "Hokusai Grid", cost: 2 },
+	  { title: "Reversed Accounts", cost: 0 },
     ];
     for (var i = 0; i < corp.remoteServers.length; i++) {
       for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
@@ -1676,9 +1688,9 @@ class CorpAI {
 		var rezCostToCompare = iceToCompareList[i].cost;
 		var valueToCompare = iceToCompareList[i].value;
 		//only check ice that could be rezzed if we don't rez this
-		if (CheckCredits(rezCostToCompare, corp, "rezzing")) {
+		if (CheckCredits(corp, rezCostToCompare, "rezzing")) {
 		  //but couldn't be rezzed if we do rez this
-		  if (!CheckCredits(currentRezCost+rezCostToCompare, corp, "rezzing")) {
+		  if (!CheckCredits(corp, currentRezCost+rezCostToCompare, "rezzing")) {
 			//save credits for that ice if the server value is greater, or if server value equal and ice value greater
 			if ( (valueToCompare > thisServerValue) ||
 			  ((valueToCompare == thisServerValue) && (this._cardProtectionValue(iceToCompare) > thisIceProtectionValue)) ) {
@@ -1693,7 +1705,7 @@ class CorpAI {
 	  for (var i=0; i<server.root.length; i++) {
 		if (!server.root[i].rezzed) {
 		  if (typeof server.root[i].AIDefensiveValue == 'function' && server.root[i].AIDefensiveValue.call(server.root[i], server) > 0) {
-			if (!CheckCredits(currentRezCost+RezCost(server.root[i]), corp, "rezzing")) {
+			if (!CheckCredits(corp, currentRezCost+RezCost(server.root[i]), "rezzing")) {
 			  if (this._cardProtectionValue(server.root[i]) > thisIceProtectionValue) {
 				this._log("Rez cost not worth it, need to save it for "+server.root[i].title+" in this server");
 				rezIce = false;
@@ -1760,8 +1772,8 @@ class CorpAI {
 		  if (
 			iceBehind.rezzed ||
 			CheckCredits(
-			  currentRezCost + RezCost(iceBehind),
 			  corp,
+			  currentRezCost + RezCost(iceBehind),
 			  "rezzing",
 			  iceBehind
 			)
@@ -1784,7 +1796,7 @@ class CorpAI {
       if (CheckRez(card, ["ice"])) {
         //does not check cost...
         var currentRezCost = RezCost(card); //...so we check that here
-        if (CheckCredits(currentRezCost, corp, "rezzing", card)) {
+        if (CheckCredits(corp, currentRezCost, "rezzing", card)) {
           //so we've checked and the ice can be rezzed. but should we?
           if (this._iceWorthRezzing(card, currentRezCost)) {
             this._log("I will rez the approached ice");
@@ -1832,7 +1844,7 @@ class CorpAI {
           if (CheckRez(card, ["upgrade","asset"])) {
             //does not check cost...
             var currentRezCost = RezCost(card); //...so we check that here
-            if (CheckCredits(currentRezCost, corp, "rezzing", card))
+            if (CheckCredits(corp, currentRezCost, "rezzing", card))
               return this._returnPreference(optionList, "rez", {
                 cardToRez: card,
               });
@@ -1933,7 +1945,7 @@ class CorpAI {
       //list of cards (by title) to rez post-action
       var cardsToRezPostAction = [];
       if (this._clicksLeft() > 0)
-        cardsToRezPostAction.push("Regolith Mining License", "Ronin");
+        cardsToRezPostAction.push("Regolith Mining License", "Ronin", "Reversed Accounts");
       for (var i = 0; i < cardsToRezPostAction.length; i++) {
         var copyOfCard = this._copyOfCardExistsIn(
           cardsToRezPostAction[i],
@@ -2048,7 +2060,7 @@ class CorpAI {
           if (
             card.AIWouldRezBeforeScore.call(card, cardToScore, serverToScoreIn)
           ) {
-            if (CheckCredits(RezCost(card), corp, "rezzing", card)) {
+            if (CheckCredits(corp, RezCost(card), "rezzing", card)) {
               //only handling scoring upgrades at the moment (may need to add consideration of assets being put in a server other than this one)
               if (card.AIIsScoringUpgrade) {
                 if (this._shouldUpgradeServerWithCard(serverToScoreIn, card))

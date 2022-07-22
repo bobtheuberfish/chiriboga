@@ -255,13 +255,13 @@ function Install(
 			if (installingCard.player == corp) {
 			  if (
 				!CheckCredits(
+				  corp,
 				  InstallCost(
 					installingCard,
 					destination,
 					ignoreAllCosts,
 					position
 				  ),
-				  corp,
 				  "installing",
 				  installingCard
 				)
@@ -736,7 +736,6 @@ function Draw(player, num=1, afterDraw, context) {
     else if (player == runner) Log("Stack is empty");
     else LogError("No player specified for Draw");
   }
-
   //currently giving whoever's turn it is priority...not sure this is always going to be right
   TriggeredResponsePhase(playerTurn, "cardsDrawn", [cards], function() {
 	if (typeof afterDraw == 'function') afterDraw.call(context);
@@ -1143,7 +1142,7 @@ function LoseCredits(player, num) {
   if (numberLost == 1) Log(PlayerName(player) + " lost 1 credit");
   else if (numberLost > 1)
     Log(PlayerName(player) + " lost " + numberLost + " credits");
-  else Log(PlayerName(player) + " lost no credits");
+  else Log(PlayerName(player) + " lost 0 credits");
   return numberLost;
 }
 
@@ -1396,7 +1395,7 @@ function Trace(baseStrength, callback, context) {
     { num: 0, label: "Continue without increasing trace strength" },
   ];
   var i = 1;
-  while (CheckCredits(i, corp, "trace")) {
+  while (CheckCredits(corp, i, "trace")) {
     corpChoices.push({
       num: i,
       label: i + "[c]: Increase trace strength by " + i,
@@ -1422,7 +1421,7 @@ function Trace(baseStrength, callback, context) {
           { num: 0, label: "Continue without increasing link strength" },
         ];
         var i = 1;
-        while (CheckCredits(i, runner, "trace")) {
+        while (CheckCredits(runner, i, "trace")) {
           runnerChoices.push({
             num: i,
             label: i + "[c]: Increase link strength by " + i,

@@ -367,20 +367,20 @@ function ResolveClick(input) {
 			  else if (typeof relevantOptions[j].label != 'undefined') relevantOptions[j].button = relevantOptions[j].label;
 			  else relevantOptions[j].button = "unlabelled";
 		  }
-		  //if labels are the same, label by command instead (if possible)
+		  //if all options are unique commands, label by command instead
 		  if (relevantOptions.length > 1) {
-			  var labelsDiffer = false;
-			  var commandsDefined = true;
-			  for (var j=1; j<relevantOptions.length; j++) {
-				  if (relevantOptions[j].button != relevantOptions[0].button) {
-					  labelsDiffer = true;
-				  }
-				  if (typeof relevantOptions[j].command == 'undefined') {
-					  commandsDefined = false;
-				  }
-			  }
-			  //this will also recreate phaseOptions with only these options
-			  if (!labelsDiffer && commandsDefined) {
+			var uniqueCommands = [];
+			var uniqueChecked = true;
+			for (var j=0; j<relevantOptions.length; j++) {
+				if ( typeof relevantOptions[j].command == 'undefined' || uniqueCommands.includes(relevantOptions[j].command) ) {
+					uniqueChecked = false;
+					break;
+				} else {
+					uniqueCommands.push(relevantOptions[j].command);
+				}
+			}
+			//this will also recreate phaseOptions with only these options
+			if (uniqueChecked) {
 				phaseOptions = [];
 				for (var j=0; j<relevantOptions.length; j++) {
 					var cmd = relevantOptions[j].command;
@@ -388,7 +388,7 @@ function ResolveClick(input) {
 					if (typeof phaseOptions[cmd] == 'undefined') phaseOptions[cmd]=[];
 					phaseOptions[cmd].push(relevantOptions[j]);
 				}
-			  }
+			}
 		  }
 		  validOptions = relevantOptions;
 		  MakeChoice();

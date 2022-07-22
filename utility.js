@@ -2063,7 +2063,7 @@ function ChoicesCardInstall(card, ignoreCreditCost = false) {
       if (CheckCardType(card, ["program", "resource", "hardware"])) {
         if (
           ignoreCreditCost ||
-          CheckCredits(InstallCost(card), runner, "installing", card)
+          CheckCredits(runner, InstallCost(card), "installing", card)
         ) {
           if (typeof card.installOnlyOn === "function") {
             //this card may only be installed hosted on cards as defined
@@ -2221,7 +2221,7 @@ function FullCheckPlay(card,requireActionPhase=true) {
   if (CheckSubType(card, "Double")) clicksRequired = 2;
   if ((!requireActionPhase && CheckClicks(card.player, clicksRequired)) || CheckActionClicks(card.player, clicksRequired)) {
     if (CheckPlay(card)) {
-      if (CheckCredits(card.playCost, card.player, "playing", card)) {
+      if (CheckCredits(card.player, card.playCost, "playing", card)) {
         if (typeof card.Enumerate !== "undefined") {
           var choices = card.Enumerate.call(card);
           if (choices.length > 0) return choices; //valid by Enumerate
@@ -2995,7 +2995,7 @@ function DeckBuild(
 	  //other cards (this currently includes, by concatenation of the previous arrays, extras of all the previous non-agenda cards too)
 	  var otherCards = economyCards.concat(iceCards); //so be careful not to include cards both here AND above or you'll get 4+ copies sometimes
 	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30058, 30061, 30066]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048, 31049, 31053, 31054, 31058, 31059, 31063]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048, 31049, 31053, 31054, 31058, 31059, 31063, 31064]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,

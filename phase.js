@@ -126,9 +126,9 @@ phaseTemplates.standardResponse = {
           var currentRezCost = RezCost(card);
           //corp can always rez upgrades and assets (except for usability)
           if (CheckRez(card, ["upgrade", "asset"])) {
-            if (CheckCredits(currentRezCost, corp, "rezzing", card)) {
+            if (CheckCredits(corp, currentRezCost, "rezzing", card)) {
               if (typeof card.RezUsability == "function")
-                return card.RezUsability();
+                return card.RezUsability.call(card);
               //for usability, maybe not allowed to rez
               else return true;
             }
@@ -137,7 +137,7 @@ phaseTemplates.standardResponse = {
           if (CheckApproach() && approachIce < attackedServer.ice.length) {
             if (card == attackedServer.ice[approachIce]) {
               if (CheckRez(card, ["ice"]))
-                return CheckCredits(currentRezCost, corp, "rezzing", card);
+                return CheckCredits(corp, currentRezCost, "rezzing", card);
             }
           }
           //other cards cannot be rezzed
@@ -794,7 +794,7 @@ phases.corpActionMain = {
       if (CheckActionClicks(corp, 1)) {
         var possibleAdvance = ChoicesInstalledCards(corp, CheckAdvance);
         for (var i = 0; i < possibleAdvance.length; i++) {
-          if (CheckCredits(1, corp, "advancing", possibleAdvance[i].card)) {
+          if (CheckCredits(corp, 1, "advancing", possibleAdvance[i].card)) {
             //for usability, don't overadvance
             var allowAdvance = true;
             if (
@@ -833,7 +833,7 @@ phases.corpActionMain = {
           for (var i = 0; i < runner.rig.resources.length; i++) {
             var card = runner.rig.resources[i];
             if (CheckTrash(card)) {
-              if (CheckCredits(2, corp, "trashing", card))
+              if (CheckCredits(corp, 2, "trashing", card))
                 ret.push({ card: card, label: GetTitle(card, true) });
             }
           }
@@ -1073,7 +1073,7 @@ phases.runnerActionMain = {
     remove: function () {
       if (CheckTags(1)) {
         if (CheckActionClicks(runner, 1)) {
-          if (CheckCredits(2, runner, "removing tags")) return [{}];
+          if (CheckCredits(runner, 2, "removing tags")) return [{}];
         }
       }
       return [];
@@ -1094,8 +1094,9 @@ phases.runnerActionMain = {
   Resolve: {
     draw: function () {
       SetHistoryThumbnail("Runner_back.png", "Draw");
-      BasicActionDraw(runner);
-      IncrementPhase();
+      BasicActionDraw(runner, function() {
+        IncrementPhase();
+	  });
     },
     gain: function () {
       SetHistoryThumbnail("credit.png", "Gain");
@@ -1400,8 +1401,8 @@ phases.runAccessingCard = {
         if (typeof accessingCard.trashCost != "undefined") {
           if (
             CheckCredits(
-              TrashCost(accessingCard),
               runner,
+              TrashCost(accessingCard),
               "paying trash costs",
               accessingCard
             )
@@ -1706,6 +1707,7 @@ function AddHistoryBreakIfRequired(player) {
  * @param {Boolean} [skipInit=false] identifier of phase to change to
  */
 function ChangePhase(src, skipInit = false) {
+	
   var nextPhase = src;
   LogDebug("Entering subphase " + nextPhase.identifier);
   var previousPhase = currentPhase;

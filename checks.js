@@ -93,11 +93,11 @@ function CheckAccessing() {
  * Checks whether the player has at least the required clicks remaining (does not require action phase or set checkedClick).<br/>LogDebugs the result.
  *
  * @method CheckClicks
- * @param {int} num number of clicks required
  * @param {Player} player to check clicks for
+ * @param {int} num number of clicks required
  * @returns {Boolean} true if check passes, false if not
  */
-function CheckClicks(num, player) {
+function CheckClicks(player, num) {
   if (player.clickTracker < num) {
     LogDebug("Less than " + num + " clicks remaining");
     return false;
@@ -133,13 +133,13 @@ function CheckCounters(card, counter, num = 1) {
  * Checks whether the player has at least the required credits in their pool.<br/>LogDebugs the result.
  *
  * @method CheckCredits
- * @param {int} num number of credits required
  * @param {Player} player to check clicks for
+ * @param {int} num number of credits required
  * @param {String} [doing] for 'recurring credit' checks
  * @param {Card} [card] for 'recurring credit' checks
  * @returns {Boolean} true if check passes, false if not
  */
-function CheckCredits(num, player, doing = "", card = null) {
+function CheckCredits(player, num, doing = "", card = null) {
   var availableCred = AvailableCredits(player, doing, card); //unlike Credits(player) this includes recurring credit possibilities
   if (availableCred < num) {
     LogDebug("Less than " + num + " credits remaining");

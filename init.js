@@ -1299,6 +1299,7 @@ function StartGame() {
       MoveCardByIndex(runner.stack.length - 1, runner.stack, runner.grip);
     }
     Log("Each player has taken five credits and drawn five cards");	
+	Render();
 	//Narrate();
 	stackedLog = []; //skip narration
 	});

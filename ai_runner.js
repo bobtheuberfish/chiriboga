@@ -273,7 +273,7 @@ class RunnerAI {
 		ret=iceCard.rezCost;
 		//no threat if cannot be rezzed
         if (!infiniteCorpCredits) {
-			if (!iceCard.rezzed && !CheckCredits(RezCost(iceCard), corp, "rezzing", iceCard)) ret = 0;
+			if (!iceCard.rezzed && !CheckCredits(corp, RezCost(iceCard), "rezzing", iceCard)) ret = 0;
 		}
 		//reduce threat if a matching breaker is installed
 		if (this._matchingBreakerInstalled(iceCard,excludeIcebreakers)) ret *= 0.2; //the 0.2 is arbitrary

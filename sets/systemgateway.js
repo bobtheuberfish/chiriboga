@@ -307,7 +307,7 @@ cardSet[30005] = {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate"))
           return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         //None isn't a valid option because it doesn't try to change the game state
         //See NISEI Comprehensive Rules 1.2.5 (https://nisei.net/wp-content/uploads/2021/03/Comprehensive_Rules.pdf)
@@ -358,7 +358,7 @@ cardSet[30005] = {
         if (!CheckUnbrokenSubroutines()) return []; //as above
         if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate"))
           return []; //as above.
-        if (!CheckCredits(3, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 3, "using", this)) return [];
         return [{}];
       },
       Resolve: function (params) {
@@ -436,7 +436,7 @@ cardSet[30006] = {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Barrier"))
           return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         //None isn't a valid option because it doesn't try to change the game state
         //See NISEI Comprehensive Rules 1.2.5 (https://nisei.net/wp-content/uploads/2021/03/Comprehensive_Rules.pdf)
@@ -485,7 +485,7 @@ cardSet[30006] = {
         if (!CheckUnbrokenSubroutines()) return []; //as above
         if (!CheckSubType(attackedServer.ice[approachIce], "Barrier"))
           return []; //as above.
-        if (!CheckCredits(2, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 2, "using", this)) return [];
         return [{}];
       },
       Resolve: function (params) {
@@ -952,7 +952,7 @@ cardSet[30011] = {
 		  //if a successful run has already been made this turn and can afford the install, then Mutual Favor is efficient
 		  if (
 			this.madeSuccessfulRunThisTurn &&
-			CheckCredits(InstallCost(worthBreaker), runner, "installing")
+			CheckCredits(runner, InstallCost(worthBreaker), "installing")
 		  )
 			return true;
 		  //otherwise don't Mutual Favor if there's already a breaker in hand worth playing...
@@ -1196,7 +1196,7 @@ cardSet[30015] = {
       Enumerate: function () {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Sentry")) return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         return ChoicesEncounteredSubroutines();
       },
@@ -1220,7 +1220,7 @@ cardSet[30015] = {
         if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
         if (!CheckUnbrokenSubroutines()) return []; //as above
         if (!CheckSubType(attackedServer.ice[approachIce], "Sentry")) return []; //as above
-        if (!CheckCredits(2, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 2, "using", this)) return [];
         return [{}];
       },
       Resolve: function (params) {
@@ -1315,7 +1315,7 @@ cardSet[30016] = {
           return [];
         var cost = 2;
         if (this.madeSuccessfulRunThisTurn) cost = 1;
-        if (!CheckCredits(cost, runner, "using", this)) return [];
+        if (!CheckCredits(runner, cost, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         return ChoicesEncounteredSubroutines();
       },
@@ -1343,7 +1343,7 @@ cardSet[30016] = {
         if (!CheckUnbrokenSubroutines()) return []; //as above
         if (!CheckSubType(attackedServer.ice[approachIce], "Barrier"))
           return []; //as above
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         return [{}];
       },
       Resolve: function (params) {
@@ -2047,7 +2047,7 @@ cardSet[30025] = {
       Enumerate: function () {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Sentry")) return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         return ChoicesEncounteredSubroutines();
       },
@@ -2072,7 +2072,7 @@ cardSet[30025] = {
         if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
         if (!CheckUnbrokenSubroutines()) return []; //as above
         if (!CheckSubType(attackedServer.ice[approachIce], "Sentry")) return []; //as above
-        if (!CheckCredits(3, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 3, "using", this)) return [];
         return [{}];
       },
       Resolve: function (params) {
@@ -2150,7 +2150,7 @@ cardSet[30026] = {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate"))
           return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         return ChoicesEncounteredSubroutines();
       },
@@ -2175,7 +2175,7 @@ cardSet[30026] = {
         if (!CheckUnbrokenSubroutines()) return []; //as above
         if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate"))
           return []; //as above
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         return [{}];
       },
       Resolve: function (params) {
@@ -2447,7 +2447,7 @@ cardSet[30032] = {
       text: "Break 1 subroutine.",
       Enumerate: function () {
         if (!CheckEncounter()) return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
 		if (GetApproachEncounterIce().cannotBreakUsingAIPrograms) return [];
         return ChoicesEncounteredSubroutines();
@@ -2473,7 +2473,7 @@ cardSet[30032] = {
         if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
 		if (GetApproachEncounterIce().cannotBreakUsingAIPrograms) return []; //for usability not legality
         if (!CheckUnbrokenSubroutines()) return []; //as above
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         return [{}];
       },
       Resolve: function (params) {
@@ -2914,7 +2914,7 @@ cardSet[30038] = {
     {
       text: "Break 1 subroutine on this ice",
       Enumerate: function () {
-        if (!CheckClicks(1, runner)) return [];
+        if (!CheckClicks(runner, 1)) return [];
         if (activePlayer !== runner) return [];
         if (!encountering) return [];
         if (GetApproachEncounterIce() != this) return [];
@@ -3041,12 +3041,12 @@ cardSet[30039] = {
 			  var harcc = choicesB[0].card; //highest affordable rez cost card
 			  var haprc = choicesB[0].card.rezCost; //highest affordable printed rez cost
 			  var zerothRezCost = RezCost(harcc);
-			  var wouldRez = CheckCredits(zerothRezCost, corp, "rezzing", harcc) && corp.AI._iceWorthRezzing(harcc, zerothRezCost, attackedServer);
+			  var wouldRez = CheckCredits(corp, zerothRezCost, "rezzing", harcc) && corp.AI._iceWorthRezzing(harcc, zerothRezCost, attackedServer);
 			  for (var i=1; i<choicesB.length; i++) {
 				  var possibleCard = choicesB[i].card;
 				  if (possibleCard.rezCost > haprc || !wouldRez) {
 					  var thisRezCost = RezCost(possibleCard);
-					  if ( CheckCredits(thisRezCost, corp, "rezzing", possibleCard) && corp.AI._iceWorthRezzing(possibleCard, thisRezCost, attackedServer) ) {
+					  if ( CheckCredits(corp, thisRezCost, "rezzing", possibleCard) && corp.AI._iceWorthRezzing(possibleCard, thisRezCost, attackedServer) ) {
 						  harcc = possibleCard;
 						  haprc = possibleCard.rezCost;
 						  wouldRez = true;
@@ -3114,7 +3114,7 @@ cardSet[30039] = {
     {
       text: "Break 1 subroutine on this ice",
       Enumerate: function () {
-        if (!CheckClicks(1, runner)) return [];
+        if (!CheckClicks(runner, 1)) return [];
         if (activePlayer !== runner) return [];
         if (!encountering) return [];
         if (GetApproachEncounterIce() != this) return [];
@@ -3310,13 +3310,13 @@ cardSet[30042] = {
     },
     Resolve: function (params) {
       var choices = [];
-      if (CheckClicks(2, runner))
+      if (CheckClicks(runner, 2))
         choices.push({
           id: 0,
           label: "Spend [click][click]",
           button: "Spend [click][click]",
         });
-      if (CheckCredits(5, runner, "", this))
+      if (CheckCredits(runner, 5, "", this))
         choices.push({ id: 1, label: "Spend 5[c]", button: "Pay 5[c]" });
       choices.push({ id: 2, label: "End the run", button: "End the run" });
       function decisionCallback(params) {
@@ -3757,7 +3757,7 @@ cardSet[30050] = {
   approachServer: {
     Enumerate: function () {
       if (attackedServer == GetServer(this)) {
-        if (CheckCredits(2, corp, "", this)) {
+        if (CheckCredits(corp, 2, "", this)) {
           if (corp.HQ.cards.length > 1) return [{}];
         }
       }
@@ -4097,7 +4097,7 @@ cardSet[30053] = {
     if (CheckActionClicks(corp, 1)) return true; //might want to rez for the extra card draw
 	else if (corp.AI != null) { //so might the AI
 		if (typeof(this.AITurnsInstalled) !== 'undefined') {
-			if ( CheckClicks(1, corp) && (this.AITurnsInstalled > 1) ) return true;
+			if ( CheckClicks(corp, 1) && (this.AITurnsInstalled > 1) ) return true;
 		}
 	}
     return false;
@@ -4158,7 +4158,7 @@ cardSet[30054] = {
       text: "Give the Runner 1 tag unless they pay 4[c].",
       Resolve: function (params) {
         var choices = [];
-        if (CheckCredits(4, runner))
+        if (CheckCredits(runner, 4))
           choices.push({ id: 0, label: "Pay 4[c]", button: "Pay 4[c]" });
         choices.push({ id: 1, label: "Take 1 tag", button: "Take 1 tag" });
         function decisionCallback(params) {
@@ -4284,7 +4284,7 @@ cardSet[30057] = {
   //Give the Runner 1 tag unless they pay 8[c].
   Resolve: function (params) {
     var choices = [];
-    if (CheckCredits(8, runner))
+    if (CheckCredits(runner, 8))
       choices.push({ id: 0, label: "Pay 8[c]", button: "Pay 8[c]" });
     choices.push({ id: 1, label: "Take 1 tag", button: "Take 1 tag" });
     function decisionCallback(params) {
@@ -4639,7 +4639,7 @@ cardSet[30063] = {
 	  /*
 	  if (!this.rezzed) {
 		  var costToFullyAdvanceAndRez = 3 - Counters(this, "advancement") + RezCost(this);
-		  if (!CheckCredits(costToFullyAdvanceAndRez, corp)) return 0;
+		  if (!CheckCredits(corp, costToFullyAdvanceAndRez)) return 0;
 	  }
 	  */
 	  //actually I've decided to only advance once rezzed, to preserve secrecy for now
@@ -5049,17 +5049,17 @@ cardSet[30071] = {
   ],
   RezUsability: function () {
     //only rez if there will be clicks to use it
-    if (CheckClicks(1, corp)) return true;
+    if (CheckClicks(corp, 1)) return true;
     return false;
   },
   //**AI code for installing (return -1 to not install, index in emptyProtectedRemotes to install in a specific server, or emptyProtectedRemotes.length to install in a new server)
   AIWorthInstalling: function (emptyProtectedRemotes) {
-	//only install if there isn't already a Regolith installed (unless installing from Archives)
-    if (!corp.AI._copyAlreadyInstalled(this) || this.cardLocation == corp.archives.cards) {
+	//only install if there isn't already a Regolith installed and we're not already rich (unless installing from Archives)
+    if ( ( !corp.AI._copyAlreadyInstalled(this) && !corp.AI._sufficientEconomy(false) ) || this.cardLocation == corp.archives.cards) {
         //choose the first non-scoring server (create one if necessary)
-		//but allow install into completely empty non-scoring servers if no agendas in hand
+		//but allow install into completely empty non-scoring servers if no HVTs in hand
         for (var j = 0; j < emptyProtectedRemotes.length; j++) {
-          if ( !corp.AI._isAScoringServer(emptyProtectedRemotes[j]) || (corp.AI._agendasInHand() < 1 && emptyProtectedRemotes[j].root.length < 1) ) return j;
+          if ( !corp.AI._isAScoringServer(emptyProtectedRemotes[j]) || (corp.AI._HVTsInHand() < 1 && emptyProtectedRemotes[j].root.length < 1) ) return j;
         }
         return emptyProtectedRemotes.length;
     }

@@ -30,7 +30,7 @@ cardSet[31001] = {
 		if (this.usedThisTurn) return [];
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Barrier")) return [];
-        if (!CheckCredits(0, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 0, "using", this)) return [];
         return ChoicesEncounteredSubroutines();
       },
       Resolve: function (params) {
@@ -367,7 +367,7 @@ cardSet[31006] = {
       Enumerate: function () {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Barrier")) return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         return ChoicesEncounteredSubroutines();
       },
@@ -391,7 +391,7 @@ cardSet[31006] = {
         if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
         if (!CheckUnbrokenSubroutines()) return []; //as above
         if (!CheckSubType(attackedServer.ice[approachIce], "Barrier")) return []; //as above
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         return [{}];
       },
       Resolve: function (params) {
@@ -547,7 +547,7 @@ cardSet[31008] = {
       Enumerate: function () {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Sentry")) return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         return ChoicesEncounteredSubroutines();
       },
@@ -1104,7 +1104,7 @@ cardSet[31017] = {
 		//The Corp may rez that ice. If they do not, they trash it.
 		var choices = [];
 		//don't include rez option if can't afford
-        if (CheckCredits(thatrezcost, corp, "rezzing", thatice)) {
+        if (CheckCredits(corp, thatrezcost, "rezzing", thatice)) {
 			choices.push({
 			  id: 0,
 			  label: "Rez "+thatice.title,
@@ -1307,7 +1307,7 @@ cardSet[31020] = {
   },
   Resolve: function (params) {
     RemoveTags(1);
-	if (CheckCredits(1,runner)) {
+	if (CheckCredits(runner,1)) {
 		var choices = BinaryDecision(
 			runner,
 			"1[c]: Add Networking to grip",
@@ -1330,7 +1330,7 @@ cardSet[31020] = {
   },
   AIPlayToRemoveTags: function() {
 	  if (runner.tags < 1) return 0; //don't use
-	  if (!CheckCredits(1,runner) && CheckClicks(2,runner)) return 0; //don't use yet, would waste recur
+	  if (!CheckCredits(runner,1) && CheckClicks(runner,2)) return 0; //don't use yet, would waste recur
 	  return 1; //removes 1 tag
   },
 };
@@ -1362,7 +1362,7 @@ cardSet[31021] = {
       Enumerate: function () {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate")) return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         return ChoicesEncounteredSubroutines();
       },
@@ -1388,7 +1388,7 @@ cardSet[31021] = {
         if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
         if (!CheckUnbrokenSubroutines()) return []; //as above
         if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate")) return []; //as above
-        if (!CheckCredits(2, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 2, "using", this)) return [];
         return [{}];
       },
       Resolve: function (params) {
@@ -1451,7 +1451,7 @@ cardSet[31021] = {
 		if (iceAI.subTypes.includes("Code Gate")) {
 			//only use trash-breach for worthwhile targets (the 1.5 is arbitrary) with few clicks left
 			//the !runner.AI check is in case corp is doing the run calculation
-			if (!runner.AI || (runner.AI._getCachedPotential(server) > 1.5 && !CheckClicks(2, runner)) ) {
+			if (!runner.AI || (runner.AI._getCachedPotential(server) > 1.5 && !CheckClicks(runner, 2)) ) {
 				var pointCopy = rc.CopyPoint(point);
 				pointCopy.persistents = pointCopy.persistents.concat([{use:this, target:iceAI.ice, iceIdx:point.iceIdx, action:"bypass", alt:this.abilities[2].alt}]);
 				pointCopy.effects = pointCopy.effects.concat([["misc_serious","misc_serious"]]); //this is arbitrary but basically take it seriously
@@ -1531,7 +1531,7 @@ cardSet[31022] = {
 		if (!card.subroutines) return;
 		if (card != this.chosenCard) return;
 		var numsr = card.subroutines.length;
-		if (!CheckCredits(numsr, runner, "using", this)) return; //can't afford
+		if (!CheckCredits(runner, numsr, "using", this)) return; //can't afford
 		var paylabel = numsr+"[c]: Bypass";
         var choices = [
           { id: 0, label: paylabel, button: paylabel, alt:"femme_bypass" },
@@ -1569,7 +1569,7 @@ cardSet[31022] = {
       Enumerate: function () {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Sentry")) return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         return ChoicesEncounteredSubroutines();
       },
@@ -1593,7 +1593,7 @@ cardSet[31022] = {
         if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
         if (!CheckUnbrokenSubroutines()) return []; //as above
         if (!CheckSubType(attackedServer.ice[approachIce], "Sentry")) return []; //as above
-        if (!CheckCredits(2, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 2, "using", this)) return [];
         return [{}];
       },
       Resolve: function (params) {
@@ -2395,7 +2395,7 @@ cardSet[31030] = {
       text: "Break 1 subroutine.",
       Enumerate: function () {
         if (!CheckEncounter()) return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return []; //the must-be-equal check is done in CheckStrength because this.onlyInterfaceEqualStrength is true
 		if (GetApproachEncounterIce().cannotBreakUsingAIPrograms) return [];
         return ChoicesEncounteredSubroutines();
@@ -2601,7 +2601,7 @@ cardSet[31031] = {
       Enumerate: function () {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], this.chosenWord)) return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         return ChoicesEncounteredSubroutines();
       },
@@ -2786,7 +2786,7 @@ cardSet[31033] = {
       Enumerate: function () {
         if (!CheckEncounter()) return [];
         if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate")) return [];
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         if (!CheckStrength(this)) return [];
         return ChoicesEncounteredSubroutines();
       },
@@ -2810,7 +2810,7 @@ cardSet[31033] = {
         if (CheckStrength(this)) return []; //technically you can over-strength but I'm putting this here for interface usability
         if (!CheckUnbrokenSubroutines()) return []; //as above
         if (!CheckSubType(attackedServer.ice[approachIce], "Code Gate")) return []; //as above
-        if (!CheckCredits(1, runner, "using", this)) return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
         return [{}];
       },
       Resolve: function (params) {
@@ -3301,7 +3301,7 @@ cardSet[31040] = {
 			    //any affordable (with discount) rezzable Bioroid cards
 			    if (CheckSubType(card, "Bioroid")) {	
 				  if (CheckRez(card, ["ice", "asset", "upgrade"])) {
-					return CheckCredits(RezCost(card)-4, corp, "rezzing", card);				
+					return CheckCredits(corp, RezCost(card)-4, "rezzing", card);				
 				  }
 			    }
 				return false; //i.e. not an option
@@ -3324,7 +3324,7 @@ cardSet[31040] = {
 				  var iceCard = choices[i].card;
 				  var iceCardServer = GetServer(iceCard);
 				  if (iceCardServer == attackedServer) {
-					if (iceCardServer.ice.indexOf(iceCard) > -1 && iceCardServer.ice.indexOf(iceCard) < approachIce && !CheckCredits(RezCost(iceCard)+maxSpend, corp, "rezzing", iceCard)) {
+					if (iceCardServer.ice.indexOf(iceCard) > -1 && iceCardServer.ice.indexOf(iceCard) < approachIce && !CheckCredits(corp, RezCost(iceCard)+maxSpend, "rezzing", iceCard)) {
 						corp.AI._log("I know this one");
 						return [choices[i]];
 					}
@@ -3555,7 +3555,7 @@ cardSet[31043] = {
     {
       text: "Break 1 subroutine on this ice",
       Enumerate: function () {
-        if (!CheckClicks(1, runner)) return [];
+        if (!CheckClicks(runner, 1)) return [];
         if (activePlayer !== runner) return [];
         if (!encountering) return [];
         if (GetApproachEncounterIce() != this) return [];
@@ -3769,7 +3769,7 @@ cardSet[31045] = {
     {
       text: "Break 1 subroutine on this ice",
       Enumerate: function () {
-        if (!CheckClicks(1, runner)) return [];
+        if (!CheckClicks(runner, 1)) return [];
         if (activePlayer !== runner) return [];
         if (!encountering) return [];
         if (GetApproachEncounterIce() != this) return [];
@@ -4374,7 +4374,7 @@ cardSet[31054] = {
       return [];
     },
     Resolve: function () {
-      var canAfford = CheckCredits(4, corp, "using", this);
+      var canAfford = CheckCredits(corp, 4, "using", this);
 	  this.storedFaceUp = this.faceUp;
 	  var SnareImplementation = function() {
 		var decisionCallback = function(params) {
@@ -5032,6 +5032,8 @@ cardSet[31063] = {
   },
   cardsDrawn: {
     Enumerate: function (cards) {
+	  //this is called even when the Runner draws
+	  //but the corp.HQ.cards check below will return [] for Runner cards
 	  if (this.drewCardsThisTurn) return [];
 	  //only include cards that are still in hand since draw
       var ret = ChoicesArrayCards(cards, function(card) {
@@ -5081,6 +5083,67 @@ cardSet[31063] = {
   },
   AITriggerWhenCan: true,
   AIAvoidInstallingOverThis: true,
+};
+
+cardSet[31064] = {
+  title: "Reversed Accounts",
+  imageFile: "31064.png",
+  elo: 1654,
+  player: corp,
+  faction: "NBN",
+  influence: 1,
+  cardType: "asset",
+  subTypes: ["Hostile"],
+  rezCost: 0,
+  //You can advance this asset.
+  canBeAdvanced: true,
+  trashCost: 3,
+  advancement: 0,
+  AIAdvancementLimit: function() {
+	//reduce clicks by 1 because we want to leave 1 to trigger the ability
+	var maxThisTurn = corp.AI._potentialAdvancement(this,true,corp.HQ.cards.concat(corp.resolvingCards),corp.clickTracker-1)+this.advancement;
+	//no point super-advancing if Runner has no credits
+	var effectiveCounters = Math.round(runner.creditPool*0.25);
+	maxThisTurn = Math.min(maxThisTurn,effectiveCounters);
+	//for this to be worth using it really needs to have at least 2 tokens (otherwise better to have the Runner trash it)
+	return Math.max(2,maxThisTurn);
+  },
+  //[click],[trash]: The Runner loses 4 credits for each hosted advancement counter.
+  abilities: [
+    {
+      text: "The Runner loses 4[c] for each hosted advancement counter.",
+      Enumerate: function () {
+        if (!CheckCounters(this, "advancement", 1)) return false; //for usability
+        if (!CheckActionClicks(corp, 1)) return [];
+        return [{}];
+      },
+      Resolve: function (params) {
+        SpendClicks(corp, 1);
+		var creditsToLose = 4*Counters(this,"advancement");
+        Trash(this, false); //false means it cannot be prevented (because it's a cost)
+        LoseCredits(runner,creditsToLose);
+      },
+    },
+  ],
+  RezUsability: function () {
+	//only when could use the ability
+	if (!CheckCounters(this, "advancement", 1)) return false; //for usability
+	if (!CheckClicks(corp, 1)) return false;
+	//**AI code
+	if (corp.AI) {
+		//only if the Runner would actually lose a bunch of credits from this (otherwise better to have the Runner trash it)
+		//this is arbitary but based roughly on how much it would cost the Runner to get in and trash it
+		var minCreditValue = 4.5 + corp.AI._protectionScore(GetServer(this),{});
+		if (!CheckCredits(runner,minCreditValue)) return false;
+		//and only when there are sufficient counters
+		if (!CheckCounters(this, "advancement", this.AIAdvancementLimit())) return false;
+	}
+	return true;
+  },
+  AITriggerWhenCan: true,
+  AIRushToFinish: function() {
+	return false; //don't use economy advance to get to limit
+  },
 };
 
 //TODO link (e.g. Reina)
