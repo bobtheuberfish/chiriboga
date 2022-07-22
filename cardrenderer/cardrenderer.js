@@ -631,6 +631,24 @@ var CardRenderer = {
         this.card.hover = true;
         this.card.UpdateGlow();
         this.buttonMode = this.card.availability > 0;
+		//currently just using tooltip for single-click actions e.g. rez
+		if (this.card.availability == 1) {
+		  //set title to commands with this card
+		  var distinctCommands = [];
+		  var cardToCheck = this.card.card;
+		  validOptions.forEach(function(item){
+			if (typeof item.card != 'undefined') {
+			  if (item.card == cardToCheck) {
+				if (typeof item.command != 'undefined') {
+				  var cmd = item.command;
+				  cmd = cmd.charAt(0).toUpperCase() + cmd.slice(1);
+				  if (!distinctCommands.includes(cmd)) distinctCommands.push(cmd);
+				}
+			  }
+			}
+		  });
+		  $('#contentcontainer canvas').prop('title',distinctCommands.join(' or '));
+		}
       };
       this.sprite.pointerout = function (event) {
         if (pixi_draggingCard == this.card) return; //if card trails behind mouse by a frame, prevent weirdness
@@ -643,6 +661,7 @@ var CardRenderer = {
         }
         this.card.hover = false;
         this.card.UpdateGlow();
+		$('#contentcontainer canvas').prop('title','');
       };
       //some extras to support touch
       this.sprite.on("pointerdown", this.sprite.pointerover);
@@ -1382,7 +1401,7 @@ var CardRenderer = {
           this.iceGlow.x = x;
           this.iceGlow.y = y;
           this.iceGlow.scale.x = 0.4;
-          if (accessList.length > 0) this.iceGlow.tint = parseInt("0000FF", 16);
+          if (accessingCard || accessedCards.root.length > 0 || accessedCards.cards.length > 0) this.iceGlow.tint = parseInt("0000FF", 16);
           //accessing (blue)
           else if (movement) {
             //show at front of server just like if ice was passed
