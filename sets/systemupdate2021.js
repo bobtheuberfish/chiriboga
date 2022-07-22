@@ -1265,6 +1265,7 @@ cardSet[31019] = {
   },
   breachServer: {
     Resolve: function () {
+	  //NOTE: breachServer may be called multiple times (e.g. when determining new candidates)
       return 2; //access 2 additional cards
     },
   },
@@ -2280,6 +2281,7 @@ cardSet[31029] = {
     MakeRun(corp.RnD);
   },
   breachServer: {
+	//NOTE: breachServer may be called multiple times (e.g. when determining new candidates)
     Resolve: function () {
       return 2;
     },
@@ -4418,6 +4420,7 @@ cardSet[31054] = {
   },
   cardAccessComplete: {
     Resolve: function (card) {
+	  //Snare! is revealed until access completes
       if (card == this) if (!this.storedFaceUp) this.faceUp = false;
     },
     automatic: true,
@@ -4427,6 +4430,7 @@ cardSet[31054] = {
 	//never
 	return false;
   },
+  AIAvoidInstallingOverThis: true,
 };
 
 cardSet[31055] = {
@@ -4788,11 +4792,13 @@ cardSet[31060] = {
     automatic: true,
   },
   serverCreated: {
-    Resolve: function (server) {
-      if (!this.createdNewRemoteServerThisTurn) {
-		this.createdNewRemoteServerThisTurn=true;
-		Draw(corp,1);		
-	  }
+	Enumerate: function(server) {
+	  if (!this.createdNewRemoteServerThisTurn) return [{}];
+	  return [];
+	},
+    Resolve: function (params) {
+	  this.createdNewRemoteServerThisTurn=true;
+	  Draw(corp,1);		
     },
   },
 };
@@ -4987,6 +4993,95 @@ cardSet[31062] = {
 	return Math.max(3,maxThisTurn);
   },
 }
+
+cardSet[31063] = {
+  title: "Daily Business Show",
+  imageFile: "31063.png",
+  elo: 1828,
+  player: corp,
+  faction: "NBN",
+  influence: 1,
+  cardType: "asset",
+  subTypes: ["Cast"],
+  rezCost: 2,
+  trashCost: 4,
+  //Interrupt - The first time each turn you would draw any number of cards, increase the number of cards you will draw by 1.
+  //When you draw those cards, add 1 of them to the bottom of R&D.
+  drewCardsThisTurn: false,
+  runnerTurnBegin: {
+    Resolve: function () {
+      this.drewCardsThisTurn = false;
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  corpTurnBegin: {
+    Resolve: function () {
+      this.drewCardsThisTurn = false;
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  modifyDraw: {
+    Resolve: function (player) {
+      var ret = 0; //by default, no modification to draw amount
+      if (!this.drewCardsThisTurn && player == corp) ret = 1; //+1
+      return ret;
+    },
+    automatic: true,
+  },
+  cardsDrawn: {
+    Enumerate: function (cards) {
+	  if (this.drewCardsThisTurn) return [];
+	  //only include cards that are still in hand since draw
+      var ret = ChoicesArrayCards(cards, function(card) {
+		return corp.HQ.cards.includes(card);
+	  });
+	  if (ret.length < 1) return [];
+	  //add server to each option for drag and drop on R&D
+	  ret.forEach(function(item) {
+		item.server=corp.RnD;
+	  });
+	  //**AI code (in this case, implemented by including only the preferred option, if any)
+	  //(determine what to keep, put the last option bottom of R&D)
+	  if (corp.AI) {
+		ret = corp.AI._reduceOptionsToBestCardToReturnToRnD(ret);
+	  }
+	  return ret;
+    },
+	Resolve: function(params) {
+		this.drewCardsThisTurn=true;
+		var cardTitle = GetTitle(params.card,true);
+		MoveCard(params.card, corp.RnD.cards, 0); //bottom of R&D
+		Log(cardTitle+" added to bottom of R&D");
+	},
+	footerText: "Drag to R&D",
+  },
+  RezUsability: function () {
+	//end of Runner turn
+    if (currentPhase.identifier == "Runner 2.2") return true;
+	//note there's probably no point rezzing it during corp turn since already drew a card this turn
+    return false;
+  },
+  DuplicateUsability: function() {
+	return true; //always autoselect duplicates
+  },
+  //**AI code for installing (return -1 to not install, index in emptyProtectedRemotes to install in a specific server, or emptyProtectedRemotes.length to install in a new server)
+  AIWorthInstalling: function (emptyProtectedRemotes) {
+	//only install if have the credits to rez
+	if (corp.creditPool >= 2) {
+        //could also do it with face up cards that we want to reuse but this is fine for now
+        //choose the first non-scoring server (create one if necessary)
+        for (var j = 0; j < emptyProtectedRemotes.length; j++) {
+          if (!corp.AI._isAScoringServer(emptyProtectedRemotes[j])) return j;
+        }
+        return emptyProtectedRemotes.length;
+    }
+    return -1; //don't install
+  },
+  AITriggerWhenCan: true,
+  AIAvoidInstallingOverThis: true,
+};
 
 //TODO link (e.g. Reina)
 

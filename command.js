@@ -106,15 +106,7 @@ function GetAvailability(renderer) {
   }
 	
   //check for accessing first
-  if (accessList.length > 0) {
-    if (renderer.card === accessingCard) return -3;
-    //special case, highlights the card being accessed
-    else if (
-      accessList.includes(renderer.card) &&
-      typeof phaseOptions.access !== "undefined"
-    )
-      return 1;
-  }
+  if (renderer.card === accessingCard) return -3;
 
   //if renderer is non a card, e.g. a token...
   if (typeof renderer.card == "undefined") {
@@ -673,6 +665,54 @@ function MakeChoice() {
     return;
   }
 
+  //check if all the options are duplicates
+  //currently only available for the same card title, for "trigger" command with DuplicateUsability returning true
+  //it is important we only do this for cards with DuplicateUsability defined
+  //in case there are cards where the human or AI wants to make a manual choice
+  if (validOptions.length > 1) {
+	  var duplicateCheck = false;
+	  var uniqueCheckTitle = '';
+	  var uniqueCheckCommand = '';
+	  for (var i=0; i<validOptions.length; i++) {
+		  if (typeof validOptions[i].command == 'undefined') {
+			duplicateCheck = false;
+			break;
+		  }
+		  else if (validOptions[i].command != 'trigger') {
+			duplicateCheck = false;
+			break;
+		  }
+		  else if (validOptions[i].card == 'undefined') {
+			duplicateCheck = false;
+			break;
+		  }
+		  else if (validOptions[i].card == null) {
+			duplicateCheck = false;
+			break;
+		  }
+		  else if (typeof validOptions[i].card.DuplicateUsability !== 'function') {
+			duplicateCheck = false;
+			break;
+		  }	  
+		  else if (uniqueCheckCommand == '' && uniqueCheckTitle == '') {
+			uniqueCheckCommand = validOptions[i].command;
+			uniqueCheckTitle = validOptions[i].card.title;
+			duplicateCheck = validOptions[i].card.DuplicateUsability.call(validOptions[i]);
+		  }
+		  else if (uniqueCheckCommand != validOptions[i].command || uniqueCheckTitle != validOptions[i].card.title ) {
+			duplicateCheck = false;
+			break;
+		  }
+	  }
+	  if (duplicateCheck) {
+		  ResolveChoice(0);
+		  return;
+	  }
+  }
+
+  //note that the AI selection occurs BEFORE autoselecting from a single option
+  //this is because the AI may be specifically waiting to take an action/choice
+  //and be confused when that option is not offered to it
   if (activePlayer.AI != null) {
     //active player is AI controlled
     try {
@@ -717,7 +757,6 @@ function MakeChoice() {
 
   //accessing archives (for usability)
   if (
-    accessList.length > 0 &&
     attackedServer == corp.archives &&
     typeof phaseOptions.access !== "undefined"
   ) {

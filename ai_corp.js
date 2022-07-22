@@ -282,8 +282,29 @@ class CorpAI {
         }
       }
     }
-    //other than that, whatever for now
+    //other than that, use common what's-the-best-card-to-keep code to remove cards from discard list
+	while (optionList.length > minCount) optionList.splice(optionList.indexOf(this._bestNonAgendaTutorOption(optionList)), 1); //the 1 means remove 1 card
+	//the worst-cards-to-keep are left now, return them
     return optionList;
+  }
+  
+  //this may modify the input array but accept the return value to guarantee modification
+  //reduces optionList to the one we want most to return to RnD
+  _reduceOptionsToBestCardToReturnToRnD(
+    optionList
+  ) {
+	var logStart = "Best card to return to R&D from "+JSON.stringify(CardsInOptionList(optionList));
+	//if HQ is not protected or there is more than one agenda in hand, return agendas to R&D
+	var returnAgendasToRnD = false;
+	if ( this._agendasInHand() > 1 || this._serverToProtect() == corp.HQ ) returnAgendasToRnD = true;
+	if (returnAgendasToRnD) {
+		for (var i=0; i<optionList.length; i++) {
+			if (optionList[i].card.cardType == 'agenda') optionList = [optionList[i]];
+		}
+	}
+	if (optionList.length > 1) optionList = this._reducedDiscardList(optionList, 1);
+	this._log(logStart+" is "+optionList[0].card.title);
+	return optionList;
   }
 
   _bestDiscardOption(optionList) {
@@ -326,6 +347,20 @@ class CorpAI {
 	return ret;
   }
   
+  //return option of best economy card in source option list
+  //or null if no economy option found
+  _bestEconomyCardOption(optionList) {
+	var economyCards = this._economyCards();
+	for (var i=0; i<economyCards.length; i++) {
+		for (var j=0; j<optionList.length; j++) {
+			if (optionList[j].card) {
+				if (economyCards[i] == optionList[j].card.title) return optionList[j];
+			}
+		}
+	}
+	return null;
+  }
+
   //returns the option or null if not found
   _firstOptionWithCard(optionList, card) {
 	for (var i=0; i<optionList.length; i++) {
@@ -354,6 +389,11 @@ class CorpAI {
 	}
 	if (opportunityCards.length > 0) return this._firstOptionWithCard(optionList,this._highestELO(opportunityCards));
 	if (onlyTheBest) return null;
+	//if economy isn't looking too good, choose an econ card
+	if (!this._sufficientEconomy()) {
+		var bestEconomyOption = this._bestEconomyCardOption(optionList);
+		if (bestEconomyOption) return bestEconomyOption;
+	}
 	//if no affordable ice in hand, choose ice
 	var cardList = [];
 	for (var i=0; i<optionList.length; i++) {
@@ -484,17 +524,20 @@ class CorpAI {
     return ret;
   }
 
+  //optionally, specific an array of cards to ignore 
+  //returns int
   _agendasInServer(
-    server //returns int
+    server,
+    ignoreCards=[]
   ) {
 	if (!server) return 0;
     var ret = 0;
     for (var i = 0; i < server.root.length; i++) {
-      if (CheckCardType(server.root[i], ["agenda"])) ret++;
+      if (CheckCardType(server.root[i], ["agenda"]) && !ignoreCards.includes(server.root[i])) ret++;
     }
     if (typeof server.cards !== "undefined") {
       for (var i = 0; i < server.cards.length; i++) {
-        if (CheckCardType(server.cards[i], ["agenda"])) ret++;
+        if (CheckCardType(server.cards[i], ["agenda"]) && !ignoreCards.includes(server.cards[i])) ret++;
       }
     }
     return ret;
@@ -554,8 +597,9 @@ class CorpAI {
 	  return null;
   }
 
-  _agendasInHand() { //returns int
-    return this._agendasInServer(corp.HQ);
+  //optionally, specific an array of cards to ignore 
+  _agendasInHand(ignoreCards=[]) { //returns int
+    return this._agendasInServer(corp.HQ,ignoreCards);
   }
 
   _faceDownCardsOrAgendasExistInArchives() {
@@ -581,6 +625,19 @@ class CorpAI {
 	return advlim;
   }
 
+  _remoteServerWithHighestIceAndRootProtection() {
+	var ret = null;
+	var highestIARP = 0;
+	for (var i=0; i<corp.remoteServers.length; i++) {
+		var thisIARP = this._iceAndRootProtection(corp.remoteServers[i]);
+		if (thisIARP > highestIARP) {
+			highestIARP = thisIARP;
+			ret = corp.remoteServers[i];
+		}
+	}
+	return ret;
+  }
+
   _obsoleteBluff(card) {
     //if it's an ambush then no need to keep it if it is known or no longer a meaningful bluff
     if (CheckSubType(card, "Ambush") && CheckCardType(card, ["asset"])) {
@@ -590,12 +647,20 @@ class CorpAI {
     //other assets are worth less if they have been around while or there are lots of agendas in hand
 	if (typeof(card.AITurnsInstalled) !== 'undefined') {
 		var agendasInHand = this._agendasInHand();
-		if ( (agendasInHand > 0)&&(corp.HQ.cards.length - this._agendasInHand() < card.AITurnsInstalled) ) {
-		  if (!CheckSubType(card, "Hostile") && CheckCardType(card, ["asset"]))
-			//but not if it has credits left
+		var agingFactor = card.AITurnsInstalled - 2; //arbitrary, test and tweak
+		if (card.AIAvoidInstallingOverThis) agingFactor -= 4; //arbitrary, test and tweak
+		if ( (agendasInHand > 0)&&(corp.HQ.cards.length - this._agendasInHand() < agingFactor) ) {
+		  if (!CheckSubType(card, "Hostile") && CheckCardType(card, ["asset"])) {
+			//most assets will still be overwritten if critical
+			//(i.e. stop clogging up the strongest scoring server
+			if (this._remoteServerWithHighestIceAndRootProtection() == GetServer(card)) return true;
+			//check if it has AIAvoidInstallingOverThis: true
+			if (card.AIAvoidInstallingOverThis) return false;
+			//check if it has credits left
 			if (!CheckCounters(card, "credits", 1)) {
 				return true;
 			}
+		  }
 		}
 	}
     return false;
@@ -716,6 +781,17 @@ class CorpAI {
 	}
     return ret;
   }
+  
+  _iceAndRootProtection(server) {
+	var ret = 0;
+    for (var i = 0; i < server.ice.length; i++) {
+      ret += this._cardProtectionValue(server.ice[i]);
+    }
+    for (var i = 0; i < server.root.length; i++) {
+      ret += this._cardProtectionValue(server.root[i]);
+    }
+	return ret;
+  }
 
   _protectionScore(
     server, //higher number = more protected
@@ -733,13 +809,8 @@ class CorpAI {
     var ret = 0;
 	//servers with obsolete bluffs get bonus protection score (they don't really need protecting)
 	if (this._obsoleteBluffInstalledInServer(server)) ret += 5; //the value is arbitrary, test and tweak
-	//protection score depends on ice protecting
-    for (var i = 0; i < server.ice.length; i++) {
-      ret += this._cardProtectionValue(server.ice[i]);
-    }
-    for (var i = 0; i < server.root.length; i++) {
-      ret += this._cardProtectionValue(server.root[i]);
-    }
+	//protection score depends on ice and upgrades protecting
+	ret += this._iceAndRootProtection(server);
 	if (!options.ignoreSuccessfulRuns) {
 		//if it is being run successfully a lot, need extra protection
 		var successfulRuns = 0;
@@ -754,6 +825,12 @@ class CorpAI {
 	if (server == corp.archives && !archivesIsBackdoorToHQ) ret += 3; //archives (the 3 is arbitrary)
 	//if it is HQ (or backdoor), increase or decrease priorisation based on agenda points compared to cards in hand
 	if (server == corp.HQ || (server == corp.archives && archivesIsBackdoorToHQ) ) ret += corp.HQ.cards.length - this._agendaPointsInServer(corp.HQ) - 2.5; //the subtracted value is arbitrary (with 2 the AI was underprotective of HQ)
+	//if it is R&D and there is a Conduit, need more protection
+	if (server == corp.RnD) {
+	  var conduit = this._copyOfCardExistsIn("Conduit",runner.rig.programs);
+	  //the numbers are arbitrary but basically a bit for each counter and some for existing at all
+	  if (conduit) ret -= 0.5 * Counters(conduit,"virus") + 2.5;
+	}
 	if (options.returnArchivesLowerScoreForHQIfBackdoor) {
 		//if it is HQ we will return the lowest protection of either HQ or Archives
 		if (server == corp.HQ && archivesIsBackdoorToHQ) {
@@ -762,6 +839,18 @@ class CorpAI {
 		}
 	}
     return ret;
+  }
+  
+  //returns true if we don't want to add more protection to this server
+  _NoMoreProtectionForThisServer(server) {
+	if (!server) return false;
+	//for now we'll just use this check to limit AIAvoidInstallingOverThis asset protection to 1 ice
+	for (var i=0; i<server.root.length; i++) {
+	  if ( server.root[i].cardType == "asset" && server.root[i].AIAvoidInstallingOverThis && server.ice.length > 0 ) {
+		return true;
+	  }
+	}
+	return false; //usually we are ok with adding more ice	  
   }
 
   _serverToProtect(
@@ -792,7 +881,7 @@ class CorpAI {
         protectionScores[corp.remoteServers[i].serverName] -=
           this._agendasInHand(); //scoring servers need more protection than other remotes (and the more agendas in hand, the more need to strengthen them
       if (
-        protectionScores[corp.remoteServers[i].serverName] < protectionScore
+        protectionScores[corp.remoteServers[i].serverName] < protectionScore && !this._NoMoreProtectionForThisServer(corp.remoteServers[i])
       ) {
         serverToProtect = corp.remoteServers[i];
         protectionScore = protectionScores[corp.remoteServers[i].serverName];
@@ -864,7 +953,9 @@ class CorpAI {
     return ret;
   }
 
-  _nonEmptyProtectedRemotes() { //returns a list of remote servers which are not empty (contain an asset or agenda) and have ice in front
+  //returns a list of remote servers which are not empty (contain an asset or agenda) and have ice in front
+  //note that the nature and age of the assets is not considered (e.g. it may have an obsolete bluff)
+  _nonEmptyProtectedRemotes() {
     //results are in no particular order
     var ret = [];
     for (var i = 0; i < corp.remoteServers.length; i++) {
@@ -983,7 +1074,9 @@ class CorpAI {
     var cards = [];
     for (var i = 0; i < optionList.length; i++) {
       if (typeof optionList[i].card !== "undefined") {
-        if (!cards.includes(optionList[i].card)) cards.push(optionList[i].card);
+        if (!cards.includes(optionList[i].card)) {
+			cards.push(optionList[i].card);
+		}
       }
     }
     //now rank them
@@ -993,14 +1086,32 @@ class CorpAI {
         if (
           optionList[i].card == rankedInstallOptions[j].cardToInstall &&
           optionList[i].server == rankedInstallOptions[j].serverToInstallTo
-        )
+        ) {
           return i;
+		}
       }
     }
 	//no desirable option
     return -1;
   }
 
+  //array of titles of economy cards
+  _economyCards(affordableOnly=false) {
+	var economyCards = [];
+	if (!affordableOnly || corp.creditPool >= 3) economyCards.push("Celebrity Gift"); //we have this first because playing other cards first would reduce cards in hand
+    if (!affordableOnly || corp.creditPool >= 10) economyCards.push("Government Subsidy");
+    if (!affordableOnly || corp.creditPool >= 5) economyCards.push("Hedge Fund");
+    if ( (!affordableOnly || corp.creditPool >= 5) && (this._agendasInHand() < corp.HQ.cards.length - 1) )
+      economyCards.push("Hansei Review"); //only if there is at least 1 non-agenda card (other than this) in HQ
+    if (!affordableOnly || corp.creditPool >= 2) economyCards.push("Marilyn Campaign");
+    if (!affordableOnly || corp.creditPool >= 3) economyCards.push("Regolith Mining License");
+    if (!affordableOnly || corp.creditPool >= 2) economyCards.push("Nico Campaign");
+    if (!affordableOnly || corp.creditPool >= 2) economyCards.push("PAD Campaign");
+    if (corp.creditPool < corp.HQ.cards.length) economyCards.push("Predictive Planogram"); //simple check whether to use for econ or save for draw
+	return economyCards;
+  }
+
+  //enact best economy (called from main phase)
   _bestMainPhaseEconomyOption(optionList) {
     //if a click economy ability exists, use that
     if (optionList.indexOf("trigger") > -1) {
@@ -1018,19 +1129,7 @@ class CorpAI {
     //could implement these on-card instead? (e.g. as AIEconomyCard) and move the check functions to there or Enumerate
     var canPlay = optionList.indexOf("play") > -1;
     var canInstall = optionList.indexOf("install") > -1;
-    var economyCards = [];
-	economyCards.push("Celebrity Gift"); //we have this first because playing other cards first would reduce cards in hand
-    economyCards.push("Government Subsidy");
-    economyCards.push("Hedge Fund");
-    if (this._agendasInHand() < corp.HQ.cards.length - 1)
-      economyCards.push("Hansei Review"); //only if there is at least 1 non-agenda card (other than this) in HQ
-    economyCards.push("Marilyn Campaign");
-    //if (emptyProtectedRemotes.length > 0 || this._clicksLeft() > 1)
-      economyCards.push("Regolith Mining License"); //regolith is only of value if there will be an opportunity to use it? disabled that proviso for now since trash cost is fairly high
-    economyCards.push("Nico Campaign");
-    economyCards.push("Melange Mining Corp.");
-    economyCards.push("PAD Campaign");
-    economyCards.push("Predictive Planogram");
+    var economyCards = this._economyCards();
 
     for (var j = 0; j < economyCards.length; j++) {
       for (var i = 0; i < corp.HQ.cards.length; i++) {
@@ -1141,6 +1240,8 @@ class CorpAI {
 
 	  drawCards.push("Spin Doctor");
       drawCards.push("Sprint");
+	  drawCards.push("Daily Business Show");
+	  if (corp.HQ.cards.length < corp.creditPool) drawCards.push("Predictive Planogram"); //simple check whether to use for draw or save for econ
 
 	  //maybe something to rez
       if (optionList.includes("rez")) {
@@ -1296,7 +1397,7 @@ class CorpAI {
 	var strongestEmptyRemote = null;
     var emptyProtectedRemotes = this._emptyProtectedRemotes(); //sorted strongest protection first
 	if (emptyProtectedRemotes.length > 0) strongestEmptyRemote = emptyProtectedRemotes[0];
-
+	
 	//Check for this-turn win conditions
 	var potentialAdvancement = this._potentialAdvancement(null,true);
 	//check for cards in hand that could be installed and fast-advanced to win
@@ -1337,13 +1438,16 @@ class CorpAI {
       }
     }
 
+	//An economy check used to prioritise whether to install ice (the 4 is arbitrary)
+	var iceInstallEconomyCheck = this._sufficientEconomy(false, 4);
+
     //Find out if any servers need protection. If so, we will choose an ice card if possible.
     var serverToInstallTo = this._serverToProtect();
     if (
       this._unrezzedIce(serverToInstallTo).length == 0 ||
-      this._sufficientEconomy(false, 4)
+      iceInstallEconomyCheck
     ) {
-      //this is our worst-protected server. if the server already has unrezzed ice, let's not install ice unless super rich (the 4 is arbitrary)
+      //this is our worst-protected server. if the server already has unrezzed ice, let's not install ice unless we have economy
       //prioritise placing ice that I can afford to rez (for now we make no effort to sort them)
 	  ret = ret.concat(this._iceInstallOptions(serverToInstallTo, cards, priorityOnly));
     }
@@ -1364,15 +1468,14 @@ class CorpAI {
 		} else if (CheckCardType(cards[i], ["asset"])) {
 		  //if installing from archives, creating a new server is fine (what's to lose? uh except: when needed, add an exception for 'trashed while being accessed' cards)
 		  var assetDestinations = emptyProtectedRemotes;
-		  if (cards[i].cardLocation == corp.archives.cards) assetDestinations = assetDestinations.concat([null]);
-		  //loop through unlikely scoring servers (in order from strongest to weakest)
+		  if (assetDestinations.length < 2) {
+			if (cards[i].cardLocation == corp.archives.cards || cards[i].cardLocation == corp.resolvingCards) assetDestinations = assetDestinations.concat([null]);
+		  }
+		  //loop through empty remotes in random order (skip strongest empty remote)
+		  Shuffle(assetDestinations);
 		  for (var j = 0; j < assetDestinations.length; j++) {
 			serverToInstallTo = assetDestinations[j];
-			if (!this._isAScoringServer(serverToInstallTo)) {
-			  serverToInstallTo =
-				assetDestinations[
-				  RandomRange(0, assetDestinations.length - 1)
-				]; //just whatever for now
+			if (serverToInstallTo != strongestEmptyRemote) {
 			  intoServerOptions.push({
 				cardToInstall: cards[i],
 				serverToInstallTo: serverToInstallTo,
@@ -1417,7 +1520,11 @@ class CorpAI {
     serverToInstallTo = null;
     if (emptyProtectedRemotes.length > 0)
       serverToInstallTo = this._serverToProtect();
-	ret = ret.concat(this._iceInstallOptions(serverToInstallTo, cards, priorityOnly));
+    //but don't create a new server if the above economy check failed
+	//because we might be saving to afford better ice in critical server
+	if (serverToInstallTo != null || iceInstallEconomyCheck) {
+	  ret = ret.concat(this._iceInstallOptions(serverToInstallTo, cards, priorityOnly));
+	}
 	
 	//or even maybe...these?
 	var snare = this._copyOfCardExistsIn("Snare!",cards);
@@ -1774,6 +1881,7 @@ class CorpAI {
         "Melange Mining Corp.",
         "PAD Campaign",
         "Clearinghouse",
+		"Daily Business Show",
       ];
       for (var i = 0; i < cardsToRezEOT.length; i++) {
         var copyOfCard = this._copyOfCardExistsIn(

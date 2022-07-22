@@ -25,7 +25,6 @@ var forceNextIce = null; //if not null, next approach is to this ice index
 var encountering = false; //if encountering ice
 var movement = false; //if in movement phase
 var subroutine = -1; //for resolving subroutines
-var accessList = []; //list of cards to access (runner chooses which order to resolve access, except for HQ which is random and RnD which is in order)
 var accessedCards = {root: [], cards: []}; //these cards can no longer be access candidates during this breach
 var accessingCard = null; //card being accessed
 var autoAccessing = false; //used to simplify accessing lots of cards in archives
@@ -1333,8 +1332,10 @@ function TutorialMessage(message, prompt = false, callback=null) {
 function NicelyFormatCommand(cmdstr) {
   //console.log(cmdstr+" at "+currentPhase.identifier);
   if (cmdstr == "n") {
-    if (accessList.length > 1) cmdstr = "Next";
-    else if (accessingCard != null) cmdstr = "End";
+	if (currentPhase.identifier == "Run Accessing") {
+      if (ChoicesAccess().length > 0) cmdstr = "Next";
+      else cmdstr = "End";
+	}
     else if (currentPhase.title == "Trash Before Install") {
       cmdstr = "Finish install (trash no more cards)";
     } else if (currentPhase.identifier == "Run 2.1") {
@@ -1390,6 +1391,7 @@ var mainLoopDelay = 350;
 function Main() {
   var optionList = EnumeratePhase();
   var chosenCommand = null;
+
   var autoExecute = optionList.length == 1;
   if (autoExecute && currentPhase.requireHumanInput && activePlayer.AI == null)
     autoExecute = false; //special case if active player is human-controlled
@@ -1446,6 +1448,14 @@ function ExecuteChosen(chosenCommand) {
 	  if (oldFooterText == "Choose card to move from") footerText = oldFooterText;
 	  if (oldFooterText == "Choose card to reveal") footerText = oldFooterText;
 	  if (oldFooterText == "Drag card to install") footerText = oldFooterText;
+	  
+	  //may be defined specifically by phase footerText
+	  //does not override the above options
+	  if (footerText == "") {
+		if (typeof currentPhase.footerText != 'undefined') {
+		  footerText = currentPhase.footerText;
+		}
+	  }
     }
 
     $("#footer").html("<h2>" + footerText + "</h2>");

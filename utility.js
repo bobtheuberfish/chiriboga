@@ -877,9 +877,11 @@ function MaxHandSize(player) {
  *
  * @method BasicActionDraw
  * @param {Player} player to perform draw for
+ * @param {function()} [afterDraw] called after drawing is complete (even if no cards are drawn)
+ * @param {Object} [context] for afterDraw
  * @returns {int} number of cards drawn (including effects)
  */
-function BasicActionDraw(player) {
+function BasicActionDraw(player, afterDraw, context) {
   var num = 1;
   if (player == corp)
     num += ModifyingTriggers("modifyBasicActionCorpDraw", num, 0);
@@ -887,7 +889,7 @@ function BasicActionDraw(player) {
   else if (player == runner)
     num += ModifyingTriggers("modifyBasicActionRunnerDraw", num, 0); //lower limit of 0 means the total will not be any lower than 1
   SpendClicks(player, 1);
-  return Draw(player, num);
+  return Draw(player, num, afterDraw, context);
 }
 
 /**
@@ -1009,12 +1011,13 @@ function Shuffle(array) {
 }
 
 /**
- * Create list of cards that will be accessed when a run is successful.<br/>No return value, writes to accessList.<br/>No checks are performed or payments made.<br/>Nothing is logged.
+ * List of cards to choose from to access.<br/>Returns array of cards.<br/>No checks are performed or payments made.<br/>Nothing is logged.
  *
- * @method CreateAccessCardList
+ * @method AccessCardList
  */
-function CreateAccessCardList() {
-  accessList = [];
+function AccessCardList(shuffleHQ=false) {
+  if (!attackedServer) return [];
+  var ret = [];
   var num = 0;
   //first, check if central server - each has special rules for how many from .cards
   if (typeof attackedServer.cards != 'undefined') {
@@ -1025,7 +1028,7 @@ function CreateAccessCardList() {
 		num = attackedServer.cards.length;
 	  } else if (attackedServer == corp.HQ) {
 		//HQ: access 1 (+ effects) at random
-		Shuffle(corp.HQ.cards);
+		if (shuffleHQ) Shuffle(corp.HQ.cards);
 		num = 1 + additional;
 	  } else if (attackedServer == corp.RnD) num = 1 + additional; //RnD: access 1 (+ effects)
 	  //take into account accesses that have already happened
@@ -1035,32 +1038,31 @@ function CreateAccessCardList() {
 		for (var i = 0; i < num; i++) {
 		  var cardIndex = attackedServer.cards.length - i - 1;
 		  if (!accessedCards.cards.includes(attackedServer.cards[cardIndex])) {
-			  accessList.push(attackedServer.cards[cardIndex]); //card move triggers not required, this is just a reference list (copy) not move
+			  ret.push(attackedServer.cards[cardIndex]); //card move triggers not required, this is just a reference list (copy) not move
 			  if (attackedServer == corp.archives)
 				attackedServer.cards[cardIndex].faceUp = true;
 		  }
 		  else {
 			  //invalid candidate, try next card
-			  if (num < attackedServer.cards.length - 1) num++;
+			  if (num < attackedServer.cards.length) num++;
 		  }
 		}
 	  }
 	  //now some usability and AI code
 	  if (attackedServer == corp.HQ) {
-		if (runner.AI != null) runner.AI.GainInfoAboutHQCards(accessList); //an obvious limitation here is that the cards will be known before accessing all cards...slight cheat
-		Shuffle(corp.HQ.cards); //this is unnecessary (it's after making the list) but is a better visualisation of randomness
+		if (runner.AI != null) runner.AI.GainInfoAboutHQCards(ret); //an obvious limitation here is that the cards will be known before accessing all cards...slight cheat
+		if (shuffleHQ) Shuffle(corp.HQ.cards); //this is unnecessary (it's after making the list) but is a better visualisation of randomness
 	  }
   }
   //for all servers, access all cards in root (except cards that have already been accessed)
   for (var i = 0; i < attackedServer.root.length; i++) {
-    if (!accessedCards.root.includes(attackedServer.root[i])) accessList.push(attackedServer.root[i]); //card move triggers not required, this is just a reference list (copy) not move
+    if (!accessedCards.root.includes(attackedServer.root[i])) ret.push(attackedServer.root[i]); //card move triggers not required, this is just a reference list (copy) not move
   }
   //prepare the cards for access
-  for (var i = 0; i < accessList.length; i++) {
-    if (accessList[i].renderer.zoomed) accessList[i].renderer.ToggleZoom();
+  for (var i = 0; i < ret.length; i++) {
+    if (ret[i].renderer.zoomed) ret[i].renderer.ToggleZoom();
   }
-  //under current implementation, the currently accessed card is also on the list
-  if (accessingCard && !accessList.includes(accessingCard)) accessList = [accessingCard].concat(accessList);
+  return ret;
 }
 
 /**
@@ -1074,50 +1076,20 @@ function AccessAllInArchives() {
 }
 
 /**
- * Called after access of a card is completed.<br/>Changes phase ready to access next card, or IncrementPhase.<br/>Nothing is logged.
+ * Called after access of a card is completed.<br/>Does not change phase.
  *
  * @method ResolveAccess
- * @param {Card[]} originalLocation where the card was originally located
- * @returns {Card} the card that was accessed
  */
-function ResolveAccess(originalLocation) {
-  if (originalLocation != corp.HQ.cards) accessingCard.knownToRunner = true;
+function ResolveAccess() {
+  if (!accessingCard) return; //already done
+  if (accessingCard.cardLocation != corp.HQ.cards) accessingCard.knownToRunner = true;
   var ret = accessingCard;
-  var ioac = accessList.indexOf(accessingCard);
-  if (ioac > -1) accessList.splice(ioac, 1);
+  //if the accessed card is (not was) in R&D then hide it until accessing is all done (this avoid frustrating blocking of cards underneath)
+  if (accessingCard.cardLocation == corp.RnD.cards) accessingCard.renderer.sprite.visible = false;
+  AutomaticTriggers("cardAccessComplete", accessingCard);
+  if (accessingCard.renderer.zoomed) accessingCard.renderer.ToggleZoom();
   accessingCard = null;
-  AutomaticTriggers("cardAccessComplete", ret);
-  if (ret.renderer.zoomed) ret.renderer.ToggleZoom();
-  if (accessList.length > 0) {
-    //still cards to access
-    //if the accessed card is (not was) in R&D then hide it until accessing is all done (this avoid frustating blocking of cards underneath)
-    if (ret.cardLocation == corp.RnD.cards) ret.renderer.sprite.visible = false;
-    var choices = ChoicesAccess();
-    if (autoAccessing) choices = [choices[0]];
-    var decisionPhase = DecisionPhase(
-      runner,
-      choices,
-      function (params) {
-        accessingCard = params.card;
-        ChangePhase(phases.runAccessingCard);
-      },
-      null,
-      "Access",
-      this,
-      "access"
-    );
-    decisionPhase.chosenString = "accessed";
-  } //all cards have been accessed
-  else {
-    //make all R&D cards visible (in case they were hidden during multi-access)
-    for (var i = 0; i < corp.RnD.cards.length; i++) {
-      corp.RnD.cards[i].renderer.sprite.visible = true;
-    }
-    //end accessing phase
-    autoAccessing = false;
-    IncrementPhase();
-  }
-  return ret;
+  phases.runAccessingCard.requireHumanInput=false; //automatically fire n when it comes up
 }
 
 /**
@@ -1298,11 +1270,15 @@ function MoveCardTriggers(card, locationfrom, locationto) {
 	//update run calculation, if affected
 	if (runner.AI && attackedServer) {
 		if (locationfrom == attackedServer.root) runner.AI.RecalculateRunIfNeeded();
-	}
+	}	
   }
   
-  //do this last because above parts use it as it was
+  //the above parts use cardLocation as it was
   card.cardLocation = locationto;
+
+  //once a card being accessed moves to another zone, the access ends immediately. (NRDB Q&A for NBN:Reality Plus)
+  //we do this last because it uses the new cardLocation
+  if (card==accessingCard && locationfrom !== locationto) ResolveAccess();
 }
 /**
  * Move a card by index.<br/>Nothing is logged.
@@ -1342,7 +1318,7 @@ function MoveCardByIndex(i, locationfrom, locationto, position = null) {
  * @method MoveCard
  * @param {Card} card card object to move
  * @param {Card[]} locationto destination array (can be null)
- * @param {int} [position] insert ice at the given position (null will install outermost)
+ * @param {int} [position] insert card at the given position (null will install outermost)
  * @returns {Boolean} true if found and moved, false if not found (or if both locations null)
  */
 function MoveCard(card, locationto, position = null) {
@@ -2286,12 +2262,13 @@ function ChoicesTriggerableAbilities(player, limitTo = "") {
 }
 
 /**
- * Gets choices of card to access from accessList<br/>Nothing is logged.
+ * Gets choices of card to access from server<br/>Nothing is logged.
  * @method ChoicesAccess
  * @returns {Params[]} array of {card,label}
  */
 function ChoicesAccess() {
   var ret = [];
+  var accessList = AccessCardList();
   for (var i = 0; i < accessList.length; i++) {
     var accessTitle = GetTitle(accessList[i], true);
     if (viewingPlayer === runner) accessTitle = GetTitle(accessList[i]); //i.e. don't hide the name
@@ -2338,6 +2315,12 @@ function CamelToSentence(src) {
  * @returns {Phase} the pseudophase created
  */
 function TriggeredResponsePhase(player, callbackName, enumerateParams, afterOpportunity, title, historyBreak=null) {
+  //skip this whole thing if it would trigger nothing
+  if (ChoicesActiveTriggers(callbackName).length < 1) {
+	  if (typeof afterOpportunity == 'function') afterOpportunity();
+	  return;
+  }
+  //implement pseudophase
   var printableCallbackName = CamelToSentence(callbackName);
   if (typeof title !== "undefined") printableCallbackName = title;
   var responsePhase = CreatePhaseFromTemplate(
@@ -3012,7 +2995,7 @@ function DeckBuild(
 	  //other cards (this currently includes, by concatenation of the previous arrays, extras of all the previous non-agenda cards too)
 	  var otherCards = economyCards.concat(iceCards); //so be careful not to include cards both here AND above or you'll get 4+ copies sometimes
 	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30058, 30061, 30066]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048, 31049, 31053, 31054, 31058, 31059]);
+	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048, 31049, 31053, 31054, 31058, 31059, 31063]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,

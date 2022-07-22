@@ -331,7 +331,9 @@ function BuildGlobalTriggerList() {
             triggerName +
             " on " +
             GetTitle(initialList[i].card) +
-            " should not be automatic"
+            " should not be automatic (it fires " +
+			currentPhase.triggerCallbackName +
+			" which might require a decision)"
         );
         //and avoid crash by moving the trigger to the proper list (this is not expected to behave properly)
         currentPhase = oldPhase;
@@ -438,6 +440,7 @@ phaseTemplates.globalTriggers = {
 	//log run end
 	if (currentPhase.identifier == "Run 6.4") {
 		Log("Run ends");
+		accessedCards = {root: [], cards: []};
 	}
   },
   Enumerate: {
@@ -499,7 +502,7 @@ phaseTemplates.globalTriggers = {
       var choices = [{}]; //assume valid by default
       if (typeof triggerCallback.Enumerate === "function")
         choices = triggerCallback.Enumerate.apply(card,currentPhase.triggerEnumerateParams);
-      DecisionPhase(
+      var decisionPhase = DecisionPhase(
         card.player,
         choices,
         triggerCallback.Resolve,
@@ -507,6 +510,8 @@ phaseTemplates.globalTriggers = {
         instruction,
         card
       );
+	  if (typeof triggerCallback.footerText !== "undefined")
+		decisionPhase.footerText = triggerCallback.footerText;
     },
     n: function (params) {
     	//if a card was specified, at the moment the only reason a breach replacement
@@ -712,7 +717,7 @@ phases.corpStartDraw = CreatePhaseFromTemplate(
   null
 );
 phases.corpStartDraw.historyBreak = {
-  title: "Corporation's Turn Begins",
+  title: "Corporation's Draw Phase",
   style: "small",
 };
 
@@ -733,11 +738,12 @@ phases.corpEndDraw = {
   identifier: "Corp 1.3",
   Init: function () {
     SetHistoryThumbnail("Corp_back.png", "Draw");
-    Draw(corp, 1);
   }, //auto-draw
   Resolve: {
     n: function () {
-      IncrementPhase();
+      Draw(corp, 1, function(){
+        IncrementPhase();
+	  },this);
     },
   },
 };
@@ -854,9 +860,10 @@ phases.corpActionMain = {
   Resolve: {
     draw: function () {
       SetHistoryThumbnail("Corp_back.png", "Draw");
-      BasicActionDraw(corp);
-	  //next phase will be undefined if the Corp lost by attempting to draw from empty R&D
-      if (typeof currentPhase.next != 'undefined') IncrementPhase();
+      BasicActionDraw(corp, function() {
+		  //next phase will be undefined if the Corp lost by attempting to draw from empty R&D
+		  if (typeof currentPhase.next != 'undefined') IncrementPhase();
+	  });
     },
     gain: function () {
       SetHistoryThumbnail("credit.png", "Gain");
@@ -989,7 +996,7 @@ phases.corpDiscardStart = CreatePhaseFromTemplate(
   null
 );
 phases.corpDiscardStart.historyBreak = {
-  title: "Corporation's Turn Ends",
+  title: "Corporation's Discard Phase",
   style: "small",
 };
 
@@ -1035,15 +1042,17 @@ phases.runnerTurnBegin = CreatePhaseFromTemplate(
 );
 phases.runnerTurnBegin.triggerCallbackName = "runnerTurnBegin";
 
-//Take action (should only ever be here if there is at least one click remaining)
+//Take action
 phases.runnerActionMain = {
   player: runner,
   title: "Runner's Action Phase",
   identifier: "Runner 1.3",
   Enumerate: {
     draw: function () {
-      if (runner.stack.length < 1) return [];
-      return [{}];
+      if (runner.stack.length > 0) {
+		if (CheckActionClicks(runner, 1)) return [{}];
+	  }
+	  return [];
     },
     install: function () {
       if (CheckActionClicks(runner, 1)) {
@@ -1332,21 +1341,17 @@ phases.runSuccessful = CreatePhaseFromTemplate(
 phases.runSuccessful.triggerCallbackName = "runSuccessful";
 phases.runSuccessful.text.n = "Breach";
 
-//Run: runner breaches server to access cards from accessList (Nisei 2021 5.2)
+//Run: runner breaches server to access cards (Nisei 2021 5.2)
 phases.runBreachServer = {
   player: runner,
   title: "Run: Breach", //was 'Access' (i.e. access cards in server) but Nisei changed it so it's not confused with each individual access
   identifier: "Run 5.2",
-  Init: function () {
-	accessedCards = {root: [], cards: []};
-    CreateAccessCardList();
-  },
   Enumerate: {
     access: function () {
-      return ChoicesAccess();
+      return ChoicesAccess(true); //the true shuffles HQ (if this server is HQ)
     },
     n: function () {
-      if (accessList.length < 1) return [{}];
+      if (ChoicesAccess().length < 1) return [{}];
       return [];
     },
   },
@@ -1368,9 +1373,7 @@ phases.runAccessingCard = {
   requireHumanInput: true,
   title: "Run: Access",
   identifier: "Run Accessing",
-  storedAccessZone: null,
   Init: function () {
-	this.storedAccessZone = accessingCard.cardLocation;
 	//add to accessed list to prevent accessing it a second time
     if (accessingCard.cardLocation == attackedServer.root) accessedCards.root.push(accessingCard);
 	else accessedCards.cards.push(accessingCard);
@@ -1389,14 +1392,9 @@ phases.runAccessingCard = {
 	//and the non-automatic triggers
     TriggeredResponsePhase(playerTurn, "accessed", [], function () {});
   },
-  PreEnumerate: function() {
-	  //refresh accessList in case the candidates have changed
-	  CreateAccessCardList();
-  },
-  //Notice the checks for card moved: once a card being accessed moves to another zone, the access ends immediately. (NRDB Q&A for NBN:Reality Plus)
   Enumerate: {
     trash: function () {
-	  if (accessingCard.cardLocation != this.storedAccessZone) return [];
+	  if (!accessingCard) return [];
       if (CheckTrash(accessingCard)) {
 		//this option is only available if the card has a printed trash cost
         if (typeof accessingCard.trashCost != "undefined") {
@@ -1414,16 +1412,17 @@ phases.runAccessingCard = {
       return [];
     },
     steal: function () {
-	  if (accessingCard.cardLocation != this.storedAccessZone) return [];
+	  if (!accessingCard) return [];
       if (CheckSteal()) return [{}];
       return [];
     },
     trigger: function () {
-	  if (accessingCard.cardLocation != this.storedAccessZone) return [];
+	  if (!accessingCard) return [];
       return ChoicesTriggerableAbilities(runner, "access"); //access abilities only
     },
     n: function () {
-	  if (accessingCard.cardLocation != this.storedAccessZone) {
+	  if (!accessingCard) {
+		  //card no longer being accessed, move on
 		  return [{}];
 	  }
       if (CheckSteal()) return [];
@@ -1451,7 +1450,36 @@ phases.runAccessingCard = {
       TriggerAbility(params.card, params.ability);
     },
     n: function () {
-      ResolveAccess(accessingCard.cardLocation);
+      ResolveAccess(); //has an internal check so will not double-resolve if it has already been done
+	  //prepare for next access, if relevant
+	  var choices = ChoicesAccess(true); //the true shuffles HQ (if this server is HQ)
+	  if (choices.length > 0) {
+	    //still cards to access
+		if (autoAccessing) choices = [choices[0]];
+		var decisionPhase = DecisionPhase(
+		  runner,
+		  choices,
+		  function (params) {
+			accessingCard = params.card;
+			phases.runAccessingCard.requireHumanInput=true; //default state
+			ChangePhase(phases.runAccessingCard);
+		  },
+		  null,
+		  "Access",
+		  this,
+		  "access"
+		);
+		decisionPhase.chosenString = "accessed";
+	  } //all cards have been accessed
+	  else {
+		//make all R&D cards visible (in case they were hidden during multi-access)
+		for (var i = 0; i < corp.RnD.cards.length; i++) {
+		  corp.RnD.cards[i].renderer.sprite.visible = true;
+		}
+		//end accessing phase
+		autoAccessing = false;
+		IncrementPhase();
+	  }
     },
   },
 };
@@ -1521,7 +1549,7 @@ phases.runnerDiscardStart = CreatePhaseFromTemplate(
   null
 );
 phases.runnerDiscardStart.historyBreak = {
-  title: "Runner's Turn Ends",
+  title: "Runner's Discard Phase",
   style: "small",
 };
 

@@ -183,10 +183,9 @@ function Trash(card, canBePrevented, afterTrashing, context) {
  */
 function TrashAccessedCard(canBePrevented) {
   if (PlayerCanLook(corp, accessingCard)) accessingCard.faceUp = true;
-  var originalLocation = accessingCard.cardLocation;
   SetHistoryThumbnail(accessingCard.imageFile, "Trash");
   Trash(accessingCard, canBePrevented, function () {
-    ResolveAccess(originalLocation);
+    ResolveAccess();
   });
 }
 
@@ -203,7 +202,6 @@ function TrashAccessedCard(canBePrevented) {
  * @param {Object} [context] for onInstallResolve (and onCancelResolve, if relevant)
  * @param {function} [onCancelResolve] fires if the install is cancelled
  * @param {function} [onPaymentComplete] fires once the credits (if any) are paid
- * @returns {Phase} the phase object created and changed to
  */
 function Install(
   installingCard,
@@ -223,214 +221,220 @@ function Install(
   installingCard.renderer.destinationPosition.x = installingCard.renderer.sprite.x;
   installingCard.renderer.destinationPosition.y = installingCard.renderer.sprite.y;
   var host = null;
+
+  //initialise second part of install as a callback in case a server creation is required first
+  var installCommonHandler = function() {
+	  var installDestination = InstallDestination(installingCard, destination);
+	  var installTrashPhase = {
+		Enumerate: {
+		  trash: function () {
+			if (installDestination == runner.rig.resources) return [];
+			if (installDestination == runner.rig.hardware) return [];
+			if (installingCard.cardType == "program") {
+				/*
+			  //for usability we will skip trashing if there is enough MU left
+			  if (
+				installingCard.cardType == "program" &&
+				typeof (installingCard.memoryCost !== "undefined")
+			  ) {
+				if (
+				  installingCard.memoryCost + InstalledMemoryCost(destination) <=
+				  MemoryUnits(destination)
+				)
+				  return [];
+			  }
+			  //but we'll leave this line here just in case, or for later
+			  */
+			  return ChoicesInstalledCards(runner, function (card) {
+				return CheckCardType(card, ["program"]);
+			  }); //The Runner can choose to trash any number of his installed programs at the beginning of an install program action. [Core rulebook]
+			}
+			return ChoicesArrayCards(installDestination, CheckTrash);
+		  },
+		  n: function () {
+			if (installingCard.player == corp) {
+			  if (
+				!CheckCredits(
+				  InstallCost(
+					installingCard,
+					destination,
+					ignoreAllCosts,
+					position
+				  ),
+				  corp,
+				  "installing",
+				  installingCard
+				)
+			  )
+				return []; //can't afford to n yet
+			  if (
+				installingCard.cardType == "agenda" ||
+				installingCard.cardType == "asset"
+			  ) {
+				var cardlist = InstallDestination(installingCard, destination);
+				for (var i = 0; i < cardlist.length; i++) {
+				  if (
+					cardlist[i].cardType == "agenda" ||
+					cardlist[i].cardType == "asset"
+				  )
+					return []; //only one asset/agenda allowed
+				}
+			  } else if (CheckSubType(installingCard, "Region")) {
+				//upgrade subtype
+				var cardlist = InstallDestination(installingCard, destination);
+				for (var i = 0; i < cardlist.length; i++) {
+				  if (CheckSubType(cardlist[i], "Region")) return []; //limit 1 one region per server (even facedown!)
+				}
+			  }
+			  return [{}];
+			} else if (installingCard.player == runner) {
+			  //only check to do here is make sure enough available MU (sufficient programs trashed)
+			  if (
+				installingCard.cardType == "program" &&
+				typeof (installingCard.memoryCost !== "undefined")
+			  ) {
+				if (
+				  installingCard.memoryCost + InstalledMemoryCost(destination) >
+				  MemoryUnits(destination)
+				)
+				  return [];
+			  }
+			  return [{}];
+			}
+			return [];
+		  },
+		},
+		Cancel: {
+		  trash: function () {
+			ChangePhase(oldPhase, true);
+			MoveCard(installingCard, oldLocation);
+			if (typeof onCancelResolve === "function")
+			  onCancelResolve.call(context);
+			Cancel();
+			Render();
+		  },
+		},
+		Resolve: {
+		  //see Nisei CR 1.5 8.5.13 for steps of installing (e.g. trash, pay, trigger "when installed")
+		  trash: function (params) {
+			var storedServer = GetServerByArray(installDestination); //as above, see below
+			var serverIndex = corp.remoteServers.indexOf(storedServer); //to make sure servers aren't destroyed here (see below)
+			Trash(params.card, false, function() {
+				//if this move destroyed a remote server, it shouldn't have (see CR1.5 8.5.9)
+				if (installingCard.player == corp && serverIndex > -1) {
+				  if (GetServerByArray(installDestination) == null)
+					corp.remoteServers.splice(serverIndex, 0, storedServer);
+				}
+				currentPhase.Cancel = undefined; //once trashing begins there is no going back
+				delete currentPhase.Cancel; //remove the variable completely
+				Render();
+			}, context);
+		  },
+		  n: function () {
+			//card will be installed, callback fires
+			if (typeof onInstallResolve === "function")
+			  onInstallResolve.call(context);
+			//if clicks were spent, it was done before trash (or as part of callback) so no need to SpendClicks here
+			SpendCredits(
+			  installingCard.player,
+			  InstallCost(installingCard, destination, ignoreAllCosts, position),
+			  "installing",
+			  installingCard,
+			  function () {
+				//payment done, callback fires
+				if (typeof onPaymentComplete === "function")
+				  onPaymentComplete.call(context);
+				//move the card, write to the logs, etc
+				if (installingCard.player == corp) {
+				  //corp cards are installed facedown
+				  if (installingCard.rezzed) {
+					installingCard.knownToRunner = true;
+					installingCard.rezzed = false;
+				  }
+				  if (installingCard.faceUp) {
+					installingCard.knownToRunner = true;
+					installingCard.faceUp = false;
+				  }
+				}
+				MoveCard(installingCard, installDestination, position); //if position not specified, this uses .push (i.e. ice will be installed outermost)
+				if (runner.AI != null && oldLocation == corp.HQ.cards)
+				  runner.AI.LoseInfoAboutHQCards(null, installingCard.cardType); //one less card in corp hand
+				if (host != null) installingCard.host = host;
+				if (typeof installingCard.recurringCredits !== "undefined")
+				  installingCard.credits = installingCard.recurringCredits;
+				var outStr = GetTitle(installingCard, true);
+				if (CheckCardType(installingCard, ["agenda", "asset", "upgrade"]))
+				  outStr =
+					"a card in root of " + CardServerName(installingCard, true);
+				else if (CheckCardType(installingCard, ["ice"]))
+				  outStr = "ice protecting " + CardServerName(installingCard, true);
+				Log(PlayerName(installingCard.player) + " installed " + outStr);
+				//if unique, old one is immediately and unpreventably trashed (except if facedown, and facedown cards don't count for check)
+				if (
+				  typeof installingCard.unique !== "undefined" &&
+				  installingCard.faceUp
+				) {
+				  if (installingCard.unique == true) {
+					var installedCards = InstalledCards(installingCard.player);
+					for (var i = 0; i < installedCards.length; i++) {
+					  if (
+						installedCards[i] != installingCard &&
+						installedCards[i].faceUp
+					  ) {
+						if (
+						  GetTitle(installedCards[i]) == GetTitle(installingCard)
+						) {
+						  Log(
+							GetTitle(installingCard) +
+							  " is unique, the older copy will be unpreventably trashed."
+						  );
+						  Trash(installedCards[i], false);
+						}
+					  }
+					}
+				  }
+				}
+				//install done, card becomes active
+				//first the automatic triggers
+				AutomaticTriggers("cardInstalled", installingCard);
+				//then the Enumerate ones
+				//currently giving whoever's turn it is priority...not sure this is always going to be right
+				TriggeredResponsePhase(playerTurn, "installed", [installingCard], function() {
+					IncrementPhase(returnToPhase);
+				});
+			  },
+			  this
+			);
+		  },
+		},
+	  };
+	  if (returnToPhase) installTrashPhase.next = currentPhase;
+	  else installTrashPhase.next = currentPhase.next;
+	  installTrashPhase.player = installingCard.player;
+	  installTrashPhase.title = "Trash Before Install";
+	  if (installingCard.player == corp)
+		installTrashPhase.identifier = "Corp Install";
+	  else if (installingCard.player == runner)
+		installTrashPhase.identifier = "Runner Install";
+
+	  ChangePhase(installTrashPhase);
+	  executingCommand = "trash";
+  };
+
   if (installingCard.player == corp) {
     if (destination == null) {
       destination = NewServer("Remote " + corp.serverIncrementer++, false);
       corp.remoteServers.push(destination);
 	  Log("Corp created a new remote server");
-	  AutomaticTriggers("serverCreated", destination);
+	  //currently giving whoever's turn it is priority...not sure this is always going to be right
+	  TriggeredResponsePhase(playerTurn, "serverCreated", [destination], installCommonHandler);
     }
+	else installCommonHandler();
   } else {
     installingCard.faceUp = true;
     host = destination;
+	installCommonHandler();
   }
-
-  var installDestination = InstallDestination(installingCard, destination);
-  var installTrashPhase = {
-    Enumerate: {
-      trash: function () {
-        if (installDestination == runner.rig.resources) return [];
-        if (installDestination == runner.rig.hardware) return [];
-        if (installingCard.cardType == "program") {
-			/*
-          //for usability we will skip trashing if there is enough MU left
-          if (
-            installingCard.cardType == "program" &&
-            typeof (installingCard.memoryCost !== "undefined")
-          ) {
-            if (
-              installingCard.memoryCost + InstalledMemoryCost(destination) <=
-              MemoryUnits(destination)
-            )
-              return [];
-          }
-          //but we'll leave this line here just in case, or for later
-		  */
-          return ChoicesInstalledCards(runner, function (card) {
-            return CheckCardType(card, ["program"]);
-          }); //The Runner can choose to trash any number of his installed programs at the beginning of an install program action. [Core rulebook]
-        }
-        return ChoicesArrayCards(installDestination, CheckTrash);
-      },
-      n: function () {
-        if (installingCard.player == corp) {
-          if (
-            !CheckCredits(
-              InstallCost(
-                installingCard,
-                destination,
-                ignoreAllCosts,
-                position
-              ),
-              corp,
-              "installing",
-              installingCard
-            )
-          )
-            return []; //can't afford to n yet
-          if (
-            installingCard.cardType == "agenda" ||
-            installingCard.cardType == "asset"
-          ) {
-            var cardlist = InstallDestination(installingCard, destination);
-            for (var i = 0; i < cardlist.length; i++) {
-              if (
-                cardlist[i].cardType == "agenda" ||
-                cardlist[i].cardType == "asset"
-              )
-                return []; //only one asset/agenda allowed
-            }
-          } else if (CheckSubType(installingCard, "Region")) {
-            //upgrade subtype
-            var cardlist = InstallDestination(installingCard, destination);
-            for (var i = 0; i < cardlist.length; i++) {
-              if (CheckSubType(cardlist[i], "Region")) return []; //limit 1 one region per server (even facedown!)
-            }
-          }
-          return [{}];
-        } else if (installingCard.player == runner) {
-          //only check to do here is make sure enough available MU (sufficient programs trashed)
-          if (
-            installingCard.cardType == "program" &&
-            typeof (installingCard.memoryCost !== "undefined")
-          ) {
-            if (
-              installingCard.memoryCost + InstalledMemoryCost(destination) >
-              MemoryUnits(destination)
-            )
-              return [];
-          }
-          return [{}];
-        }
-        return [];
-      },
-    },
-    Cancel: {
-      trash: function () {
-        ChangePhase(oldPhase, true);
-        MoveCard(installingCard, oldLocation);
-        if (typeof onCancelResolve === "function")
-          onCancelResolve.call(context);
-        Cancel();
-        Render();
-      },
-    },
-    Resolve: {
-	  //see Nisei CR 1.5 8.5.13 for steps of installing (e.g. trash, pay, trigger "when installed")
-      trash: function (params) {
-        var storedServer = GetServerByArray(installDestination); //as above, see below
-        var serverIndex = corp.remoteServers.indexOf(storedServer); //to make sure servers aren't destroyed here (see below)
-        Trash(params.card, false, function() {
-			//if this move destroyed a remote server, it shouldn't have (see CR1.5 8.5.9)
-			if (installingCard.player == corp && serverIndex > -1) {
-			  if (GetServerByArray(installDestination) == null)
-				corp.remoteServers.splice(serverIndex, 0, storedServer);
-			}
-			currentPhase.Cancel = undefined; //once trashing begins there is no going back
-			delete currentPhase.Cancel; //remove the variable completely
-			Render();
-		}, context);
-      },
-      n: function () {
-        //card will be installed, callback fires
-        if (typeof onInstallResolve === "function")
-          onInstallResolve.call(context);
-        //if clicks were spent, it was done before trash (or as part of callback) so no need to SpendClicks here
-        SpendCredits(
-          installingCard.player,
-          InstallCost(installingCard, destination, ignoreAllCosts, position),
-          "installing",
-          installingCard,
-          function () {
-			//payment done, callback fires
-			if (typeof onPaymentComplete === "function")
-			  onPaymentComplete.call(context);
-		    //move the card, write to the logs, etc
-            if (installingCard.player == corp) {
-              //corp cards are installed facedown
-              if (installingCard.rezzed) {
-                installingCard.knownToRunner = true;
-                installingCard.rezzed = false;
-              }
-              if (installingCard.faceUp) {
-                installingCard.knownToRunner = true;
-                installingCard.faceUp = false;
-              }
-            }
-            MoveCard(installingCard, installDestination, position); //if position not specified, this uses .push (i.e. ice will be installed outermost)
-            if (runner.AI != null && oldLocation == corp.HQ.cards)
-              runner.AI.LoseInfoAboutHQCards(null, installingCard.cardType); //one less card in corp hand
-            if (host != null) installingCard.host = host;
-            if (typeof installingCard.recurringCredits !== "undefined")
-              installingCard.credits = installingCard.recurringCredits;
-            var outStr = GetTitle(installingCard, true);
-            if (CheckCardType(installingCard, ["agenda", "asset", "upgrade"]))
-              outStr =
-                "a card in root of " + CardServerName(installingCard, true);
-            else if (CheckCardType(installingCard, ["ice"]))
-              outStr = "ice protecting " + CardServerName(installingCard, true);
-            Log(PlayerName(installingCard.player) + " installed " + outStr);
-            //if unique, old one is immediately and unpreventably trashed (except if facedown, and facedown cards don't count for check)
-            if (
-              typeof installingCard.unique !== "undefined" &&
-              installingCard.faceUp
-            ) {
-              if (installingCard.unique == true) {
-                var installedCards = InstalledCards(installingCard.player);
-                for (var i = 0; i < installedCards.length; i++) {
-                  if (
-                    installedCards[i] != installingCard &&
-                    installedCards[i].faceUp
-                  ) {
-                    if (
-                      GetTitle(installedCards[i]) == GetTitle(installingCard)
-                    ) {
-                      Log(
-                        GetTitle(installingCard) +
-                          " is unique, the older copy will be unpreventably trashed."
-                      );
-                      Trash(installedCards[i], false);
-                    }
-                  }
-                }
-              }
-            }
-            //install done, card becomes active
-			//first the automatic triggers
-			AutomaticTriggers("cardInstalled", installingCard);
-			//then the Enumerate ones
-			//currently giving whoever's turn it is priority...not sure this is always going to be right
-			TriggeredResponsePhase(playerTurn, "installed", [installingCard], function() {
-				IncrementPhase(returnToPhase);
-			});
-          },
-          this
-        );
-      },
-    },
-  };
-  if (returnToPhase) installTrashPhase.next = currentPhase;
-  else installTrashPhase.next = currentPhase.next;
-  installTrashPhase.player = installingCard.player;
-  installTrashPhase.title = "Trash Before Install";
-  if (installingCard.player == corp)
-    installTrashPhase.identifier = "Corp Install";
-  else if (installingCard.player == runner)
-    installTrashPhase.identifier = "Runner Install";
-
-  ChangePhase(installTrashPhase);
-  executingCommand = "trash";
-  return installTrashPhase;
 }
 
 /**
@@ -690,10 +694,14 @@ function Purge() {
  * @method Draw
  * @param {Player} player either corp or runner
  * @param {int} num number of cards to attempt to draw
+ * @param {function()} [afterDraw] called after drawing is complete (even if no cards are drawn)
+ * @param {Object} [context] for afterDraw
  * @returns {int} the number of cards drawn
  */
-function Draw(player, num) {
+function Draw(player, num=1, afterDraw, context) {
+  num += ModifyingTriggers("modifyDraw", player, -num); //lower limit of -num means the total will not be any lower than zero
   if (num < 1) return 0;
+  var cards = [];
   //draw for corp (lose if impossible)
   if (player == corp) {
     var maxDraw = corp.RnD.cards.length;
@@ -702,6 +710,7 @@ function Draw(player, num) {
       return 0;
     } else {
       for (var i = 0; i < num; i++) {
+		cards.push(corp.RnD.cards[corp.RnD.cards.length - 1]);
         MoveCardByIndex(
           corp.RnD.cards.length - 1,
           corp.RnD.cards,
@@ -715,6 +724,7 @@ function Draw(player, num) {
     var maxDraw = runner.stack.length;
     if (maxDraw < num) num = maxDraw;
     for (var i = 0; i < num; i++) {
+	  cards.push(runner.stack[runner.stack.length - 1]);
       MoveCardByIndex(runner.stack.length - 1, runner.stack, runner.grip);
     }
   }
@@ -726,6 +736,12 @@ function Draw(player, num) {
     else if (player == runner) Log("Stack is empty");
     else LogError("No player specified for Draw");
   }
+
+  //currently giving whoever's turn it is priority...not sure this is always going to be right
+  TriggeredResponsePhase(playerTurn, "cardsDrawn", [cards], function() {
+	if (typeof afterDraw == 'function') afterDraw.call(context);
+  });
+
   return num;
 }
 
@@ -1220,15 +1236,14 @@ function Score(card, afterScore, context) {
  * @method Steal
  */
 function Steal() {
-  var originalLocation = accessingCard.cardLocation;
   intended.steal = accessingCard; //if callback sets this to null, the steal will not happen
   OpportunityForAvoidPrevent(corp, "steal", [], function () {
-    ResolveAccess(originalLocation);
+    ResolveAccess();
     if (intended.steal == null) return;
 	var stolenFromString = "remote";
-	if (originalLocation == corp.HQ.cards) stolenFromString = "HQ";
-	else if (originalLocation == corp.RnD.cards) stolenFromString = "R&D";
-	else if (originalLocation == corp.archives.cards) stolenFromString = "Archives";
+	if (attackedServer == corp.HQ.cards) stolenFromString = "HQ";
+	else if (attackedServer == corp.RnD.cards) stolenFromString = "R&D";
+	else if (attackedServer == corp.archives.cards) stolenFromString = "Archives";
 	agendaStolenLocations.push(stolenFromString); //for testing/balancing AIs
 	
     MoveCard(intended.steal, runner.scoreArea);
