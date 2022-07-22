@@ -23,12 +23,21 @@ cardSet[30001] = {
     },
     automatic: true,
   },
+  //need to store whether the card was being accessed (once it's trashed, the access immediately ends)
+  wasAccessingCard: false,
+  trash: {
+	Resolve: function() {
+	  if (intended.trash == accessingCard) this.wasAccessingCard = true;
+	},
+	automatic: true,
+  },
   cardTrashed: {
     Resolve: function (card) {
-      if (card == accessingCard && !this.usedThisTurn) {
+      if (this.wasAccessingCard && !this.usedThisTurn) {
+        this.usedThisTurn = true;
+		this.wasAccessingCard = false;
         GainCredits(runner, 1);
         Draw(runner, 1);
-        this.usedThisTurn = true;
       }
     },
   },
@@ -1039,15 +1048,19 @@ cardSet[30013] = {
     availableWhenInactive: true,
   },
   breachServer: {
+	//NOTE: breachServer may be called multiple times (e.g. when determining new candidates)
     Resolve: function () {
       if (attackedServer != corp.HQ) return 0;
       if (this.breachedHQThisTurn) return 0; //first time only
-      this.breachedHQThisTurn = true; //even if inactive
-      if (!CheckActive(this)) return 0;
       return 1;
     },
-    automatic: true,
-    availableWhenInactive: true,
+  },
+  runEnds: {
+    Resolve: function () {
+	  this.breachedHQThisTurn = true; //even if inactive
+	},
+	automatic:true,
+	availableWhenInactive: true,
   },
   //indicate when passive bonus to accesses will apply
   //(assumes the card is or will be active)
@@ -1710,8 +1723,9 @@ cardSet[30021] = {
   playCost: 1,
   //Draw 4 cards. If you have any [click] remaining, lose [click].
   Resolve: function (params) {
-    Draw(runner, 4);
-    LoseClicks(runner, 1);
+    Draw(runner, 4, function() {
+	  LoseClicks(runner, 1);
+	},this);
   },
   AIWorthKeeping: function (installedRunnerCards, spareMU) {
       //keep if need card draw
@@ -1900,6 +1914,7 @@ cardSet[30024] = {
   //If successful, access X additional cards when you breach R&D.
   //X is equal to the number of hosted virus counters.
   breachServer: {
+	//NOTE: breachServer may be called multiple times (e.g. when determining new candidates)  
     Resolve: function () {
       var ret = 0; //by default, no additional cards
       if (this.runningWithThis && attackedServer == corp.RnD) {
@@ -2302,6 +2317,7 @@ cardSet[30028] = {
     },
   },
   breachServer: {
+	//NOTE: breachServer may be called multiple times (e.g. when determining new candidates)
     Resolve: function () {
       return 1;
     },
@@ -2737,24 +2753,18 @@ cardSet[30037] = {
   },
   //When your turn begins, take 3[c] from this asset.
   corpTurnBegin: {
-    /*
-		Enumerate: function() {
-			if (!CheckCounters(this,"credits",3)) return []; //won't happen with less than 3 because it doesn't say 'take *up to* ...'
-			return [{}];
-		},
-		*/
+	Enumerate: function() {
+		if (!CheckCounters(this,"credits",3)) return []; //won't happen with less than 3 because it doesn't say 'take *up to* ...'
+		return [{}];
+	},
     Resolve: function (params) {
-      if (CheckCounters(this, "credits", 3)) {
-        //won't happen with less than 3 because it doesn't say 'take *up to* ...'
-        TakeCredits(corp, this, 3); //removes from card, adds to credit pool
-      }
+      TakeCredits(corp, this, 3); //removes from card, adds to credit pool
       if (!CheckCounters(this, "credits", 1)) {
         //When it is empty, trash it and draw 1 card.
         Trash(this); //in theory prevent could be allowed but why would you? Also it would mean this can no longer be automatic
         Draw(corp, 1);
       }
     },
-    automatic: true, //for usability, this is not strict implementation (if you make it non-automatic then move the check out of Resolve and uncomment Enumerate)
   },
   RezUsability: function () {
     if (currentPhase.identifier == "Runner 2.2") return true;
@@ -3221,85 +3231,56 @@ cardSet[30041] = {
   //Draw 3 cards. Shuffle 2 cards from HQ into R&D.
   // new code (1 card a time)
   Resolve: function (params) {
-    Draw(corp, 3);
-    var choicesA = ChoicesHandCards(corp);
-    //drag and drop onto R&D
-    for (var i = 0; i < choicesA.length; i++) {
-      choicesA[i].server = corp.RnD;
-    }
-    var decisionCallbackA = function (params) {
-      Log(GetTitle(params.card, true) + " shuffled into R&D from HQ");
-      MoveCard(params.card, corp.RnD.cards);
-      var choicesB = ChoicesHandCards(corp);
-      //drag and drop onto R&D
-      for (var i = 0; i < choicesB.length; i++) {
-        choicesB[i].server = corp.RnD;
-      }
-      var decisionCallbackB = function (params) {
-        Log(GetTitle(params.card, true) + " shuffled into R&D from HQ");
-        MoveCard(params.card, corp.RnD.cards);
-        Shuffle(corp.RnD.cards);
-      };
-      var phaseB = DecisionPhase(
-        corp,
-        choicesB,
-        decisionCallbackB,
-        "Sprint",
-        "Drag to R&D",
-        this
-      );
-      phaseB.targetServerCardsOnly = true;
-      //**AI code
-      if (corp.AI != null) {
-        corp.AI._log("I know this one");
-        //just arbitrary for now
-        var choiceB = choicesB[0];
-        corp.AI.preferred = { title: "Sprint", option: choiceB }; //title must match currentPhase.title for AI to fire
-      }
-    };
-    var phaseA = DecisionPhase(
-      corp,
-      choicesA,
-      decisionCallbackA,
-      "Sprint",
-      "Drag to R&D",
-      this
-    );
-    phaseA.targetServerCardsOnly = true;
-    //**AI code
-    if (corp.AI != null) {
-      corp.AI._log("I know this one");
-      //just arbitrary for now
-      var choiceA = choicesA[0];
-      corp.AI.preferred = { title: "Sprint", option: choiceA }; //title must match currentPhase.title for AI to fire
-    }
-  },
-  /* OLD CODE (multi-select)
-	Resolve: function(params) {
-		Draw(corp,3);
-		var choices = ChoicesHandCards(corp);
-		for (var i=0; i<choices.length; i++) { choices[i].cards = [null,null]; } //set up a multiple-select for two cards
-		var decisionCallback = function(params) {
-			for (var i=0; i<params.cards.length; i++)
-			{
-				Log(GetTitle(params.cards[i],true)+" shuffled into R&D from HQ");
-				MoveCard(params.cards[i],corp.RnD.cards);
-			}
-			Shuffle(corp.RnD.cards);
-		};
-		DecisionPhase(corp,choices,decisionCallback,"Sprint","Sprint",this);
-		//**AI code
-		if (corp.AI != null)
-		{
-			corp.AI._log("I know this one");
-			//AI doesn't yet know how to multi-select
-			//just arbitrary for now
-			choices[0].cards = [choices[0].card, choices[1].card];
-			var choice = choices[0];
-			corp.AI.preferred = { title:"Sprint", option:choice }; //title must match currentPhase.title for AI to fire
+    Draw(corp, 3, function() {
+		var choicesA = ChoicesHandCards(corp);
+		//drag and drop onto R&D
+		for (var i = 0; i < choicesA.length; i++) {
+		  choicesA[i].server = corp.RnD;
 		}
-	}
-	*/
+		var decisionCallbackA = function (params) {
+		  Log(GetTitle(params.card, true) + " shuffled into R&D from HQ");
+		  MoveCard(params.card, corp.RnD.cards);
+		  var choicesB = ChoicesHandCards(corp);
+		  //drag and drop onto R&D
+		  for (var i = 0; i < choicesB.length; i++) {
+			choicesB[i].server = corp.RnD;
+		  }
+		  var decisionCallbackB = function (params) {
+			Log(GetTitle(params.card, true) + " shuffled into R&D from HQ");
+			MoveCard(params.card, corp.RnD.cards);
+			Shuffle(corp.RnD.cards);
+		  };
+		  var phaseB = DecisionPhase(
+			corp,
+			choicesB,
+			decisionCallbackB,
+			"Sprint",
+			"Drag to R&D",
+			this
+		  );
+		  phaseB.targetServerCardsOnly = true;
+		  //**AI code
+		  if (corp.AI != null) {
+			var choiceB = corp.AI._reduceOptionsToBestCardToReturnToRnD(choicesB)[0];
+			corp.AI.preferred = { title: "Sprint", option: choiceB }; //title must match currentPhase.title for AI to fire
+		  }
+		};
+		var phaseA = DecisionPhase(
+		  corp,
+		  choicesA,
+		  decisionCallbackA,
+		  "Sprint",
+		  "Drag to R&D",
+		  this
+		);
+		phaseA.targetServerCardsOnly = true;
+		//**AI code
+		if (corp.AI != null) {
+		  var choiceA = corp.AI._reduceOptionsToBestCardToReturnToRnD(choicesA)[0];
+		  corp.AI.preferred = { title: "Sprint", option: choiceA }; //title must match currentPhase.title for AI to fire
+		}
+	},this);
+  },
 };
 cardSet[30042] = {
   title: "Manegarm Skunkworks",
@@ -4122,6 +4103,7 @@ cardSet[30053] = {
     return false;
   },
   AITriggerWhenCan: true,
+  AIAvoidInstallingOverThis: true,
 };
 cardSet[30054] = {
   title: "Funhouse",
@@ -4561,8 +4543,9 @@ cardSet[30062] = {
   strength: 4,
   AIWouldTrigger: function () {
     //in this case 'trigger' means trash a program instead of ending the run
-    //which we'll do if there is no agenda or at random
+    //which we'll do for central servers, if there is no agenda, or at random
     var thisServer = GetServer(this);
+	if (typeof thisServer.cards != 'undefined') return true; //trash a program
     if (corp.AI._agendasInServer(thisServer) > 0) {
       if (Math.random() < 0.5) return false; //don't trigger (i.e., end the run)
     }

@@ -48,7 +48,7 @@
 // .text
 // .automatic //set true to have this fire before the others i.e. not on the resolution order list (usually used for things that are not actual effects on card, just implementation)
 // .availableWhenInactive //set true to have this fire even when not active
-//To implement non-automatic trigger phases, use TriggeredResponsePhase
+//To implement non-automatic trigger phases, use TriggeredResponsePhase. You can achieve automatic during these phases by including the code in Enumerate (be aware it will be called multiple times)
 //Player chooses resolution order when multiple trigger simultaneously (e.g. multiple cards have 'when turn begins')
 /*
  .abilities[] //for operations and events the .Enumerate, .Resolve and .text are properties of the card itself not in abilities array
@@ -73,6 +73,8 @@
  .scored //called after a card is scored (intended.score will still be available to use)
  .installed //called when a card is installed (Enumerate takes the installed card as an input, use cardInstalled instead if you need automatic)
  .rez //called when a card is rezzed (Enumerate takes the rezzed card as an input, use cardRezzed instead if you need automatic)
+ .cardsDrawn //called cards are drawn (Enumerate takes the drawn cards as an input)
+ .serverCreated //called after a new remote server is created (Enumerate takes the server as an input)
  .addTags //called when tags are to be added
  .tagsTaken //called after tags are taken (or given), intended.addTags has the number
  .netDamage //called when net damage is to be given/taken
@@ -94,6 +96,7 @@
  .modifyAgendaPointsToWin //called with no inputs when checking agenda points to win, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .modifyHasAbilities //called with input (card) when checking subtypes, any false will override any true (currently treats all as automatic)
  .modifySubTypes //called with input (card) when checking subtypes, return { add:[], remove:[] } where each array is optional and contains the relevant subtype strings
+ .modifyDraw //called with input (player) when checking cards to draw, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .cardInstalled //called with input (card) after a card is installed (currently treats all as automatic)
  .cardUninstalled //called with input (card) when a card becomes uninstalled (currently treats all as automatic)
  .cardRezzed //called with input (card) after a card is rezzed (currently treats all as automatic)
@@ -103,7 +106,6 @@
  .cardTrashed //called with input (card) when a card is trashed (currently treats all as automatic)
  .cardAdvanced //called with input (card) when a card is advanced (currently treats all as automatic)
  .cardPlayed //called with input (card) after a card is played (currently treats all as automatic)
- .serverCreated //called with input (server) after a new remote server is created (currently treats all as automatic)
  .purged //called with input (number of virus counters removed) when virus counters are purged (currently treats all as automatic)
  .cannot //called with input (string, card) where the string is a phase option (e.g. "score"), if true is returned, Check<String> will return false (all automatic)
 */
@@ -753,23 +755,28 @@ function LoadDecks() {
 		cardBackTexturesRunner,glowTextures,strengthTextures);
 	
 	CorpTestField(30035, //identity
-		[], //archivesCards
+		[30058,30050,30061,31049,31059,30066,31042,30037,30071,31054,30053,30045], //archivesCards
 		[30073,30072,30047,30073,30073,30039], //rndCards
-		[30065], //hqCards
+		[30065,31061,30039,30066,30071], //hqCards
 		[], //archivesInstalled
 		[30039], //rndInstalled
 		[], //hqInstalled
-		[[30069]], //remotes (array of arrays)
+		[[31061],[30052]], //remotes (array of arrays)
 		[], //scored
 		cardBackTexturesCorp,glowTextures,strengthTextures);
-
-  GainCredits(runner,8);
-  GainCredits(corp,14);
-  ChangePhase(phases.runnerStartResponse);
   */
+  //corp.remoteServers[0].root[0].advancement=2;
+  //corp.remoteServers[1].root[0].advancement=2;
+  //GainCredits(runner,8);
+  //GainCredits(corp,1);
+  //ChangePhase(phases.runnerStartResponse);
+  //ChangePhase(phases.corpStartDraw);
+  
   //ChangePhase(phases.runnerEndOfTurn);
   //AddTags(2);
   //runner.clickTracker = 1;
+  //corp.clickTracker = 2;
+  //ChangePhase(phases.corpActionMain);
   //ChangePhase(phases.corpDiscardStart);
   //MakeRun(corp.remoteServers[0]);
   //attackedServer = corp.RnD;
