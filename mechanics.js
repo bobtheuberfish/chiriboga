@@ -465,8 +465,22 @@ function Play(card, onPlayResolve, context) {
     Render();
   };
   var resolveCallback = function (params) {
-    //card will be installed, callback fires
+	//hand X cost
+	var playCostReplaced = false;
+	if (card.playCost === 'X') {
+		if (typeof params.playCost == 'undefined') {
+		  LogError(GetTitle(card)+" has X play cost so it must return .playCost for each Enumerate choice");
+		} else {
+		  card.playCost = params.playCost;
+		  playCostReplaced = true;
+		}
+	}
+    //card will be played, callback fires
     if (typeof onPlayResolve === "function") onPlayResolve.call(context);
+	//finish handling X
+	if (playCostReplaced) {
+		card.playCost = 'X';
+	}
     if (runner.AI != null) runner.AI.LoseInfoAboutHQCards(card);
     Log('Played "' + GetTitle(card, true) + '"');
 	AutomaticTriggers("cardPlayed", card);

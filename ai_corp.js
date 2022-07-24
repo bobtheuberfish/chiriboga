@@ -314,16 +314,31 @@ class CorpAI {
     optionList = this._reducedDiscardList(optionList);
     return 0; //just arbitrary for now
   }
+  
+  //get the desired advancement limit
+  _advancementLimit(card) {
+    if (typeof card.AIAdvancementLimit == "function") {
+        return card.AIAdvancementLimit();
+	}
+    if (typeof card.advancementRequirement !== "undefined") {
+        return AdvancementRequirement(card);
+	}
+	LogError("corp.AI._advancementLimit called on "+GetTitle(card)+" which has no advancement requirement");
+	return 0; //shouldn't get here
+  }
+
+  //amount of advancement that still needs to be added to reach limit
+  _advancementRequired(card) {
+	  return this._advancementLimit(card) - Counters(card,"advancement");
+  }
 
   _bestAdvanceOption(optionList) {
-    //currently just chooses first reasonable option (need to do more work here to rank them)
+    //currently just chooses first reasonable option (TODO need to do more work here to include/exclude/rank them)
+	//e.g. using _cardShouldBeFastAdvanced and/or _isFullyAdvanceableAgenda or similar
     for (var i = 0; i < optionList.length; i++) {
-      var advancementLimit = 5;
-      if (typeof optionList[i].card.AIAdvancementLimit == "function")
-        advancementLimit = optionList[i].card.AIAdvancementLimit();
       if (
         typeof optionList[i].card.advancement === "undefined" ||
-        optionList[i].card.advancement < advancementLimit ||
+        optionList[i].card.advancement < this._advancementLimit(optionList[i].card) ||
         optionList[i].card.AIOverAdvance
       )
         return i;
@@ -2123,38 +2138,68 @@ class CorpAI {
   }
 
   //if null card is specified, this is a generic "what if one was to be installed?" check
-  //(in which case it will assume a click less) unless assumeClicks (int) is specified
-  _potentialAdvancement(card,thisTurn=true,fastAdvanceArray,assumeClicks) {
+  //(in which case it will assume a click less) unless assumeClicks (int) is specified (but assumeClicks will be ignored if thisTurn=false)
+  //if an output array is specified, the cards will be written to it in the order decided here (except for cards already resolving)
+  _potentialAdvancement(card,thisTurn=true,fastAdvanceArray,assumeClicks,limit=Infinity,output=[]) {
 	  if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards.concat(corp.resolvingCards); //source of fast advance cards
 	  var ret = 0;
-	  var clicksLeft = this._clicksLeft();
-	  if (!card) clicksLeft--;
-	  if (typeof assumeClicks != 'undefined') clicksLeft=assumeClicks;
 	  //basic advance
-	  if (thisTurn) ret += Math.min(clicksLeft, Credits(corp));
+	  if (thisTurn) {
+		  var clicksLeft = this._clicksLeft();
+		  if (!card) clicksLeft--;
+		  if (typeof assumeClicks != 'undefined') clicksLeft=assumeClicks;
+		  ret += Math.min(clicksLeft, Credits(corp));
+	  }
 	  else ret += Credits(corp);
-	  var creditCostSoFar = ret;
+	  //for !thisTurn, the default is creditpool worth of normal advances
+	  //this means there is 0 left i.e. the only cards considered below are those that make advancing cheaper, not for speed
+	  var creditsLeft = Credits(corp) - ret;
 	  var baseUsables = ret; //the max number of playable economy advances
 	  //some things can be done if card is already installed
 	  if (card) {
 		  //check if any Seamless Launch in hand
-		  //these replace normal advance (in terms of credit cost) so don't add to creditCostSoFar
+		  //these replace normal advance (in terms of credit cost) so don't decrease creditsLeft
 		  var slih = this._copyOfCardExistsIn("Seamless Launch",fastAdvanceArray);
 		  if (slih) {
 			  if (!thisTurn || !slih.cardsInstalledThisTurn.includes(card)) {
 				//plus one for each Seamless Launch if it can be used (or is being used)
 				var seamlesses = this._copiesOfCardIn("Seamless Launch",fastAdvanceArray);
 				seamlesses.forEach(function(item){
-				  if (corp.resolvingCards.includes(item)) ret++;
-				  else if (baseUsables > 0 || !thisTurn) {
-					ret++;
-					baseUsables--;
-				  }
+					//special edge case - a 3+ Psychographics last click could be better
+					if (!(thisTurn && baseUsables == 1 && corp.AI._copyOfCardExistsIn("Psychographics",fastAdvanceArray) && Math.min(creditsLeft+1,runner.tags) > 2)) {
+						  if (corp.resolvingCards.includes(item)) ret++;
+						  else if (baseUsables > 0 || !thisTurn) {
+							ret++;
+							baseUsables--;
+							output.push(item);
+						  }
+					}
 				});
 			  }
 		  }
+		  //check if any Psychographics in hand
+		  var pgih = this._copyOfCardExistsIn("Psychographics",fastAdvanceArray);
+		  if (pgih) {
+			var psychos = this._copiesOfCardIn("Psychographics",fastAdvanceArray);
+			psychos.forEach(function(item){
+			  if (corp.resolvingCards.includes(item)) {
+				  //already resolving, credits have already been paid
+				  ret += item.AIPlayedWithCost;
+			  }
+			  else if (baseUsables > 0 || !thisTurn) {
+				  //discount of the credit & advancement that would have been used if it was a normal advance
+				  var maxThisPsycho = Math.min(creditsLeft+1,runner.tags);
+				  if (maxThisPsycho > 1) {
+					  ret += maxThisPsycho-1;
+					  creditsLeft -= maxThisPsycho-1;
+					  baseUsables--;
+					  output.push(item);
+				  }
+			  }
+			});
+		  } 
 		  //check if any Trick of Light in hand (or being played)
-		  //these replace normal advance (in terms of credit cost) so don't add to creditCostSoFar
+		  //these replace normal advance (in terms of credit cost) so don't decrease creditsLeft
 		  var tolih = this._copyOfCardExistsIn("Trick of Light",fastAdvanceArray);
 		  if (tolih) {
 			  //BUT are only useful up to the number of times 2 advancement can be taken from cards (other than card)
@@ -2175,6 +2220,7 @@ class CorpAI {
 				    ret++;
 				    maxTricks--;
 				    baseUsables--;
+					output.push(item);
 				  }
 				}
 			  });
@@ -2183,9 +2229,13 @@ class CorpAI {
 	  //check for Biotic Labor possibility
 	  var blih = this._copyOfCardExistsIn("Biotic Labor",fastAdvanceArray);
 	  if (blih) {
-		var creditsLeft = Credits(corp) - creditCostSoFar;
 		var copiesAfford = Math.floor(creditsLeft * 0.2); //number of full amounts of 5 credits (4 for card, 1 for extra advance)
-		ret += Math.min(copiesAfford, this._copiesOfCardIn("Biotic Labor",fastAdvanceArray).length);
+		var biotics = this._copiesOfCardIn("Biotic Labor",fastAdvanceArray);
+		var maxbiotics = Math.min(copiesAfford, biotics.length)
+		for (var i=0; i<maxbiotics; i++) {
+			ret++;
+			output.push(biotics[i]);
+		}
 	  }
 	  return ret;
   }
@@ -2199,10 +2249,6 @@ class CorpAI {
 	  return false;
   }
   
-  _advancementRequired(card) {
-	  return AdvancementRequirement(card) - Counters(card,"advancement");
-  }
-
   _isFullyAdvanceableHostileAsset(card,fastAdvanceArray) { //can be finished and used this turn
     if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards.concat(corp.resolvingCards); //source of fast advance cards
 	if (!CheckCardType(card, ["asset"]) || !CheckSubType(card,"Hostile")) return false;
@@ -2349,7 +2395,6 @@ class CorpAI {
 			}
 		}		
 	}
-
 	if (!almostDoneAgenda && !almostDoneHostileAsset) {
 		//take advantage of a temporary window of opportunity (i.e., play right away)
 		if (optionList.includes("play")) {
@@ -2438,7 +2483,6 @@ class CorpAI {
 				var blufflim = this._bluffAdvanceLimit(card);
 				if (blufflim > advancementLimit) advancementLimit = blufflim;
 			}
-			var advancementRemaining = this._advancementRequired(card);
 			//don't start advancing if too poor to finish the job (the false means not necessarily this turn) or agenda in weak server
 			var startOrContinueAdvancement = false;
 			if (card.advancement > 0) startOrContinueAdvancement = true; //already started, feel free to continue (the counter shows the runner it is advanceable)
@@ -2452,68 +2496,60 @@ class CorpAI {
 				  card.advancement < advancementLimit ||
 				  card.AIOverAdvance
 				) {
-				  this._log("I could advance a card");
-				  //if there is an economy advance card in hand, consider using it
-				  //don't waste these by overadvancing an ordinary advancement target
-                  if (Counters(card,"advancement") < advancementLimit - 1 ||
-					card.AIOverAdvance) {
-					//prefer Seamless over Trick if the agenda was not installed this turn
-					cardToPlay = this._copyOfCardExistsIn(
-					  "Seamless Launch",
-					  corp.HQ.cards
-				    );
-					if (cardToPlay && cardToPlay.cardsInstalledThisTurn.includes(card)) cardToPlay=null;
-					//but if Seamless impossible then maybe Trick?
-					if (!cardToPlay) {
-						cardToPlay = this._copyOfCardExistsIn(
-						  "Trick of Light",
-						  corp.HQ.cards
-						);
-						if (cardToPlay && this._advancedCards(2,card).length == 0) cardToPlay = null;
-					}
-				  }
-				  //or an expensive fast advance (if needed or punishment combo exists)
-				  if (!cardToPlay) {
-					var spareCredAfterExpensiveAdv = Credits(corp) - (4 + advancementRemaining); //4 here is Biotic Labor (only expensive fast advance currently implemented)
-					//first check can even afford it
-					if (spareCredAfterExpensiveAdv >= 0) {
-						var worthExpensiveFastAdvance = (advancementRemaining > corp.clickTracker);
-						if (!worthExpensiveFastAdvance) {
-							//might be wasteful, check for combos
-							var arrayToCheckForCombo = corp.HQ.cards;
-							//combos that require setup prior to score:
-							var copyOfPublicTrail = this._copyOfCardExistsIn("Public Trail",arrayToCheckForCombo);
-							if (spareCredAfterExpensiveAdv >= 4 && card.title == "Orbital Superiority" && copyOfPublicTrail && copyOfPublicTrail.successfulRunLastTurn) worthExpensiveFastAdvance=true;
-							//and after score:
-							//when an agenda is scored as Precision Design, take into account recur 1 card from archives
-							if (corp.identityCard.title == "Haas-Bioroid: Precision Design") arrayToCheckForCombo = arrayToCheckForCombo.concat(corp.archives.cards);
-							//when the agenda scored is Offworld Office, extra money exists
-							if (card.title == "Offworld Office" || card.title == "Hostile Takeover") spareCredAfterExpensiveAdv += 7;
-							//now check
-							if (spareCredAfterExpensiveAdv >= 3 && this._copyOfCardExistsIn("Neurospike",arrayToCheckForCombo)) worthExpensiveFastAdvance=true;
-							if (card.title == "Tomorrow's Headline" && this._potentialTagPunishment(runner.tags+1,1,spareCredAfterExpensiveAdv)) worthExpensiveFastAdvance=true;
+				  //if there is an economy or fast advance card in hand, consider using it
+				  var potentialAdvCards = [];
+				  var potentialAdvancement = this._potentialAdvancement(card,true,corp.HQ.cards,corp.clickTracker,advancementLimit,potentialAdvCards); 
+				  this._log("I could advance a card with these cards: "+JSON.stringify(potentialAdvCards));
+				  if (potentialAdvCards.length > 0) {
+					  //don't waste these by overadvancing an ordinary advancement target
+					  if (Counters(card,"advancement") < advancementLimit - 1 ||
+						card.AIOverAdvance) {
+						cardToPlay = potentialAdvCards[0];
+					  }
+					  //or an expensive fast advance (if needed or punishment combo exists)
+					  if (!cardToPlay) {
+						var advancementRemaining = this._advancementRequired(card);
+						var spareCredAfterExpensiveAdv = Credits(corp) - (4 + advancementRemaining); //4 here is Biotic Labor (only expensive fast advance currently implemented)
+						//first check can even afford it
+						if (spareCredAfterExpensiveAdv >= 0) {
+							var worthExpensiveFastAdvance = (advancementRemaining > corp.clickTracker);
+							if (!worthExpensiveFastAdvance) {
+								//might be wasteful, check for combos
+								var arrayToCheckForCombo = corp.HQ.cards;
+								//combos that require setup prior to score:
+								var copyOfPublicTrail = this._copyOfCardExistsIn("Public Trail",arrayToCheckForCombo);
+								if (spareCredAfterExpensiveAdv >= 4 && card.title == "Orbital Superiority" && copyOfPublicTrail && copyOfPublicTrail.successfulRunLastTurn) worthExpensiveFastAdvance=true;
+								//and after score:
+								//when an agenda is scored as Precision Design, take into account recur 1 card from archives
+								if (corp.identityCard.title == "Haas-Bioroid: Precision Design") arrayToCheckForCombo = arrayToCheckForCombo.concat(corp.archives.cards);
+								//when the agenda scored is Offworld Office, extra money exists
+								if (card.title == "Offworld Office" || card.title == "Hostile Takeover") spareCredAfterExpensiveAdv += 7;
+								//now check
+								if (spareCredAfterExpensiveAdv >= 3 && this._copyOfCardExistsIn("Neurospike",arrayToCheckForCombo)) worthExpensiveFastAdvance=true;
+								if (card.title == "Tomorrow's Headline" && this._potentialTagPunishment(runner.tags+1,1,spareCredAfterExpensiveAdv)) worthExpensiveFastAdvance=true;
+							}
+							if (worthExpensiveFastAdvance) {
+							  cardToPlay = this._copyOfCardExistsIn(
+								"Biotic Labor",
+								corp.HQ.cards
+							  );
+							}
 						}
-						if (worthExpensiveFastAdvance) {
-						  cardToPlay = this._copyOfCardExistsIn(
-							"Biotic Labor",
-							corp.HQ.cards
-						  );
+					  }
+					  var rushToFinish = false;
+					  if (typeof card.AIRushToFinish == 'function') {
+						rushToFinish = card.AIRushToFinish.call(card);
+					  }
+					  if ( cardToPlay && (card == almostDoneAgenda) || rushToFinish ) { //for now let's just use economy advance for finishing agendas or specific cards
+						this._log("there is an card that will help advance");
+						if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
+							this._log("I intend to play it");
+							cardToPlay.AIPreferredTarget = almostDoneAgenda;
+							return this._returnPreference(optionList, "play", {
+							  cardToPlay: cardToPlay,
+							});
 						}
-					}
-				  }
-				  var rushToFinish = false;
-				  if (typeof card.AIRushToFinish == 'function') {
-					rushToFinish = card.AIRushToFinish.call(card);
-				  }
-				  if ( cardToPlay && (card == almostDoneAgenda) || rushToFinish ) { //for now let's just use economy advance for finishing agendas or specific cards
-					this._log("there is an card that will help advance");
-					if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
-					    this._log("I intend to play it");
-						cardToPlay.AIPreferredTarget = almostDoneAgenda;
-						return this._returnPreference(optionList, "play", {
-						  cardToPlay: cardToPlay,
-						});
-					}
+					  }
 				  }
 				  return this._returnPreference(optionList, "advance", {
 					cardToAdvance: card,

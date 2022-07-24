@@ -5285,6 +5285,69 @@ cardSet[31067] = {
   },
 };
 
+
+cardSet[31068] = {
+  title: "Psychographics",
+  imageFile: "31068.png",
+  elo: 1728,
+  player: corp,
+  faction: "NBN",
+  influence: 3,
+  cardType: "operation",
+  playCost: 'X', //implemented by params.playCost
+  //X must be equal to or less than the number of tags the Runner has.
+  //Place X advancement counters on 1 installed card you can advance.
+  AIPlayedWithCost: 0, //used by the corp AI
+  AISharedBestTargetOption(targets) {
+	for (var i=0; i<targets.length; i++) {
+		if (corp.AI._cardShouldBeFastAdvanced(targets[i].card)) return targets[i];
+	}
+	return targets[corp.AI._bestAdvanceOption(targets)]; //backup option
+  },
+  Enumerate: function () {
+  	var maxcred = Math.min(runner.tags,AvailableCredits(corp, "playing", this));
+	if (maxcred < 1) return [];
+	var targets = ChoicesInstalledCards(corp, function(card) {
+		return CheckAdvance(card);
+	});
+	if (targets.length < 1) return [];
+	var choices = [];
+	for (var i=1; i<=maxcred; i++) {
+		choices.push({id:i, label:""+i, playCost:i});
+	}
+	//**AI code (in this case, implemented by setting and returning the preferred option)
+	if (corp.AI) {
+		var desiredTarget = this.AISharedBestTargetOption(targets).card;
+		var maxAdvance = corp.AI._advancementRequired(desiredTarget);
+		//1 will be at index 0, etc.
+		choices = [choices[Math.min(maxcred,maxAdvance)-1]];
+	}
+	return choices;
+  },
+  Resolve: function (params) {
+	var targets = ChoicesInstalledCards(corp, function(card) {
+		return CheckAdvance(card);
+	});
+	//**AI code (in this case, implemented by setting and returning the preferred option)
+	if (corp.AI) {
+		this.AIPlayedWithCost = params.id;
+		targets = [this.AISharedBestTargetOption(targets)];
+	}
+	function targetDecisionCallback(targetparams) {
+		AddCounters(targetparams.card, "advancement", params.id);
+	}
+	DecisionPhase(
+	  corp,
+	  targets,
+	  targetDecisionCallback,
+	  this.title,
+	  "Choose card to place on",
+	  this
+	);
+  },
+  AIFastAdvance:true, //is a card for fast advancing
+};
+
 //TODO link (e.g. Reina)
 
 /*
