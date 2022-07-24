@@ -2970,7 +2970,7 @@ function DeckBuild(
 	  var iceCards = [];
 	  if (setIdentifiers.includes('sg')) iceCards = iceCards.concat([30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074]);
 	  if (setIdentifiers.includes('su21')) {
-		  iceCards = iceCards.concat([31043, 31044, 31046, 31055, 31056]);
+		  iceCards = iceCards.concat([31043, 31044, 31046, 31055, 31056, 31065, 31066, 31067]);
 		  //don't include Ravana 1.0 unless there's likely to be other Bioroid ice (for now just assume Haas-Bioroid decks will have them and other factions won't)
 		  if (identityCard.faction == "Haas-Bioroid") iceCards = iceCards.concat([31045]);
 	  }

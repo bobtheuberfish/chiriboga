@@ -29,8 +29,7 @@ class RunCalculator {
   // tag
   // endTheRun
   // loseCredits (runner) from main credit pool, not from extra credits. Will not reduce credits remaining to below zero
-  // payCredits will be an ignored path if cannot be afforded (i.e. only use it for sr that has an option e.g. Funhouse)
-  // checkCreditPoolOrETR-x (if runner credit pool is less than x, etr)
+  // payCredits will be an ignored path if cannot be afforded (i.e. only use it for sr that has an option e.g. Funhouse or if there is no alternative e.g. Tollbooth)
   // misc_minor e.g. corp gains credit
   // misc_moderate e.g. trash 1 program
   // misc_serious e.g. install another ice inward (like endTheRun, paths that fire these will be avoided)
@@ -59,7 +58,15 @@ class RunCalculator {
           else result.sr.push([["netDamage", "netDamage"]]);
         }
         else result.sr.push([["misc_moderate"]]); //arbitrary weak ice
+		//either way, account for the fact that it could be pop-up window
+		result.sr.push([["payCredits"], ["endTheRun"]]); //pay 1 credit or end the run
       }
+	  //or maybe pop-up window (just creating a simple/reduced version since it's hypothetical)
+	  else if (maxCorpCred == 0 + extraRezCost) {
+        result.subTypes = ["Code Gate"];
+        result.strength = 0;
+        result.sr.push([["payCredits"], ["endTheRun"]]); //pay 1 credit or end the run
+	  }
     }
     if (iceKnown && (ice.rezzed || maxCorpCred >= RezCost(ice))) {
       //ice is known, calculate specifics
@@ -303,7 +310,7 @@ class RunCalculator {
 
 		  //apply special per-ice unique conditional effects (from current ice, not encountering new one)
 		  if (iceAI && eff == "iceSpecificEffect") {
-			  var new_effs = iceAI.ice.AIIceSpecificEffect.call(iceAI.ice, poolCreditsLeft);
+			  var new_effs = iceAI.ice.AIIceSpecificEffect.call(iceAI.ice, poolCreditsLeft, otherCreditsLeft);
 			  //remove from encounter_effects and insert instead any effects that are returned
 			  encounter_effects.splice(j, 1, ...new_effs); //remove 1 item at position j and insert all returned items (not compatible with older browsers)
 			  j--; //step back so next item isn't skipped

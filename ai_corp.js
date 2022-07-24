@@ -404,6 +404,10 @@ class CorpAI {
 	  if (affordableIceInList.length > 0) return this._firstOptionWithCard(optionList,this._highestELO(affordableIceInList));
 	}
 	//choose highest elo card in option list
+	cardList = [];
+	for (var i=0; i<optionList.length; i++) {
+		if (optionList[i].card) cardList.push(optionList[i].card);
+	}
 	return this._firstOptionWithCard(optionList,this._highestELO(cardList));
   }
 

@@ -5146,6 +5146,145 @@ cardSet[31064] = {
   },
 };
 
+cardSet[31065] = {
+  title: "Pop-up Window",
+  imageFile: "31065.png",
+  elo: 1716,
+  player: corp,
+  faction: "NBN",
+  influence: 1,
+  cardType: "ice",
+  subTypes: ["Code Gate","Advertisement"],
+  rezCost: 0,
+  strength: 0,
+  //When the Runner encounters this ice, gain 1 credit.
+  cardEncountered: {
+    Resolve: function (card) {
+      if (card == this) {
+		GainCredits(corp,1);
+      }
+    },
+  },
+  //End the run unless the Runner pays 1 credit.
+  subroutines: [
+    {
+      text: "End the run unless the Runner pays 1[c].",
+      Resolve: function (params) {
+        var choices = [];
+        if (CheckCredits(runner, 1))
+          choices.push({ id: 0, label: "Pay 1[c]", button: "Pay 1[c]" });
+        choices.push({ id: 1, label: "End the run", button: "End the run" });
+        function decisionCallback(params) {
+          if (params.id == 0) SpendCredits(runner, 1);
+          else EndTheRun();
+        }
+        DecisionPhase(
+          runner,
+          choices,
+          decisionCallback,
+          this.title,
+          this.title,
+          this
+        );
+      },
+      visual: { y: 96, h: 31 },
+    },
+  ],
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
+	if (maxCorpCred > 4) {
+	  //i.e. corp has lots of credits (this threshold is arbitrary)
+	  result.encounterEffects = [["misc_minor"]];
+	} else {
+	  result.encounterEffects = [["misc_moderate"]];
+	}
+	result.sr = [
+	  [["payCredits"], ["endTheRun"]], //pay 1 credit or end the run
+	];
+	return result;
+  },
+};
+
+cardSet[31066] = {
+  title: "Tollbooth",
+  imageFile: "31066.png",
+  elo: 1896,
+  player: corp,
+  faction: "NBN",
+  influence: 2,
+  cardType: "ice",
+  subTypes: ["Code Gate"],
+  rezCost: 8,
+  strength: 5,
+  //When the Runner encounters this ice, they must pay 3 credits, if able. If they do not, end the run.
+  cardEncountered: {
+    Resolve: function (card) {
+      if (card == this) {
+		if (CheckCredits(runner, 3)) SpendCredits(runner, 3);
+		else EndTheRun();
+	  }
+    },
+  },
+  //subroutines:
+  //End the run.
+  subroutines: [
+    {
+      text: "End the run.",
+      Resolve: function () {
+        EndTheRun();
+      },
+      visual: { y: 103, h: 16 },
+    },
+  ],
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
+	result.encounterEffects = [["payCredits","payCredits","payCredits"]];
+	result.sr = [[["endTheRun"]]];
+	return result;
+  },
+};
+
+cardSet[31067] = {
+  title: "Wraparound",
+  imageFile: "31067.png",
+  elo: 1742,
+  player: corp,
+  faction: "NBN",
+  influence: 1,
+  cardType: "ice",
+  rezCost: 2,
+  strength: 0,
+  subTypes: ["Barrier"],
+  //While there are no installed fracter programs, this ice gets +7 strength.
+  modifyStrength: {
+    Resolve: function (card) {
+      if (card == this) {
+		var installedFracters = ChoicesInstalledCards(
+		  runner,
+		  function (card) {
+		    return CheckCardType(card, ["program"]) && CheckSubType(card, "Fracter");
+		  }
+	    );
+        if (installedFracters.length < 1) return 7; //+7
+      }
+      return 0; //no modification to strength
+    },
+  },
+  //subroutines:
+  //End the run.
+  subroutines: [
+    {
+      text: "End the run.",
+      Resolve: function () {
+        EndTheRun();
+      },
+      visual: { y: 88, h: 16 },
+    },
+  ],
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
+	result.sr = [[["endTheRun"]]];
+	return result;
+  },
+};
+
 //TODO link (e.g. Reina)
 
 /*

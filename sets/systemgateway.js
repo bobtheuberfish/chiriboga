@@ -4278,7 +4278,9 @@ cardSet[30057] = {
     availableWhenInactive: true,
   },
   Enumerate: function () {
-    if (this.successfulRunLastTurn) return [{}];
+    if (this.successfulRunLastTurn) {
+		return [{}];
+	}
     return [];
   },
   //Give the Runner 1 tag unless they pay 8[c].
@@ -5184,7 +5186,7 @@ cardSet[30074] = {
 	];
 	return result;
   },
-  AIIceSpecificEffect: function(poolCreditsLeft) {
+  AIIceSpecificEffect: function(poolCreditsLeft, otherCreditsLeft) {
 	//if the runner has 6c or less, etr
 	if (poolCreditsLeft <= 6) return ["endTheRun"];
 	else return [];
