@@ -816,7 +816,7 @@ function PlayerWin(player, msgstr) {
     requireHumanInput: true,
   };
   winPhase.Enumerate["play again"] = function () {
-	//if (debugging && runner.AI && corp.AI) alert("Game completed");
+	if (debugging && runner.AI && corp.AI) alert("Game completed");
     return [{}];
   };
   winPhase.Resolve["play again"] = function () {
