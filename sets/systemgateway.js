@@ -2865,12 +2865,12 @@ cardSet[30038] = {
 		  //check archives first
 		  var archivesBestOption = -1;
 		  if (archivesOptions.length > 0) {
-			archivesBestOption = corp.AI._bestInstallOption(archivesOptions);
+			archivesBestOption = corp.AI._bestInstallOption(archivesOptions,false); //don't inhibit
 		  }
 		  //if no desirable option, try HQ
 		  var handBestOption = -1;
 		  if (archivesBestOption < 0 && handOptions.length > 0) {
-			  handBestOption = corp.AI._bestInstallOption(handOptions);
+			  handBestOption = corp.AI._bestInstallOption(handOptions,true); //do inhibit
 		  }
 		  //if no desirable option, continue
 		  if (archivesBestOption < 0 && handBestOption < 0) {
@@ -3185,16 +3185,7 @@ cardSet[30040] = {
     var choices = ChoicesInstalledCards(corp, function(card) {
 		if (CheckAdvance(card)) {
 			//**AI code
-			if (corp.AI != null)
-			{
-				return corp.AI._cardShouldBeFastAdvanced(card);
-				//old code didn't include advanceable assets (e.g. finish a hostile)
-				/*
-				if (typeof(card.AIAdvancementLimit) == 'function') {
-					if (card.AIOverAdvance || CheckCounters(card, "advancement", card.AIAdvancementLimit()-1)) return false; //don't overadvance unless appropriate
-				}
-				*/
-			}
+			if (corp.AI != null) return corp.AI._cardShouldBeFastAdvanced(card);
 			return true;
 		}
 	});
@@ -3800,28 +3791,6 @@ cardSet[30050] = {
             this,
             "discard"
           );
-          /* old code (multi-select)
-				var choices = ChoicesHandCards(corp);
-				for (var i=0; i<choices.length; i++) { choices[i].cards = [null,null]; } //set up a multiple-select for two cards
-				function decisionCallback(params) {
-					Trash(params.cards[0]);
-					Trash(params.cards[1]);
-					EndTheRun();
-				};
-				DecisionPhase(corp,choices,decisionCallback,"Anoetic Void","Anoetic Void",this);
-				//**AI code
-				if (corp.AI != null)
-				{
-					corp.AI._log("I know this one");
-					//AI doesn't yet know how to multi-select
-					//use its _reducedDiscardList function
-					choices = corp.AI._reducedDiscardList(choices,2);
-					choices[0].cards[0] = choices[0].card;
-					choices[0].cards[1] = choices[1].card;
-					var choice = choices[0];
-					corp.AI.preferred = { title:"Anoetic Void", option:choice }; //title must match currentPhase.title for AI to fire
-				}
-				*/
         }
       );
       //**AI code

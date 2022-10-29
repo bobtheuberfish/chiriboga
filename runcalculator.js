@@ -703,8 +703,8 @@ class RunCalculator {
           if (totalEffect.netDamage) totalDamage += totalEffect.netDamage;
           if (totalEffect.meatDamage) totalDamage += totalEffect.meatDamage;
           if (totalEffect.brainDamage) totalDamage += totalEffect.brainDamage;
-		  //update damage limit based on clicks spent (unless it is set to Infinity)
-		  if (clicksLeft < 1 && damageLimit != Infinity) damageLimit = runner.grip.length - MaxHandSize(runner); //try to keep a full hand at end of turn	
+		  //update damage limit based on clicks spent (unless it is set to Infinity or already mid-run)
+		  if (clicksLeft < 1 && damageLimit != Infinity && !attackedServer) damageLimit = runner.grip.length - MaxHandSize(runner); //try to keep a full hand at end of turn	
 		  if (damageLimit < 0) damageLimit = 0;
 		  //now check damage against limit
           if (totalDamage <= damageLimit) {
@@ -1133,6 +1133,7 @@ class RunCalculator {
 		possiblePath.push(approachPoint);
         if (this.ValidPath(possiblePath, damageLimit, clickLimit, poolCreditLimit,	otherCredits, tagLimit))
           finalpaths.push(possiblePath);
+	    else console.log("Ignoring path "+i+" due to invalid approach");
 	  }
 	}
 	this.paths = finalpaths;

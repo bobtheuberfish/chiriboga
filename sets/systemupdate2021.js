@@ -1449,9 +1449,9 @@ cardSet[31021] = {
 		); //cost to str, amt to str, cost to brk, amt to brk	
 		//include trash-to-breach option (if it is a Code Gate)
 		if (iceAI.subTypes.includes("Code Gate")) {
-			//only use trash-breach for worthwhile targets (the 1.5 is arbitrary) with few clicks left
+			//only use trash-breach for worthwhile targets (2.0 was increased from 1.5 at issue #95) with few clicks left
 			//the !runner.AI check is in case corp is doing the run calculation
-			if (!runner.AI || (runner.AI._getCachedPotential(server) > 1.5 && !CheckClicks(runner, 2)) ) {
+			if (!runner.AI || (runner.AI._getCachedPotential(server) > 2.0 && !CheckClicks(runner, 2)) ) {
 				var pointCopy = rc.CopyPoint(point);
 				pointCopy.persistents = pointCopy.persistents.concat([{use:this, target:iceAI.ice, iceIdx:point.iceIdx, action:"bypass", alt:this.abilities[2].alt}]);
 				pointCopy.effects = pointCopy.effects.concat([["misc_serious","misc_serious"]]); //this is arbitrary but basically take it seriously
@@ -4836,7 +4836,7 @@ cardSet[31061] = {
 		  else if (item.card.trashCost == ret[0].card.trashCost && item.card.rezCost > ret[0].card.rezCost) considerThis = true;
 		  if (considerThis) {
 			//only cards the AI would have a plan for installing
-			var instIdx = corp.AI._bestInstallOption(ChoicesCardInstall(item.card));
+			var instIdx = corp.AI._bestInstallOption(ChoicesCardInstall(item.card),false); //don't inhibit
 		    if (instIdx > -1) ret = [item];
 		  }
 		});
@@ -4990,7 +4990,16 @@ cardSet[31062] = {
 	var maxThisTurn = corp.AI._potentialAdvancement(this)+this.advancement;
 	//even numbers are no good
 	if (maxThisTurn%2 == 0) maxThisTurn--;
-	return Math.max(3,maxThisTurn);
+	var ret = Math.max(3,maxThisTurn);
+	//reduce to 2 if there is an affordable or rezzed SanSan
+	var thisServer = GetServer(this);
+	if (thisServer) {
+		var existingSanSan = corp.AI._copyOfCardExistsIn("SanSan City Grid", thisServer.root);
+		if (existingSanSan) {
+			if ( existingSanSan.rezzed || Credits(corp) > RezCost(existingSanSan) ) ret = 2;
+		}
+	}
+	return ret
   },
 }
 
@@ -5318,7 +5327,7 @@ cardSet[31068] = {
 	//**AI code (in this case, implemented by setting and returning the preferred option)
 	if (corp.AI) {
 		var desiredTarget = this.AISharedBestTargetOption(targets).card;
-		var maxAdvance = corp.AI._advancementRequired(desiredTarget);
+		var maxAdvance = corp.AI._advancementStillRequired(desiredTarget);
 		//1 will be at index 0, etc.
 		choices = [choices[Math.min(maxcred,maxAdvance)-1]];
 	}
@@ -5346,6 +5355,36 @@ cardSet[31068] = {
 	);
   },
   AIFastAdvance:true, //is a card for fast advancing
+};
+
+cardSet[31069] = {
+  title: "SanSan City Grid",
+  imageFile: "31069.png",
+  elo: 1903,
+  player: corp,
+  faction: "NBN",
+  influence: 3,
+  cardType: "upgrade",
+  subTypes: ["Region"],
+  rezCost: 6,
+  trashCost: 5,
+  modifyAdvancementRequirement: {
+    Resolve: function (card) {
+	  if (GetServer(card) == GetServer(this)) return -1;
+      return 0; //no modification to cost
+    },
+  },
+  AIIsScoringUpgrade: true,
+  RezUsability: function () {
+	var server = GetServer(this);
+	var agendaInThisServer = null;
+	for (var i=0; i<server.root.length; i++) {
+		if (CheckCardType(server.root[i],["agenda"])) agendaInThisServer=server.root[i];
+	}
+	if (agendaInThisServer && typeof currentPhase.Enumerate.score != 'undefined' && Counters(agendaInThisServer, "advancement") >= AdvancementRequirement(agendaInThisServer) - 1) return true;
+	return false;
+  },
+  AITriggerWhenCan: true,
 };
 
 //TODO link (e.g. Reina)
