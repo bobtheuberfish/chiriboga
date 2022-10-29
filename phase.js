@@ -459,8 +459,8 @@ phaseTemplates.globalTriggers = {
 		  currentPhase.triggerEnumerateParams
         ).length < 1
       ) {
-      	  //special case: instead of breaching
-          if (currentPhase.triggerCallbackName == "runSuccessful" && currentPhase.player !== playerTurn) {
+      	  //special case: instead of breaching (Runner only)
+          if (currentPhase.triggerCallbackName == "runSuccessful" && currentPhase.player == runner) {
           	var iobChoices = ChoicesActiveTriggers("insteadOfBreaching", runner);
 			//that gives a list of cards but we still need to use Enumerate to remove impossibles and force required
             var iobRequired = false;			
@@ -808,18 +808,6 @@ phases.corpActionMain = {
               )
                 allowAdvance = false;
             }
-			/*
-			//now handled by corp AI advance code
-            if (
-              typeof possibleAdvance[i].card.AIAdvancementLimit == "function"
-            ) {
-              if (
-                Counters(possibleAdvance[i].card, "advancement") >=
-                possibleAdvance[i].card.AIAdvancementLimit()
-              )
-                allowAdvance = false;
-            }
-			*/
             if (allowAdvance) ret.push(possibleAdvance[i]);
           }
         }

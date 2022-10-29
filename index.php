@@ -169,7 +169,7 @@
 			<a href="engine.php?p=r&mentor=3" class="tutorial noselect" title="Assets, Trash Costs, and Run Events">4</a>
 			<a href="engine.php?p=r&mentor=4" class="tutorial noselect" title="Advancing, Scoring, and Damage">5</a>
 			<a href="engine.php?p=c&mentor=5" class="tutorial noselect" title="Upgrades, Root, and Trash on Install">6</a><br/>
-			<div class="ltp-link">or read <a href="https://nisei.net/players/learn-to-play/">NISEI's Learn to Play guide</a></div>
+			<div class="ltp-link">or read <a href="https://nullsignal.games/players/learn-to-play/">Null Signal Games' Learn to Play guide</a></div>
 		</div>
 		<div class="row">
 			<a class="runner" href="engine.php?ap=6&p=r&r=N4IglgJgpgdgLmOBPEAuEB2AbCANCAZyQLigFsBxAQ1IHcqVUBtLXVgRgCZcueBmHgBYeAVlE8AHLk4AGaXM7tpSzq1XSMG6VM46dATmmG+ck7jN9ul8wL63BAXQC+QA&c=N4IglgJgpgdgLmOBPEAuEB2DIA0IDOS+cUAtgOICGJA7pSqgNoDMGOr7AnFzgCwAMfQbwBMfAKwS+ANhl82vNtN45lqpRtXdp3DIL04MARkMmMY84YvNDNjCvuHJGZ+IC6AXyA"><img class="runner" src="images/menu_runner_1.png"><span>Runner Tutorial Deck</span></a>
