@@ -1133,7 +1133,7 @@ class RunCalculator {
 		possiblePath.push(approachPoint);
         if (this.ValidPath(possiblePath, damageLimit, clickLimit, poolCreditLimit,	otherCredits, tagLimit))
           finalpaths.push(possiblePath);
-	    else console.log("Ignoring path "+i+" due to invalid approach");
+	    else this._log("Ignoring path "+i+" due to invalid approach");
 	  }
 	}
 	this.paths = finalpaths;
