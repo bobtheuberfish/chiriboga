@@ -335,7 +335,7 @@ class CorpAI {
 		var sanSan = this._copyOfCardExistsIn("SanSan City Grid", server.root);
 		if (sanSan) {
 			//ignoring other discounts for now
-			//TODO properly calculate advancement cost (some kind of combined use of _potentialAdvancement)
+			//this is approximate - for proper calculation would probably need some kind of combined use of _potentialAdvancement
 			if (sanSan.rezzed || AvailableCredits(corp) >= RezCost(sanSan) + ret - Counters(card,"advancement")) ret--;
 		}
 	}
