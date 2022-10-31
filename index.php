@@ -182,7 +182,7 @@
 			<a class="corp" href="decklauncher.php?p=c&c=random"><img class="corp" src="images/menu_corp_3.png"><span>Corp Deckbuilding</span></a>
 		</div>
 		<div class="footer">
-			<span id="dev-info"></span><span>Source code <a href="https://github.com/bobtheuberfish/chiriboga">available on GitHub</a></span>
+			<span id="dev-info"></span><span>Source code <a href="https://github.com/bobtheuberfish/chiriboga">available on GitHub</a></span><span>&nbsp;&nbsp;|&nbsp;&nbsp;Hardware Acceleration is required to use this site</span>
 		</div>
 	</body>
 </html>
