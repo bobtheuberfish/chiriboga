@@ -3150,8 +3150,11 @@ cardSet[31037] = {
   },
   //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
   AIRunEventExtraPotential: function(server,potential) {
-	//use Dirty Laundry only if there are no unrezzed ice and no unrezzed cards in root
-	var cardsThisServer = server.ice.concat(server.root);
+	//not worth it if run is expensive for no benefit (the 0.5 and 4 are arbitrary)
+	if ( potential < 0.5 && (server.ice.length > 0 || Credits(runner) > 4) ) return 0;
+	//use Dirty Laundry only if there are no unrezzed ice
+	//(this previously required no unrezzed cards in root but only a few cards prevent success so it's probably ok, maybe)
+	var cardsThisServer = server.ice;//.concat(server.root);
 	for (var i=0; i<cardsThisServer.length; i++) {
 	  if (!cardsThisServer[i].rezzed) return 0; //no benefit (don't play)
 	}
@@ -5386,6 +5389,26 @@ cardSet[31069] = {
   },
   AITriggerWhenCan: true,
 };
+
+cardSet[31070] = {
+  title: "Weyland Consortium: Building a Better World",
+  imageFile: "31070.png",
+  elo: 1478,
+  player: corp,
+  faction: "Weyland Consortium",
+  cardType: "identity",
+  deckSize: 45,
+  influenceLimit: 15,
+  subTypes: ["Megacorp"],
+  cardPlayed: {
+    Resolve: function (card) {
+		if (CheckSubType(card,"Transaction")) {
+			GainCredits(corp,1);
+		}
+    },
+    automatic: true,
+  },
+}
 
 //TODO link (e.g. Reina)
 
