@@ -201,6 +201,8 @@ var CardRenderer = {
 
       //ticker to animate counter up/down and (if relevant) glow
       app.ticker.add(function (delta) {
+		if (!this.sprite.anchor) return; //anchor has been destroyed, stop updating
+		  
         if (typeof this.glowSprite !== "undefined") {
           //offset to account for the drop shadow
           if (viewingPlayer == runner) {
@@ -691,6 +693,8 @@ var CardRenderer = {
       //add a ticker for this card
       this.minZoomLoops = 1;
       app.ticker.add(function (delta) {
+		if (!this.sprite.anchor) return; //anchor has been destroyed, stop updating
+		
         var showFace =
           (this.card === accessingCard && viewingPlayer == runner) ||
           this.faceUp ||
@@ -1126,6 +1130,21 @@ var CardRenderer = {
         this.glowSprite.scale = this.sprite.scale;
       }, this);
     }
+	
+	//destroys all the sprites
+	Destroy() {
+		var spritesToDestroy = [];
+		spritesToDestroy.push(this.sprite);
+		spritesToDestroy.push(this.dummy);
+		spritesToDestroy.push(this.knownSprite);
+		spritesToDestroy.push(this.strengthSprite);
+		spritesToDestroy = spritesToDestroy.concat(this.brokenSprites);
+		spritesToDestroy.push(this.costSprite);
+		spritesToDestroy.push(this.glowSprite);
+		for (var i=0; i<spritesToDestroy.length; i++) {
+			if (spritesToDestroy[i]) spritesToDestroy[i].destroy();
+		}
+	}
 
     //FaceDown will change the sprite to show the card back
     FaceDown() {
@@ -1462,7 +1481,7 @@ var CardRenderer = {
 
       this.showFPS = false;
       this.framerates = []; //to calculate a periodic average
-      //key event to toggle fps display
+      //key event to toggle fps display and faceoff AI
       window.addEventListener(
         "keydown",
         function (event) {
@@ -1471,6 +1490,10 @@ var CardRenderer = {
             if (cardRenderer.showFPS) $("#fps").show();
             else $("#fps").hide();
           }
+		  else if (event.key == "g" && corp.AI && runner.AI) {
+			pauseFaceoff = !pauseFaceoff;
+			if (!pauseFaceoff) Main();
+		  }
         },
         false
       );
@@ -1873,14 +1896,23 @@ var CardRenderer = {
 
     UpdateCounters(skipUpdate=false) {
       for (var i = 0; i < this.counters.length; i++) {
-        var unrotation = this.app.stage.rotation;
-        if (this.counters[i].sprite.parent != this.app.stage)
-          unrotation += this.counters[i].sprite.parent.rotation;
-        this.counters[i].sprite.rotation = -unrotation;
-        this.counters[i].richText.rotation = -unrotation;
-        if (!skipUpdate) this.counters[i].Update();
-        this.counters[i].sprite.parent.addChild(this.counters[i].sprite);
-        this.counters[i].richText.parent.addChild(this.counters[i].richText);
+		if (this.counters[i].sprite.parent) {
+			var unrotation = this.app.stage.rotation;
+			if (this.counters[i].sprite.parent != this.app.stage)
+			  unrotation += this.counters[i].sprite.parent.rotation;
+			this.counters[i].sprite.rotation = -unrotation;
+			this.counters[i].richText.rotation = -unrotation;
+			if (!skipUpdate) this.counters[i].Update();
+			this.counters[i].sprite.parent.addChild(this.counters[i].sprite);
+			this.counters[i].richText.parent.addChild(this.counters[i].richText);
+		}
+		else {
+			//sprite parent has been destroyed, clean up
+			this.counters[i].sprite.destroy();
+			this.counters[i].richText.destroy();
+			this.counters.splice(i,1);
+			i--;
+		}
       }
     }
 
