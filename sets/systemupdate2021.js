@@ -5410,12 +5410,10 @@ cardSet[31070] = {
   },
 }
 
-//TODO link (e.g. Reina)
-
-/*
 cardSet[31071] = {
   title: "Hostile Takeover",
-  imageFile: "31071.jpg",
+  imageFile: "31071.png",
+  elo: 1902,
   player: corp,
   faction: "Weyland Consortium",
   cardType: "agenda",
@@ -5429,6 +5427,9 @@ cardSet[31071] = {
         BadPublicity(1);
       }
     },
+	automatic:true,
   },
 };
-*/
+
+//TODO link (e.g. Reina)
+
