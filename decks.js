@@ -742,8 +742,8 @@ function LoadDecks() {
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-  debugging = true; //set true to log extra details and pause execution on error
-  mainLoopDelay = 50; //for speedy AI vs AI testing (any faster than this and funny things happen at end-of-game)
+  debugging = false; //set true to log extra details and pause execution on error
+  //mainLoopDelay = 50; //for speedy AI vs AI testing (any faster than this and funny things happen at end-of-game)
 
   /*
 	RunnerTestField(31002, //identity
