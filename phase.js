@@ -1701,8 +1701,22 @@ function ChangePhase(src, skipInit = false) {
   var previousPhase = currentPhase;
   currentPhase = nextPhase;
 
+  var oldTurn = playerTurn;
+
   if (currentPhase.identifier == "Corp 1.1") playerTurn = corp;
   else if (currentPhase.identifier == "Runner 1.1") playerTurn = runner;
+  
+  if (!rewinding) {
+	  if (playerTurn != oldTurn || currentPhase.identifier == "Runner Mulligan") {
+		var rewindState = { turn: playerTurn, code: ReproductionCode(true) };
+		rewindStates.unshift(rewindState);
+		//update rewind select
+		RenderRewindOptions();
+	  }
+  }
+  
+  if (rewindStates.length < 1) $("#rewind-select").prop("disabled",true);
+  else $("#rewind-select").prop("disabled",false);
 
   activePlayer = currentPhase.player;
   $("#header").html("<h2>" + TurnPhaseStr() + "</h2>");

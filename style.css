@@ -446,3 +446,11 @@ div.options {
 	display:inline-block;
 	padding:15px;
 }
+
+#rewind-select {
+	opacity:1;
+	border:1px solid #7C9396;
+}
+#rewind-select:disabled {
+	opacity:0.5;
+}

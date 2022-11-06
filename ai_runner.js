@@ -966,7 +966,7 @@ class RunnerAI {
   //if foresight is true, the run calculation will exchange clicks for credits/cards
   _commonRunCalculationChecks(server,runEventCardToUse,bonusBreaker,foresight) {
 	var poolCreditOffset = 0;
-	var extraCredits = 0;
+	var extraCredits = corp.badPublicity; //temporary credits for each run
 	var clickOffset = -1; //assume 1 click will be used to initiate the run
 	var damageOffset = 0;
 	if (foresight) { //i.e. run a click later, do prep first
