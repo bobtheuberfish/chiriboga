@@ -77,7 +77,7 @@
 				<button id="exittomenu" onclick="window.location.href='index.php';" class="button">Exit to main menu</button>
 				<button id="editdeck" onclick="window.location.href='decklauncher.php';" class="button">Edit this deck</button>
 				<button id="randomdeck" onclick="window.location.href='decklauncher.php';" class="button">Edit new random deck</button>
-				<div class="options">
+				<div style="float:right;" class="options">
 					<label for="narration"><input type="checkbox" id="narration">Narrate AI (experimental)</label>
 				</div>
 				<p>Chiriboga implements the game <a href="https://nullsignal.games/about/netrunner/">Android: Netrunner</a> with an AI opponent. Source is <a href="https://github.com/bobtheuberfish/chiriboga">available on github</a>.</p>
@@ -89,6 +89,9 @@
 				Chiriboga is not affiliated with Fantasy Flight Games or Wizards of the Coast.</p>
 				<p><a href="https://netrunnerdb.com/en/card/26098"><em>...but who ordered him to wear that hat?</em></a></p>
 				<button onclick="DownloadCapturedLog();" class="button">Download captured log</button> (for <a href="https://github.com/bobtheuberfish/chiriboga/issues">error reporting</a>)
+				<select id="rewind-select" style="float:right;" disabled>
+					<option value="">Rewind</option>
+				</select>
 				<br/><br/>
 			</div>
 		</div>

@@ -129,31 +129,24 @@ function ReplicationCode(src,str) {
   return ret;
 }
 
-// Function to download capturedlog to a file
-//source: https://stackoverflow.com/questions/13405129/javascript-create-and-save-file
-function DownloadCapturedLog() {
-  //reveal hidden information
-  var extraOutput = "\nSPOILER: Contents of remote servers:\n";
-  for (var i=0; i<corp.remoteServers.length; i++) {
-	extraOutput += "SPOILER: "+ServerName(corp.remoteServers[i])+": "+Readablify(corp.remoteServers[i].root);
-  }
-  //make board state fairly easy to reproduce (not comprehensive e.g. no hosted cards, no credit pool etc, just a starting point)
-  extraOutput += "\n";
+//make board state fairly easy to reproduce (not comprehensive yet, just a starting point)
+function ReproductionCode(full=false) {
+  var ret = "";
   var runnerHeap = JSON.stringify(runner.heap,true);
   var runnerStack = JSON.stringify(runner.stack,true);
   var runnerGrip = JSON.stringify(runner.grip,true);
   var runnerInstalled = JSON.stringify(runner.rig.resources.concat(runner.rig.hardware).concat(runner.rig.programs),true);
   var runnerStolen = JSON.stringify(runner.scoreArea,true);
-  extraOutput += "RunnerTestField("+runner.identityCard.setNumber+", "+[runnerHeap,runnerStack,runnerGrip,runnerInstalled,runnerStolen].join(', ')+", cardBackTexturesRunner,glowTextures,strengthTextures);\n";
+  ret += "RunnerTestField("+runner.identityCard.setNumber+", "+[runnerHeap,runnerStack,runnerGrip,runnerInstalled,runnerStolen].join(', ')+", cardBackTexturesRunner,glowTextures,strengthTextures);\n";
   //for Ayla, set aside cards
   if (runner.identityCard.setAsideCards) {
 	var card = runner.identityCard;
 	var addr = "runner.identityCard";
-	extraOutput += addr+".setAsideCards = [];\n";
+	ret += addr+".setAsideCards = [];\n";
 	for (var i=0; i<card.setAsideCards.length; i++) {
-		extraOutput += "InstanceCardsPush("+card.setAsideCards[i].setNumber+","+addr+".setAsideCards,1,cardBackTextures"+PlayerName(card.setAsideCards[i].player)+",glowTextures,strengthTextures)[0].host = "+addr+";\n";
+		ret += "InstanceCardsPush("+card.setAsideCards[i].setNumber+","+addr+".setAsideCards,1,cardBackTextures"+PlayerName(card.setAsideCards[i].player)+",glowTextures,strengthTextures)[0].host = "+addr+";\n";
 	}
-	extraOutput += ReplicationCode(card.setAsideCards,addr+".setAsideCards");
+	ret += ReplicationCode(card.setAsideCards,addr+".setAsideCards");
   }
   //now Corp:
   var corpArchivesCards = JSON.stringify(corp.archives.cards,true);
@@ -168,47 +161,59 @@ function DownloadCapturedLog() {
   }
   var corpRemotes = JSON.stringify(corpRemotesEach,true); //the true isn't needed here but will keep it for visual consistency
   var corpScored = JSON.stringify(corp.scoreArea,true);
-  extraOutput += "CorpTestField("+corp.identityCard.setNumber+", "+[corpArchivesCards,corpRndCards,corpHQCards,corpArchivesInstalled,corpRnDInstalled,corpHQInstalled,corpRemotes,corpScored].join(', ')+", cardBackTexturesCorp,glowTextures,strengthTextures);\n";
-  extraOutput += ReplicationCode(corp.scoreArea,'corp.scoreArea');
-  extraOutput += ReplicationCode(runner.rig.resources,'runner.rig.resources');
-  extraOutput += ReplicationCode(runner.rig.hardware,'runner.rig.hardware');
-  extraOutput += ReplicationCode(runner.rig.programs,'runner.rig.programs');
-  extraOutput += ReplicationCode(corp.archives.root,'corp.archives.root');
-  extraOutput += ReplicationCode(corp.archives.ice,'corp.archives.ice');
-  extraOutput += ReplicationCode(corp.archives.cards,'corp.archives.cards');
-  extraOutput += ReplicationCode(corp.RnD.root,'corp.RnD.root');
-  extraOutput += ReplicationCode(corp.RnD.ice,'corp.RnD.ice');
-  extraOutput += ReplicationCode(corp.HQ.root,'corp.HQ.root');
-  extraOutput += ReplicationCode(corp.HQ.ice,'corp.HQ.ice');
+  ret += "CorpTestField("+corp.identityCard.setNumber+", "+[corpArchivesCards,corpRndCards,corpHQCards,corpArchivesInstalled,corpRnDInstalled,corpHQInstalled,corpRemotes,corpScored].join(', ')+", cardBackTexturesCorp,glowTextures,strengthTextures);\n";
+  ret += ReplicationCode(corp.scoreArea,'corp.scoreArea');
+  ret += ReplicationCode(runner.rig.resources,'runner.rig.resources');
+  ret += ReplicationCode(runner.rig.hardware,'runner.rig.hardware');
+  ret += ReplicationCode(runner.rig.programs,'runner.rig.programs');
+  ret += ReplicationCode(corp.archives.root,'corp.archives.root');
+  ret += ReplicationCode(corp.archives.ice,'corp.archives.ice');
+  ret += ReplicationCode(corp.archives.cards,'corp.archives.cards');
+  ret += ReplicationCode(corp.RnD.root,'corp.RnD.root');
+  ret += ReplicationCode(corp.RnD.ice,'corp.RnD.ice');
+  ret += ReplicationCode(corp.HQ.root,'corp.HQ.root');
+  ret += ReplicationCode(corp.HQ.ice,'corp.HQ.ice');
   for (var i=0; i<corp.remoteServers.length; i++) {
-	extraOutput += ReplicationCode(corp.remoteServers[i].root,'corp.remoteServers['+i+'].root');
-	extraOutput += ReplicationCode(corp.remoteServers[i].ice,'corp.remoteServers['+i+'].ice');
-	if (typeof corp.remoteServers[i].AISuccessfulRuns !== 'undefined') extraOutput += "corp.remoteServers["+i+"].AISuccessfulRuns="+corp.remoteServers[i].AISuccessfulRuns+";\n";
+	ret += ReplicationCode(corp.remoteServers[i].root,'corp.remoteServers['+i+'].root');
+	ret += ReplicationCode(corp.remoteServers[i].ice,'corp.remoteServers['+i+'].ice');
+	if (typeof corp.remoteServers[i].AISuccessfulRuns !== 'undefined') ret += "corp.remoteServers["+i+"].AISuccessfulRuns="+corp.remoteServers[i].AISuccessfulRuns+";\n";
   }
-  if (typeof corp.archives.AISuccessfulRuns !== 'undefined') extraOutput += "corp.archives.AISuccessfulRuns="+corp.archives.AISuccessfulRuns+";\n";
-  if (typeof corp.RnD.AISuccessfulRuns !== 'undefined') extraOutput += "corp.RnD.AISuccessfulRuns="+corp.RnD.AISuccessfulRuns+";\n";
-  if (typeof corp.HQ.AISuccessfulRuns !== 'undefined') extraOutput += "corp.HQ.AISuccessfulRuns="+corp.HQ.AISuccessfulRuns+";\n";
+  if (typeof corp.archives.AISuccessfulRuns !== 'undefined') ret += "corp.archives.AISuccessfulRuns="+corp.archives.AISuccessfulRuns+";\n";
+  if (typeof corp.RnD.AISuccessfulRuns !== 'undefined') ret += "corp.RnD.AISuccessfulRuns="+corp.RnD.AISuccessfulRuns+";\n";
+  if (typeof corp.HQ.AISuccessfulRuns !== 'undefined') ret += "corp.HQ.AISuccessfulRuns="+corp.HQ.AISuccessfulRuns+";\n";
   if (runner.AI && typeof runner.AI.suspectedHQCards !== 'undefined') {
-	  extraOutput += "if (runner.AI) runner.AI.suspectedHQCards = [";
+	  ret += "if (runner.AI) runner.AI.suspectedHQCards = [";
 	  for (var i=0; i<runner.AI.suspectedHQCards.length; i++) {
-		  extraOutput += "{title:'"+runner.AI.suspectedHQCards[i].title+"',cardType:'"+runner.AI.suspectedHQCards[i].cardType+"',copies:"+runner.AI.suspectedHQCards[i].copies+",uncertainty:"+runner.AI.suspectedHQCards[i].uncertainty+"},";
+		  ret += "{title:'"+runner.AI.suspectedHQCards[i].title+"',cardType:'"+runner.AI.suspectedHQCards[i].cardType+"',copies:"+runner.AI.suspectedHQCards[i].copies+",uncertainty:"+runner.AI.suspectedHQCards[i].uncertainty+"},";
 	  }
-	  extraOutput += "];\n";
+	  ret += "];\n";
   }
-  if (corp.badPublicity > 0) extraOutput += "runner.badPublicity = "+corp.badPublicity+";\n";
-  if (runner.tags > 0) extraOutput += "runner.tags = "+runner.tags+";\n";
-  if (runner.brainDamage > 0) extraOutput += "runner.brainDamage = "+runner.brainDamage+";\n";
-  if (debugging) {
-	  extraOutput += "runner.creditPool = "+runner.creditPool+";\n";
-	  extraOutput += "corp.creditPool = "+corp.creditPool+";\n";
-	  extraOutput += "runner.clickTracker = "+runner.clickTracker+";\n";
-	  extraOutput += "corp.clickTracker = "+corp.clickTracker+";\n";
+  if (corp.badPublicity > 0) ret += "corp.badPublicity = "+corp.badPublicity+";\n";
+  if (runner.tags > 0) ret += "runner.tags = "+runner.tags+";\n";
+  if (runner.brainDamage > 0) ret += "runner.brainDamage = "+runner.brainDamage+";\n";
+  if (full) {
+	  ret += "runner.creditPool = "+runner.creditPool+";\n";
+	  ret += "corp.creditPool = "+corp.creditPool+";\n";
+	  ret += "runner.clickTracker = "+runner.clickTracker+";\n";
+	  ret += "corp.clickTracker = "+corp.clickTracker+";\n";
 	  var phasesKeys = Object.keys(phases);
 	  for (var i=0; i< phasesKeys.length; i++) {
-		  if (phases[phasesKeys[i]] == currentPhase) extraOutput += "ChangePhase(phases."+phasesKeys[i]+"); ";
+		  if (phases[phasesKeys[i]] == currentPhase) ret += "ChangePhase(phases."+phasesKeys[i]+"); ";
 	  }
-	  extraOutput += "//"+currentPhase.title+"\n";
+	  ret += "//"+currentPhase.title+"\n";
   }
+  return ret;
+}
+
+// Function to download capturedlog to a file
+//source: https://stackoverflow.com/questions/13405129/javascript-create-and-save-file
+function DownloadCapturedLog() {
+  //reveal hidden information
+  var extraOutput = "\nSPOILER: Contents of remote servers:\n";
+  for (var i=0; i<corp.remoteServers.length; i++) {
+	extraOutput += "SPOILER: "+ServerName(corp.remoteServers[i])+": "+Readablify(corp.remoteServers[i].root);
+  }
+  extraOutput += "\n"+ReproductionCode(debugging);
   var verdate = new Date(versionReference * 1000);
   extraOutput += "\nVersion reference: "+verdate.toString();
   
@@ -356,6 +361,12 @@ function Iconify(src, black = false) {
   var colorStr = "";
   if (black) colorStr = "_black";
   var ret = (" " + src).slice(1); //deep copy (don't modify original string)
+  ret = ret.replace(
+    /temporary credits/g,
+	'temporary <img src="images/NISEI_CREDIT' +
+      colorStr +
+      '.png" class="icon" height="16"/>'
+  );
   ret = ret.replace(
     /\[c\]/g,
     '<img src="images/NISEI_CREDIT' +
@@ -2938,7 +2949,7 @@ function DeckBuild(
 	  //agendas
 	  var agendaCards = [];
 	  if (setIdentifiers.includes('sg')) agendaCards = agendaCards.concat([30060, 30044, 30036, 30067, 30068, 30069, 30070, 30052]);
-	  if (setIdentifiers.includes('su21')) agendaCards = agendaCards.concat([31041,31051,31052,31061,31062]);
+	  if (setIdentifiers.includes('su21')) agendaCards = agendaCards.concat([31041, 31051,31052, 31061,31062, 31071]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomAgendas(
 		identityCard,
 		agendaCards,

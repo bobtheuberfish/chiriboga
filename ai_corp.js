@@ -940,7 +940,7 @@ class CorpAI {
         protectionScore = protectionScores["null"];
       }
     }
-	if ( ( serverToProtect==null || typeof(serverToProtect.cards == 'undefined') ) && this._HVTsInstalled() > 0 ) { //protect a HVT server instead of other remotes
+	if ( ( serverToProtect==null || typeof(serverToProtect.cards) == 'undefined' ) && this._HVTsInstalled() > 0 ) { //protect a HVT server instead of other remotes
 		if (!this._HVTsInServer(serverToProtect)) { //this server is fine if it has a HVT
 			//don't update the protection score - don't compare archives to the HVT server
 			serverToProtect = this._HVTserver();
@@ -1497,8 +1497,15 @@ class CorpAI {
 
     //Find out if any servers need protection. If so, we will choose an ice card if possible.
     var serverToInstallTo = this._serverToProtect();
+
+	//Simple situational checks
+	//ice is all rezzed? need to install another layer (or any at all)
+	var iceInstallSituationCheck = this._unrezzedIce(serverToInstallTo).length == 0;
+	//too poor? don't spend frivolously on new layers
+	if (!iceInstallEconomyCheck && this._rezzedIce(serverToInstallTo).length > 0) iceInstallSituationCheck = false;
+
     if (
-      this._unrezzedIce(serverToInstallTo).length == 0 ||
+      iceInstallSituationCheck ||
       iceInstallEconomyCheck
     ) {
       //this is our worst-protected server. if the server already has unrezzed ice, let's not install ice unless we have economy
@@ -1583,8 +1590,8 @@ class CorpAI {
 	}
 	if (!preferUpgrade) ret = ret.concat(intoServerOptions);
 
-    //Upgrade?
-    ret = ret.concat(upgradeInstallPreferences);
+    //Upgrade? Not if poor (assuming there are no upgrades that improve economy)
+	if (iceInstallEconomyCheck) ret = ret.concat(upgradeInstallPreferences);
 	if (preferUpgrade) ret = ret.concat(intoServerOptions);
 
     //If no protected empty remote exists, let's make one if prudent
@@ -2521,10 +2528,15 @@ class CorpAI {
 				var blufflim = this._bluffAdvanceLimit(card);
 				if (blufflim > advancementLimit) advancementLimit = blufflim;
 			}
+			//check if agenda is well-protected or HQ is weak (in which case we need to start moving agendas into servers)
+			var thisRemoteProtectionScore = this._protectionScore(corp.remoteServers[i], {});
+			//the 0.5 is arbitrary but hopefully works as a simple guess of how likely the Runner is to be able to attack it next turn
+			var shouldStartAdvancingAgenda = thisRemoteProtectionScore > 0.5 * Credits(runner)
+				|| thisRemoteProtectionScore > this._protectionScore(corp.HQ, {returnArchivesLowerScoreForHQIfBackdoor:true});
 			//don't start advancing if too poor to finish the job (the false means not necessarily this turn) or agenda in weak server
 			var startOrContinueAdvancement = false;
 			if (card.advancement > 0) startOrContinueAdvancement = true; //already started, feel free to continue (the counter shows the runner it is advanceable)
-			else if (!CheckCardType(card, ["agenda"]) || card == almostDoneAgenda || this._protectionScore(corp.remoteServers[i], {}) > this._protectionScore(corp.HQ, {returnArchivesLowerScoreForHQIfBackdoor:true})) {
+			else if (!CheckCardType(card, ["agenda"]) || card == almostDoneAgenda || shouldStartAdvancingAgenda) {
 				if (this._potentialAdvancement(card,false) >= advancementLimit) startOrContinueAdvancement = true;
 			}
 			if ( startOrContinueAdvancement ) {

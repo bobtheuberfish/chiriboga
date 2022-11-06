@@ -742,33 +742,42 @@ function LoadDecks() {
 
 
   //PASTE REPLICATION CODE HERE (and/or customise code below)
-  debugging = false; //set true to pause execution on error
+  debugging = false; //set true to log extra details and pause execution on error
   //mainLoopDelay = 50; //for speedy AI vs AI testing (any faster than this and funny things happen at end-of-game)
 
   /*
 	RunnerTestField(31002, //identity
-		[], //heapCards
-		[30014,30014,30014,30014], //stackCards
-		[31003,30014,30014,30014,30014], //gripCards
-		[30006], //installed
+		[30032], //heapCards
+		[31004,31004,31004,31004], //stackCards
+		[31037,31037,31037,31037,31037,31037,31037, 31037], //gripCards
+		[30014,31008], //installed
 		[], //stolen
 		cardBackTexturesRunner,glowTextures,strengthTextures);
 	
 	CorpTestField(30035, //identity
-		[30058,30050,30061,31049,31059,30066,31042,30037,30071,31054,30053,30045], //archivesCards
+		[], //archivesCards
 		[30073,30072,30047,30073,30073,30039], //rndCards
 		[30065,31061,30039,30066,30071], //hqCards
 		[], //archivesInstalled
-		[30039], //rndInstalled
-		[], //hqInstalled
-		[[31061],[30052]], //remotes (array of arrays)
+		[31067], //rndInstalled
+		[31067], //hqInstalled
+		[[30047,30047]], //remotes (array of arrays)
 		[], //scored
 		cardBackTexturesCorp,glowTextures,strengthTextures);
   */
+  //corp.archives.ice[0].rezzed=true;
+  //corp.RnD.ice[0].rezzed=true;
+  //corp.HQ.ice[0].rezzed=true;
+  //corp.remoteServers[0].ice[0].rezzed=true;
+  //corp.remoteServers[0].ice[1].rezzed=true;
+  //corp.remoteServers[0].root[0].knownToRunner=true;
+  
+  //corp.archives.ice[0].rezzed=true;
+  
   //corp.remoteServers[0].root[0].advancement=2;
   //corp.remoteServers[1].root[0].advancement=2;
-  //GainCredits(runner,8);
-  //GainCredits(corp,1);
+  //GainCredits(runner,5);
+  //GainCredits(corp,11);
   //ChangePhase(phases.runnerStartResponse);
   //ChangePhase(phases.corpStartDraw);
   

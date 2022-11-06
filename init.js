@@ -53,10 +53,41 @@ var globalProperties = {};
 globalProperties.agendaPointsToWin = 7; //don't modify this or access it directly. Instead use AgendaPointsToWin() for read and card effects to modify.
 //for testing/balancing AIs
 var agendaStolenLocations = [];
+var pauseFaceoff = false;
+//for rewind
+var rewinding = false;
+var rewindStates = [];
 
 //INITIALISATION
 // Performs the initialisation of game state. Contains the main loop for command mode (user interaction).
 function Init() {
+  //Rewind
+  $("#rewind-select").on("change",function(){
+	var rewindTo = $("#rewind-select").val();
+	Log("Rewinding...");
+	rewinding=true;
+	var savedLogState = logDisabled;
+	logDisabled=true;
+	//delete all existing cards
+	var allCards = AllCards(null);
+	for (var i=0; i<allCards.length; i++) {
+		if (allCards[i].cardLocation) RemoveFromGame(allCards[i]);
+		allCards[i].renderer.Destroy();
+		removedFromGame = []; //hmm but will this remove enough references to garbage collect?
+	}
+	//load requested state
+	for (var i=0; i<rewindTo; i++) {
+		rewindStates.shift();
+	}
+	eval(rewindStates[0].code);
+	rewinding=false;
+	logDisabled = savedLogState;
+	RenderRewindOptions();
+	Render();
+	Main();
+	$('#menu').css('display','none');
+  });
+
   Log("Game begins");
 
   //Base change to agenda points to win if required
@@ -140,6 +171,23 @@ function Init() {
   document.addEventListener("fullscreenchange", (event) => {
     if (!document.fullscreenElement) $(".fullscreen-button").show();
   });
+}
+
+//used for rewinding
+function RenderRewindOptions() {
+	var turnsAgo = 1;
+	if (rewindStates.length > 0 && playerTurn == rewindStates[0].turn) turnsAgo=0;
+	var selectOptions = '<option value="">Rewind</option>'+"\n";
+	for (var i=0; i<rewindStates.length && i<6; i++) {
+		var outStr = PlayerName(rewindStates[i].turn);
+		if (turnsAgo == 0) outStr += " current turn";
+		else if (turnsAgo == 1) outStr += " previous turn";
+		else outStr += " "+turnsAgo+" turns ago";
+		selectOptions += '<option value="'+i+'">'+outStr+"</option>\n";
+		if (i==0 && playerTurn == rewindStates[0].turn) turnsAgo++;
+		else if ((i+1)%2) turnsAgo++;
+	}
+	$("#rewind-select").html(selectOptions);
 }
 
 //resize callback
@@ -953,8 +1001,8 @@ function Render() {
   //e is element, rw is width when viewing as runner, cw is that but as corp, h is height, s is whether to show it
   counterPositionings.push({ e: countersUI.credits.corp, rw: 40, cw: 40, h: 40, s: !hideCredits });
   counterPositionings.push({ e: countersUI.click.corp, rw: 74, cw: 74, h: 40, s: !hideClicks });
+  counterPositionings.push({ e: countersUI.bad_publicity.corp, rw: 93, cw: 85, h: 38, s: (!hideBadPublicity && globalProperties.agendaPointsToWin == 7) });
   counterPositionings.push({ e: countersUI.hand_size.corp, rw: 90, cw: 90, h: 40, s: !hideHandSize });
-  //counterPositionings.push({ e: countersUI.bad_publicity.corp, rw: 93, cw: 85, h: 38, s: !hideBadPublicity });
   var counterUIWOffset = 0;
   for (var i=0; i<counterPositionings.length; i++) {
 	  if (!counterPositionings[i].s) {
@@ -1233,7 +1281,6 @@ function Setup() {
     0.5,
     false
   );
-  /*
   countersUI.bad_publicity.corp = cardRenderer.CreateCounter(
     countersUI.bad_publicity.texture,
     corp,
@@ -1241,7 +1288,6 @@ function Setup() {
     0.5,
     false
   );
-  */
   /*
   countersUI.brain_damage.runner = cardRenderer.CreateCounter(
     countersUI.brain_damage.texture,
@@ -1390,6 +1436,8 @@ function NicelyFormatCommand(cmdstr) {
 var mainLoop;
 var mainLoopDelay = 350;
 function Main() {
+  if (corp.AI && runner.AI && pauseFaceoff) return;
+	
   var optionList = EnumeratePhase();
   var chosenCommand = null;
 
