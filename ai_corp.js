@@ -330,7 +330,7 @@ class CorpAI {
     else if (typeof card.advancementRequirement !== "undefined") {
         ret = AdvancementRequirement(card);
 	}
-	//rezzed/unrezzed SanSan (except overadvanced, assuming that's Beale, or already applied by AdvancementRequirement)
+	//rezzed/unrezzed SanSan (except overadvanced, or already applied by AdvancementRequirement)
 	if (server && typeof card.advancementRequirement !== "undefined" && ret == card.advancementRequirement) {
 		var sanSan = this._copyOfCardExistsIn("SanSan City Grid", server.root);
 		if (sanSan) {
@@ -1160,6 +1160,16 @@ class CorpAI {
 
   //enact best economy (called from main phase)
   _bestMainPhaseEconomyOption(optionList) {
+    var installedCards = InstalledCards(corp);
+
+	//special case: Oaktown Renovation is installed
+	if (optionList.indexOf("advance") > -1) {
+		var oaktown = this._copyOfCardExistsIn("Oaktown Renovation", installedCards);
+		if (oaktown) return this._returnPreference(optionList, "advance", {
+			cardToAdvance: oaktown,
+		});
+	}
+	
     //if a click economy ability exists, use that
     if (optionList.indexOf("trigger") > -1) {
       var regexp = new RegExp(/(gain|take)\s*\d*\s*\[c\]/, "gmi");
@@ -1249,7 +1259,6 @@ class CorpAI {
     }
 
     //if an econ card is installed but we need a little more cred to use it, click for cred
-    var installedCards = InstalledCards(corp);
     for (var i = 0; i < installedCards.length; i++) {
       if (CheckRez(installedCards[i], ["ice", "asset", "upgrade"])) {
         //if a rezzable card...
@@ -1451,7 +1460,7 @@ class CorpAI {
 	if (emptyProtectedRemotes.length > 0) strongestEmptyRemote = emptyProtectedRemotes[0];
 	
 	//Check for this-turn win conditions
-	var potentialAdvancement = this._potentialAdvancement(null,true);
+	var potentialAdvancement = this._potentialAdvancement(null,Infinity,true);
 	//check for cards in hand that could be installed and fast-advanced to win
 	for (var i=0; i<corp.HQ.cards.length; i++) {
 		var card = corp.HQ.cards[i];
@@ -2190,105 +2199,266 @@ class CorpAI {
 	return ret;
   }
 
+  //directions function for potential advancement search
+  //returns an array of possible points from this point
+  //options can include:
+  //.card (null by default) the card being advanced
+  //.thisTurn (true by default) if false, clicks are not the limiting factor
+  //.limit (Infinity by default) note this is total limit including counters that were already present
+  _potentialAdvancementDirections(point,options=null) {
+	  var ret = [];
+	  //load options
+	  var card = null;
+	  var thisTurn = true;
+	  var limit = Infinity;
+	  if (options) {
+		  if (typeof options.thisTurn != 'undefined') thisTurn = options.thisTurn;
+		  if (typeof options.limit != 'undefined') limit = options.limit;
+		  if (typeof options.card != 'undefined') card = options.card;
+	  }
+	  //destination reached
+	  if (point.advancementSoFar >= limit) return ret;
+	  //basic advance
+	  if (point.corpCredits > 0 && point.corpClicks > 0) {
+		  //pay the credit
+		  var newCredits = point.corpCredits - 1;
+		  //special case: Built to Last
+		  if (point.advancementSoFar < 1 && corp.identityCard.title == "Weyland Consortium: Built to Last") newCredits += 2
+		  //special case: Oaktown Renovation
+		  if (card) {
+			  if (card.title == "Oaktown Renovation") {
+				if (point.advancementSoFar < 4) newCredits += 2;
+				else newCredits += 3;
+			  }
+		  }
+		  var basicadvcards = point.handCards.concat([]); //make a copy of the array
+		  ret.push({
+			  corpCredits: newCredits,
+			  corpClicks: point.corpClicks - 1,
+			  handCards: basicadvcards,
+			  advancementSoFar: point.advancementSoFar + 1,
+			  using: null, //not using a card
+			  persist: point.persist,
+		  });
+	  }
+	  //other actions e.g. placing advancement counters, gaining clicks...
+	  //Seamless Launch
+	  if (card && point.corpCredits > 0 && point.corpClicks > 0) {
+		  var slih = this._copyOfCardExistsIn("Seamless Launch",point.handCards);
+		  if (slih) {
+			  if (!thisTurn || !slih.cardsInstalledThisTurn.includes(card)) {
+				  var slidx = point.handCards.indexOf(slih);
+				  if (slidx > -1) {
+					var slcards = point.handCards.concat([]); //make a copy of the array
+					slcards.splice(slidx,1); //remove played card
+					ret.push({
+					  corpCredits: point.corpCredits - 1,
+					  corpClicks: point.corpClicks - 1,
+					  handCards: slcards,
+					  advancementSoFar: point.advancementSoFar + 2,
+					  using: slih,
+					  persist: point.persist,
+					});
+				  }
+			  }
+		  }
+	  }
+	  //Psychographics
+	  //already resolving
+	  var pgres = this._copyOfCardExistsIn("Psychographics",corp.resolvingCards);
+	  //still require it to be in the specified list
+	  var pgridx = point.handCards.indexOf(pgres);
+	  if (pgridx > -1) {
+		var pgrcards = point.handCards.concat([]); //make a copy of the array
+		pgrcards.splice(pgridx,1); //remove played card
+		ret.push({
+		  corpCredits: point.corpCredits,
+		  corpClicks: point.corpClicks,
+		  handCards: pgrcards,
+		  advancementSoFar: point.advancementSoFar + pgres.AIPlayedWithCost,
+		  using: pgres,
+		  persist: point.persist,
+		});
+	  }
+	  //still in hand
+	  var pgih = this._copyOfCardExistsIn("Psychographics",point.handCards);
+	  if (point.corpCredits > 1 && point.corpClicks > 0) {
+		  var pgidx = point.handCards.indexOf(pgih);
+		  if (pgidx > -1) {
+			var maxX = Math.min(point.corpCredits, runner.tags);
+			if (maxX + point.advancementSoFar > limit) maxX = limit - point.advancementSoFar;
+			var pgcred = point.corpCredits - maxX;
+			var pgclick = point.corpClicks - 1;
+			var pgcards = point.handCards.concat([]); //make a copy of the array
+			pgcards.splice(pgidx,1); //remove played card
+			ret.push({
+			  corpCredits: pgcred,
+			  corpClicks: pgclick,
+			  handCards: pgcards,
+			  advancementSoFar: point.advancementSoFar + maxX,
+			  using: pgih,
+			  persist: point.persist,
+			});
+		  }
+	  }
+	  //Trick of Light
+	  if (point.corpCredits > 0 && point.corpClicks > 0) {
+		  var tlih = this._copyOfCardExistsIn("Trick of Light",point.handCards);
+		  var tlidx = point.handCards.indexOf(tlih);
+		  if (tlidx > -1) {
+			  //take into account previously played sources (reduce counter availability on sources)
+			  var advCards = this._advancedCards(2,card); //takes input of minimum advancement and one card to exclude
+			  var tolSource = null;
+			  for (var i=0; i<advCards.length; i++) {
+				var advRemaining = Counters(advCards[i].card, "advancement");
+				point.persist.forEach(function(item) {
+					//assume ToL would only be used to take 2 counters
+					if (typeof item.trickOfLightSource != 'undefined') {
+						if (item.trickOfLightSource == advCards[i].card) advRemaining -= 2
+					}
+				});
+				if (advRemaining > 1) {
+					tolSource = advCards[i].card;
+					break;
+				}
+			  }
+			  //action this tol
+			  if (tolSource) {
+				var tlcards = point.handCards.concat([]); //make a copy of the array
+				tlcards.splice(tlidx,1); //remove played card
+				ret.push({
+				  corpCredits: point.corpCredits - 1,
+				  corpClicks: point.corpClicks - 1,
+				  handCards: tlcards,
+				  advancementSoFar: point.advancementSoFar + 2, //assume ToL moves exactly 2 counters 
+				  using: tlih,
+				  persist: point.persist.concat([{trickOfLightSource:tolSource}]),
+				});
+			  }
+		  }
+	  }
+	  //Biotic Labor
+	  if (point.corpCredits > 3 && point.corpClicks > 0) {
+		  var blih = this._copyOfCardExistsIn("Biotic Labor",point.handCards);
+		  var blidx = point.handCards.indexOf(blih);
+		  if (blidx > -1) {
+			var blcards = point.handCards.concat([]); //make a copy of the array
+			blcards.splice(blidx,1); //remove played card
+			ret.push({
+			  corpCredits: point.corpCredits - 4,
+			  corpClicks: point.corpClicks + 1,
+			  handCards: blcards,
+			  advancementSoFar: point.advancementSoFar, //biotic doesn't directly advance
+			  using: blih,
+			  persist: point.persist,
+			});
+		  }
+	  }
+	  return ret;
+  }
+
+  //for potential advancement search, each point has:
+  //corpCredits, credits left in corp credit pool
+  //corpClicks, clicks left in corp click tracker
+  //handCards, cards left to use (if a card was played along this path, it has been removed)
+  //advancementSoFar, advancement counters on card being advanced
+  //using, card that was used to place counters this point (null for basic action)
+  //persist, array of persistent effects
+
   //if null card is specified, this is a generic "what if one was to be installed?" check
   //(in which case it will assume a click less) unless assumeClicks (int) is specified (but assumeClicks will be ignored if thisTurn=false)
   //if an output array is specified, the cards will be written to it in the order decided here (except for cards already resolving)
-  _potentialAdvancement(card,thisTurn=true,fastAdvanceArray,assumeClicks,limit=Infinity,output=[]) {
-	  if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards.concat(corp.resolvingCards); //source of fast advance cards
-	  var ret = 0;
-	  //basic advance
+  _potentialAdvancement(card,limit,thisTurn=true,fastAdvanceArray,assumeClicks,output=[]) {
+	  if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.resolvingCards.concat(corp.HQ.cards); //source of fast advance cards
+	  var availableCredits = Credits(corp);
+	  var advancementSoFar = 0;
+	  if (card) advancementSoFar = Counters(card, "advancement");
+	  var startingAdvancement = advancementSoFar; //this function returns change to advancement not total
+	  var options = {
+		  card: card,
+		  thisTurn: thisTurn,
+		  limit: limit,
+	  };
+	  //this point is not stored, just used as a base for initial directions
+	  var clicksLeft = 20; //essentially infinity but allows for subtraction/addition
 	  if (thisTurn) {
 		  var clicksLeft = this._clicksLeft();
 		  if (!card) clicksLeft--;
 		  if (typeof assumeClicks != 'undefined') clicksLeft=assumeClicks;
-		  ret += Math.min(clicksLeft, Credits(corp));
 	  }
-	  else ret += Credits(corp);
-	  //for !thisTurn, the default is creditpool worth of normal advances
-	  //this means there is 0 left i.e. the only cards considered below are those that make advancing cheaper, not for speed
-	  var creditsLeft = Credits(corp) - ret;
-	  var baseUsables = ret; //the max number of playable economy advances
-	  //some things can be done if card is already installed
-	  if (card) {
-		  //check if any Seamless Launch in hand
-		  //these replace normal advance (in terms of credit cost) so don't decrease creditsLeft
-		  var slih = this._copyOfCardExistsIn("Seamless Launch",fastAdvanceArray);
-		  if (slih) {
-			  if (!thisTurn || !slih.cardsInstalledThisTurn.includes(card)) {
-				//plus one for each Seamless Launch if it can be used (or is being used)
-				var seamlesses = this._copiesOfCardIn("Seamless Launch",fastAdvanceArray);
-				seamlesses.forEach(function(item){
-					//special edge case - a 3+ Psychographics last click could be better
-					if (!(thisTurn && baseUsables == 1 && corp.AI._copyOfCardExistsIn("Psychographics",fastAdvanceArray) && Math.min(creditsLeft+1,runner.tags) > 2)) {
-						  if (corp.resolvingCards.includes(item)) ret++;
-						  else if (baseUsables > 0 || !thisTurn) {
-							ret++;
-							baseUsables--;
-							output.push(item);
-						  }
-					}
-				});
-			  }
-		  }
-		  //check if any Psychographics in hand
-		  var pgih = this._copyOfCardExistsIn("Psychographics",fastAdvanceArray);
-		  if (pgih) {
-			var psychos = this._copiesOfCardIn("Psychographics",fastAdvanceArray);
-			psychos.forEach(function(item){
-			  if (corp.resolvingCards.includes(item)) {
-				  //already resolving, credits have already been paid
-				  ret += item.AIPlayedWithCost;
-			  }
-			  else if (baseUsables > 0 || !thisTurn) {
-				  //discount of the credit & advancement that would have been used if it was a normal advance
-				  var maxThisPsycho = Math.min(creditsLeft+1,runner.tags);
-				  if (maxThisPsycho > 1) {
-					  ret += maxThisPsycho-1;
-					  creditsLeft -= maxThisPsycho-1;
-					  baseUsables--;
-					  output.push(item);
-				  }
-			  }
+	  var startingPoint = {
+		  corpCredits: availableCredits,
+		  corpClicks: clicksLeft,
+		  handCards: fastAdvanceArray,
+		  advancementSoFar: advancementSoFar,
+		  persist: [],
+	  };
+	  //generate starting directions as todo
+	  var startingDirections = this._potentialAdvancementDirections(startingPoint, options);
+	  var todo = [];
+	  for (var i=0; i<startingDirections.length; i++) {
+		  todo.push([startingDirections[i]]);
+	  }
+	  //recurse, keeping track of best path
+	  var bestpath = [];
+	  var loops = 0;
+	  var maxLoops = 200000; //arbitrary to prevent unplanned infinite loops
+	  while (todo.length > 0 && loops < maxLoops) {
+		loops++;
+		var thispath = todo.shift();
+		var directions = this._potentialAdvancementDirections(thispath[thispath.length-1], options);
+		if (directions.length > 0) {
+			directions.forEach(function(item) {
+				todo.push(thispath.concat([item]));
 			});
-		  } 
-		  //check if any Trick of Light in hand (or being played)
-		  //these replace normal advance (in terms of credit cost) so don't decrease creditsLeft
-		  var tolih = this._copyOfCardExistsIn("Trick of Light",fastAdvanceArray);
-		  if (tolih) {
-			  //BUT are only useful up to the number of times 2 advancement can be taken from cards (other than card)
-			  var advCards = this._advancedCards(2,card); //takes input of minimum advancement and one card to exclude
-			  var maxTricks = 0;
-			  advCards.forEach(function(item) {
-				item.advancement -= item.advancement % 2; //advancement will be taken in twos so if there are cards with an odd number, that isn't included
-				maxTricks += item.advancement * 0.5; //one trick for each two tokens
-			  });
-			  var tricks = this._copiesOfCardIn("Trick of Light",fastAdvanceArray);
-			  tricks.forEach(function(item){
-				if (maxTricks > 0) {
-				  if (corp.resolvingCards.includes(item)) {
-					ret++;
-					maxTricks--;
-				  }
-				  else if (baseUsables > 0 || !thisTurn) {
-				    ret++;
-				    maxTricks--;
-				    baseUsables--;
-					output.push(item);
-				  }
-				}
-			  });
-		  }
-	  }
-	  //check for Biotic Labor possibility
-	  var blih = this._copyOfCardExistsIn("Biotic Labor",fastAdvanceArray);
-	  if (blih) {
-		var copiesAfford = Math.floor(creditsLeft * 0.2); //number of full amounts of 5 credits (4 for card, 1 for extra advance)
-		var biotics = this._copiesOfCardIn("Biotic Labor",fastAdvanceArray);
-		var maxbiotics = Math.min(copiesAfford, biotics.length)
-		for (var i=0; i<maxbiotics; i++) {
-			ret++;
-			output.push(biotics[i]);
 		}
+		else {
+			//this path done, check/update bestpath
+			//priorities are:
+			//most advancement (up to limit)
+			//most cards remaining
+			//most clicks/credits remaining
+			var clickValueScale = 2.0; //arbitrary
+			var better = false;
+			if (bestpath.length < 1) better = true;
+			else {
+				var bestendpoint = bestpath[bestpath.length - 1];
+				var thisendpoint = thispath[thispath.length - 1];
+				if (thisendpoint.advancementSoFar > bestendpoint.advancementSoFar && bestendpoint.advancementSoFar < limit) better = true;
+				else if (thisendpoint.advancementSoFar >= bestendpoint.advancementSoFar || thisendpoint.advancementSoFar >= limit)  {
+					if (thisendpoint.handCards.length > bestendpoint.handCards.length) better = true;
+					else if (thisendpoint.handCards.length == bestendpoint.handCards.length) {
+						if (clickValueScale*thisendpoint.corpClicks + thisendpoint.corpCredits > clickValueScale*bestendpoint.corpClicks + bestendpoint.corpCredits) better = true;
+					}
+				}
+			}
+			if (better) bestpath = thispath;
+			//special debug code, print path and indicate whether it is best
+			var outstr = "[";
+			for (var i=0; i<thispath.length; i++) {
+				if (thispath[i].using) outstr += thispath[i].using.title.charAt(0);
+				else outstr += "a";
+			}
+			/*
+			if (debugging) {
+				outstr += "](";
+				outstr += "ad:"+thispath[thispath.length-1].advancementSoFar+"/"+limit;
+				outstr += ",ca:"+thispath[thispath.length-1].handCards.length;
+				outstr += ",cl&cr:"+(clickValueScale*thispath[thispath.length-1].corpClicks+thispath[thispath.length-1].corpCredits);
+				outstr += ",cl:"+thispath[thispath.length-1].corpClicks;
+				outstr += ")";
+				if (better) outstr += "**";
+				this._log(outstr);
+			}
+			*/
+		}
+	  }
+	  if (loops == maxLoops) console.log("Advancement search exceeded loop limit");
+	  //all paths found, return best
+	  var ret = 0;
+	  if (bestpath.length > 0) ret = bestpath[bestpath.length - 1].advancementSoFar - startingAdvancement;
+	  for (var i=0; i<bestpath.length; i++) {
+		  output.push(bestpath[i].using);
 	  }
 	  return ret;
   }
@@ -2301,13 +2471,13 @@ class CorpAI {
 	  }
 	  return false;
   }
-  
+    
   _isFullyAdvanceableHostileAsset(card,fastAdvanceArray) { //can be finished and used this turn
     if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards.concat(corp.resolvingCards); //source of fast advance cards
 	if (!CheckCardType(card, ["asset"]) || !CheckSubType(card,"Hostile")) return false;
 	if (typeof card.AIRushToFinish == 'function') {
 		if (card.AIRushToFinish.call(card)) {
-			return this._potentialAdvancement(card,true,fastAdvanceArray) >= this._advancementStillRequired(card);
+			return this._potentialAdvancement(card,Infinity,true,fastAdvanceArray) >= this._advancementStillRequired(card);
 		}
 	}
 	return false;
@@ -2317,7 +2487,7 @@ class CorpAI {
     if (typeof fastAdvanceArray == 'undefined') fastAdvanceArray = corp.HQ.cards.concat(corp.resolvingCards); //source of fast advance cards
 	if (!CheckCardType(card, ["agenda"])) return false;
 	if (!CheckScore(card,true)) return false; //the true means ignore advancement requirement
-	var canFullyAdvance = this._potentialAdvancement(card,true,fastAdvanceArray) >= this._advancementStillRequired(card);
+	var canFullyAdvance = this._potentialAdvancement(card,Infinity,true,fastAdvanceArray) >= this._advancementStillRequired(card);
 	return canFullyAdvance;
   }
   
@@ -2537,7 +2707,7 @@ class CorpAI {
 			var startOrContinueAdvancement = false;
 			if (card.advancement > 0) startOrContinueAdvancement = true; //already started, feel free to continue (the counter shows the runner it is advanceable)
 			else if (!CheckCardType(card, ["agenda"]) || card == almostDoneAgenda || shouldStartAdvancingAgenda) {
-				if (this._potentialAdvancement(card,false) >= advancementLimit) startOrContinueAdvancement = true;
+				if (this._potentialAdvancement(card,Infinity,false) >= advancementLimit) startOrContinueAdvancement = true;
 			}
 			if ( startOrContinueAdvancement ) {
 				if (
@@ -2548,9 +2718,9 @@ class CorpAI {
 				) {
 				  //if there is an economy or fast advance card in hand, consider using it
 				  var potentialAdvCards = [];
-				  var potentialAdvancement = this._potentialAdvancement(card,true,corp.HQ.cards,corp.clickTracker,advancementLimit,potentialAdvCards); 
-				  this._log("I could advance a card with these cards: "+JSON.stringify(potentialAdvCards));
-				  if (potentialAdvCards.length > 0) {
+				  var potentialAdvancement = this._potentialAdvancement(card,advancementLimit,true,corp.HQ.cards,corp.clickTracker,potentialAdvCards); 
+				  this._log("I could advance a card by "+potentialAdvancement+" with these cards: "+JSON.stringify(potentialAdvCards));
+				  if (potentialAdvCards.length > 0 && potentialAdvCards[0]) {
 					  //don't waste these by overadvancing an ordinary advancement target
 					  if (Counters(card,"advancement") < advancementLimit - 1 ||
 						card.AIOverAdvance) {
@@ -2591,7 +2761,7 @@ class CorpAI {
 						rushToFinish = card.AIRushToFinish.call(card);
 					  }
 					  if ( cardToPlay && (card == almostDoneAgenda) || rushToFinish ) { //for now let's just use economy advance for finishing agendas or specific cards
-						this._log("there is an card that will help advance");
+						this._log("there is a card that will help advance");
 						if (FullCheckPlay(cardToPlay) && optionList.includes("play")) {
 							this._log("I intend to play it");
 							cardToPlay.AIPreferredTarget = almostDoneAgenda;

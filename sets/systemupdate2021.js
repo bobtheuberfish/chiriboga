@@ -4352,7 +4352,7 @@ cardSet[31053] = {
   AIRushToFinish: function() {
 	//only rush to finish if there will be a click left to use it and runner.grip.length < 3
 	if (runner.grip.length < 3) {
-		if (corp.AI._potentialAdvancement(this,true,corp.HQ.cards.concat(corp.resolvingCards),corp.clickTracker-1) + Counters(this,"advancement") > 3) return true;
+		if (corp.AI._potentialAdvancement(this,Infinity,true,corp.resolvingCards.concat(corp.HQ.cards),corp.clickTracker-1) + Counters(this,"advancement") > 3) return true;
 	}
 	return false; //don't use economy advance to get to limit
   },
@@ -4689,6 +4689,14 @@ cardSet[31058] = {
 			  if (corp.AI._cardShouldBeFastAdvanced(item.card)) besttargetchoices.push(item);
 			}
 		  });
+		  //prefer the most advanced card
+		  if (besttargetchoices.length > 1) {
+			  var besttargetchoice = besttargetchoices[0];
+			  for (var i=1; i<besttargetchoices.length; i++) {
+				  if (Counters(besttargetchoices[i].card,"advancement") > Counters(besttargetchoice.card,"advancement")) besttargetchoice = besttargetchoices[i];
+			  }
+			  besttargetchoices = [besttargetchoice];
+		  }
 		  return besttargetchoices;
 	  }
 	  return targets;
@@ -4990,7 +4998,7 @@ cardSet[31062] = {
   },
   AIOverAdvance: true, //load 'em up
   AIAdvancementLimit: function() {
-	var maxThisTurn = corp.AI._potentialAdvancement(this)+this.advancement;
+	var maxThisTurn = corp.AI._potentialAdvancement(this,Infinity)+this.advancement;
 	//even numbers are no good
 	if (maxThisTurn%2 == 0) maxThisTurn--;
 	var ret = Math.max(3,maxThisTurn);
@@ -5113,7 +5121,7 @@ cardSet[31064] = {
   advancement: 0,
   AIAdvancementLimit: function() {
 	//reduce clicks by 1 because we want to leave 1 to trigger the ability
-	var maxThisTurn = corp.AI._potentialAdvancement(this,true,corp.HQ.cards.concat(corp.resolvingCards),corp.clickTracker-1)+this.advancement;
+	var maxThisTurn = corp.AI._potentialAdvancement(this,Infinity,true,corp.resolvingCards.concat(corp.HQ.cards),corp.clickTracker-1)+this.advancement;
 	//no point super-advancing if Runner has no credits
 	var effectiveCounters = Math.round(runner.creditPool*0.25);
 	maxThisTurn = Math.min(maxThisTurn,effectiveCounters);
@@ -5311,10 +5319,19 @@ cardSet[31068] = {
   //Place X advancement counters on 1 installed card you can advance.
   AIPlayedWithCost: 0, //used by the corp AI
   AISharedBestTargetOption(targets) {
+	var ret = null;
 	for (var i=0; i<targets.length; i++) {
-		if (corp.AI._cardShouldBeFastAdvanced(targets[i].card)) return targets[i];
+		if (corp.AI._cardShouldBeFastAdvanced(targets[i].card)) {
+		  if (!ret) ret = targets[i];
+		  //prefer cards that are more advanced
+		  else if (Counters(targets[i].card,"advancement") > Counters(ret.card,"advancement")) ret = targets[i];
+		}
 	}
-	return targets[corp.AI._bestAdvanceOption(targets)]; //backup option
+	if (!ret) {
+		ret = targets[corp.AI._bestAdvanceOption(targets)]; //backup option and/or basic usability test
+		if (corp.resolvingCards.includes(this)) console.error("No best target found for Psychographics?");
+	}
+	return ret;
   },
   Enumerate: function () {
   	var maxcred = Math.min(runner.tags,AvailableCredits(corp, "playing", this));
@@ -5428,6 +5445,42 @@ cardSet[31071] = {
       }
     },
 	automatic:true,
+  },
+};
+
+
+cardSet[31072] = {
+  title: "Oaktown Renovation",
+  imageFile: "31072.png",
+  elo: 	1710,
+  player: corp,
+  faction: "Weyland Consortium",
+  cardType: "agenda",
+  subTypes: ["Public","Initiative"],
+  agendaPoints: 2,
+  advancementRequirement: 4,
+  //Install only faceup. (This agenda is neither rezzed nor unrezzed.)
+  cardInstalled: {
+    Resolve: function (card) {
+      if (card == this) this.faceUp = true;
+    },
+	availableWhenInactive: true,
+  },
+  //Whenever you advance this agenda, gain 2 credits. 
+  //If there are 5 or more hosted advancement counters (including the counter just placed), gain 3 credits instead.
+  cardAdvanced: {
+    Resolve: function (card) {
+	  if (card == this) {
+		if (card.advancement < 5) GainCredits(corp, 2);
+		else GainCredits(corp, 3);
+	  }
+    },
+	availableWhenInactive: true,
+  },
+  AIOverAdvance: true, //load 'em up
+  AIAdvancementLimit: function() {
+	var maxThisTurn = Math.min(corp.AI._clicksLeft(), Credits(corp))+this.advancement;  
+	return Math.max(4,maxThisTurn);
   },
 };
 
