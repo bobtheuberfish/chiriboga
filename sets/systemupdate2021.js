@@ -5484,5 +5484,92 @@ cardSet[31072] = {
   },
 };
 
+
+cardSet[31073] = {
+  title: "Project Atlas",
+  imageFile: "31073.png",
+  elo: 1902,
+  player: corp,
+  faction: "Weyland Consortium",
+  cardType: "agenda",
+  subTypes: ["Research"],
+  agendaPoints: 2,
+  advancementRequirement: 3,
+  advancement: 0,
+  //When you score this agenda, place 1 agenda counter on it for each hosted advancement counter past 3.
+  scored: {
+    Resolve: function (params) {
+	  if (intended.score == this) {
+		  var advancementOverThree = this.advancement - 3;
+		  if (advancementOverThree > 0) AddCounters(this, "agenda", advancementOverThree);
+	  }
+    },
+	automatic:true,
+  },
+  //Hosted agenda counter: Search R&D for 1 card and reveal it. Add it to HQ.
+  abilities: [
+    {
+      text: "Search R&D for 1 card and reveal it. Add it to HQ.",
+	  Enumerate: function () {
+		if (CheckCounters(this, "agenda", 1)) {
+			var choices = ChoicesArrayCards(corp.RnD.cards);
+			if (choices.length < 1) return [];
+			//**AI code (in this case, implemented by setting and returning the preferred option)
+			if (corp.AI != null) {
+				//1. start of turn (Corp 2.2) with less than max cards in hand
+			    if (currentPhase.identifier == "Corp 2.1") {
+					if (MaxHandSize(corp) - PlayerHand(corp).length > 0) {
+						//do we need an agenda? (min hand cards here is arbitrary but reduces Runner knowing what we install)
+						if (PlayerHand(corp).length > 2 && corp.AI._agendasInHand() < 1) {
+							var agendaTutor = corp.AI._bestAgendaTutorOption(choices);
+							if (agendaTutor) return [agendaTutor];
+						}
+						//otherwise whatever card is best (if any)
+						var nonAgenda = corp.AI._bestNonAgendaTutorOption(choices,true); //true means return null rather than mediocre options
+						if (nonAgenda) return [nonAgenda];
+					}
+				}
+				//2. HQ under threat (Run 4.5) with agendas in hand
+			    if (currentPhase.identifier == "Run 4.5" && attackedServer == corp.HQ) {
+					if (corp.AI._agendasInHand() > 0) {
+						//find a non-agenda card (ideally a snare, unless don't have snare credits)
+						var bestTutor = corp.AI._bestRecurToHQOption(choices,corp.HQ);
+						if (bestTutor) return [bestTutor];
+					}
+				}
+				return []; //don't use right now
+			}
+			return choices;
+		}
+		return [];
+	  },
+	  Resolve: function (params) {
+		RemoveCounters(this, "agenda", 1);
+	    /* Once a search through a deck is complete, whether or not any cards are found, the deck
+		must be immediately reshuffled before continuing to resolve any remaining effects from
+		the ability that initiated the search.  (NSG CR 1.6 8.7.3) */  
+        Shuffle(corp.RnD.cards);
+        Log("R&D shuffled");
+        MoveCard(params.card, corp.RnD.cards); //move it to top...just makes it easier to view during reveal
+        Render(); //force the visual change
+        Reveal(
+          params.card,
+          function () {
+            Log(GetTitle(params.card) + " added to HQ"); //prevent reveal not currently implemented so title will always be known
+            MoveCard(params.card, corp.HQ.cards);
+          },
+          this
+        );
+	  },
+    },
+  ],
+  AIOverAdvance: true, //load 'em up
+  AIAdvancementLimit: function() {
+	var maxThisTurn = Math.min(corp.AI._clicksLeft(), Credits(corp))+this.advancement;  
+	return Math.max(3,maxThisTurn);
+  },
+  AITriggerWhenCan: true,
+};
+
 //TODO link (e.g. Reina)
 

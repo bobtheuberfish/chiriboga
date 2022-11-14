@@ -2949,7 +2949,7 @@ function DeckBuild(
 	  //agendas
 	  var agendaCards = [];
 	  if (setIdentifiers.includes('sg')) agendaCards = agendaCards.concat([30060, 30044, 30036, 30067, 30068, 30069, 30070, 30052]);
-	  if (setIdentifiers.includes('su21')) agendaCards = agendaCards.concat([31041, 31051,31052, 31061,31062, 31071, 31072]);
+	  if (setIdentifiers.includes('su21')) agendaCards = agendaCards.concat([31041, 31051,31052, 31061,31062, 31071, 31072, 31073]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomAgendas(
 		identityCard,
 		agendaCards,

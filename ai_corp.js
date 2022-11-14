@@ -402,6 +402,17 @@ class CorpAI {
 	return null;
   }
   
+  //returns null if no agendas found in options
+  _bestAgendaTutorOption(optionList) {
+	  //just random for now
+	  for (var i=0; i<optionList.length; i++) {
+		if (optionList[i].card) {
+			if (CheckCardType(optionList[i].card, ["agenda"])) return optionList[i]; 
+		}
+	  }
+	  return null;
+  }
+  
   _bestNonAgendaTutorOption(optionList,onlyTheBest=false) {
 	//fast advance
 	var fastAdvanceCards = [];
@@ -462,7 +473,19 @@ class CorpAI {
 		return ret;
 	  }
 	  //if HQ is under threat and contains agendas, seek to pad with non agenda cards
-	  if (serverUnderThreat == corp.HQ && this._agendasInHand() > 0) useNowIfPossible = true;
+	  if (serverUnderThreat == corp.HQ && this._agendasInHand() > 0) {
+		  useNowIfPossible = true;
+		  //Snare! to make HQ more dangerous (if have snare credits)
+		  if (CheckCredits(corp,4)) {
+			  for (var i=0; i<optionList.length; i++) {
+				if (optionList[i].card) {
+				  if (optionList[i].card.title == "Snare!") return optionList[i];
+				}
+			  }
+		  }
+		  //or just any non-agenda card
+		  return this._bestNonAgendaTutorOption(optionList);
+	  }
 	  //TODO don't include multiple copies of cards in archives since only one can be recurred
 	  //TODO also take into account whether there will be the credits/clicks after whatever is causing this recur
 	  var faai = this._fullyAdvanceableAgendaInstalled(corp.HQ.cards.concat(corp.archives.cards));
