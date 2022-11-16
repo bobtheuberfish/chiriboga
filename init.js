@@ -68,6 +68,11 @@ function Init() {
 	rewinding=true;
 	var savedLogState = logDisabled;
 	logDisabled=true;
+	//remove ice glow
+	attackedServer=null;
+	approachIce=-1;
+	encountering=false;
+	cardRenderer.UpdateGlow(null, 0);
 	//delete all existing cards
 	var allCards = AllCards(null);
 	for (var i=0; i<allCards.length; i++) {

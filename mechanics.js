@@ -128,6 +128,18 @@ function RemoveFromGame(card) {
 }
 
 /**
+ * Forfeit a card<br/>Makes no checks or payments.<br/>Logs the result.
+ *
+ * @method Forfeit
+ * @param {Card} card the card to forfeit
+ */
+function Forfeit(card) {
+  card.host = null;
+  MoveCard(card, removedFromGame);
+  Log(GetTitle(card, true) + " forfeited");
+}
+
+/**
  * Trash a card.<br/>Makes no checks or payments.<br/>Logs the result.
  *
  * @method Trash

@@ -127,6 +127,7 @@ phaseTemplates.standardResponse = {
           //corp can always rez upgrades and assets (except for usability)
           if (CheckRez(card, ["upgrade", "asset"])) {
             if (CheckCredits(corp, currentRezCost, "rezzing", card)) {
+			  if (card.additionalCostForfeitAgenda && card.player.scoreArea.length < 1) return false; 
               if (typeof card.RezUsability == "function")
                 return card.RezUsability.call(card);
               //for usability, maybe not allowed to rez
@@ -210,17 +211,40 @@ phaseTemplates.standardResponse = {
       }
     },
     rez: function (params) {
-      SpendCredits(
-        corp,
-        RezCost(params.card),
-        "rezzing",
-        params.card,
-        function () {
-          Rez(params.card);
-          actedThisPhase = true;
-        },
-        this
-      );
+      var mainRezFunc = function() {
+		  SpendCredits(
+			corp,
+			RezCost(params.card),
+			"rezzing",
+			params.card,
+			function () {
+			  Rez(params.card);
+			  actedThisPhase = true;
+			},
+			this
+		  );
+	  };
+	  if (params.card.additionalCostForfeitAgenda) {
+		var oldPhase = currentPhase; //in case of cancel
+		var forfdec = DecisionPhase(
+		  corp,
+		  ChoicesArrayCards(corp.scoreArea),
+		  function(fparams) {
+			  Forfeit(fparams.card);
+			  mainRezFunc();
+		  },
+		  "Rezzing "+params.card.title,
+		  "Rezzing "+params.card.title,
+		  this,
+		  "forfeit",
+		  function () {
+			ChangePhase(oldPhase, true);
+			Cancel();
+			Render();
+		  },		  
+		);
+	  }
+	  else mainRezFunc();
     },
     trigger: function (params) {
       /* old code
