@@ -5571,5 +5571,102 @@ cardSet[31073] = {
   AITriggerWhenCan: true,
 };
 
+cardSet[31074] = {
+  title: "Corporate Town",
+  imageFile: "31074.png",
+  elo: 1515,
+  player: corp,
+  faction: "Weyland Consortium",
+  influence: 2,
+  cardType: "asset",
+  rezCost: 1,
+  trashCost: 5,
+  //As an additional cost to rez this asset, forfeit 1 agenda.
+  additionalCostForfeitAgenda: true,
+  //When your turn begins, you may trash 1 installed resource. Trashing a resource this way cannot be prevented.
+  corpTurnBegin: {
+    Enumerate: function () {
+	  if (ChoicesInstalledCards(runner, function(card) {
+		return CheckCardType(card,["resource"]);
+	  }).length > 0) return [{}];
+	  return [];
+    },
+    Resolve: function () {	
+	  //1 installed resource
+	  var choices = ChoicesInstalledCards(runner, function(card) {
+		return CheckCardType(card,["resource"]);
+	  });
+	  if (choices.length > 0) {
+	    //AI might as well always trash, it's free
+		if (corp.AI) {
+			corp.AI._log("I know this one");
+			choices = [choices[corp.AI._bestTrashOption(choices)]];
+		}
+		//may
+		else {
+			var continueChoice = {
+			  id: choices.length,
+			  label: "Continue without trashing",
+			  button: "Continue without trashing",
+			};
+			choices.push(continueChoice);
+		}
+        DecisionPhase(
+          corp,
+          choices,
+          function (params) {
+			if (params.card) {
+			  Trash(params.card,false);
+			}
+			else Log("Corp chose not to trash a resource with Corporate Town");
+          },
+          "Corporate Town",
+          "Corporate Town",
+          this,
+          "trash"
+        );
+	  }
+    },
+    text: "Corporate Town",
+  },
+  RezUsability: function () {
+	//end of Runner turn only
+    if (currentPhase.identifier == "Runner 2.2") return true;
+    return false;
+  },
+  //**AI code for installing (return -1 to not install, index in emptyProtectedRemotes to install in a specific server, or emptyProtectedRemotes.length to install in a new server)
+  //note: this check is sometimes bypassed (for low priority install options as intoServerOptions e.g. when installing from Archives)
+  AIWorthInstalling: function (emptyProtectedRemotes) {
+	//don't install if there is already one installed
+	if (corp.AI._copyAlreadyInstalled(this)) return -1;
+	//don't install if there is no 1-point agenda scored
+	var oneptagendas = false;
+	for (var i=0; i<corp.scoreArea.length; i++) {
+		if (corp.scoreArea[i].agendaPoints < 2) {
+			oneptagendas = true;
+			break;
+		}
+	}
+	if (!oneptagendas) return -1;
+	//only install if have the credits to rez
+	if (corp.creditPool >= 1) {
+        //choose the first non-scoring server (create one if necessary)
+        for (var j = 0; j < emptyProtectedRemotes.length; j++) {
+          if (!corp.AI._isAScoringServer(emptyProtectedRemotes[j])) return j;
+        }
+        return emptyProtectedRemotes.length;
+    }
+    return -1; //don't install
+  },
+  AIWouldTrigger: function () {
+	//don't rez if there are no resources installed
+	if (ChoicesInstalledCards(runner, function(card) {
+		return CheckCardType(card,["resource"]);
+	}).length < 1) return false;
+    return true;
+  },
+  AIAvoidInstallingOverThis: true,
+};
+
 //TODO link (e.g. Reina)
 

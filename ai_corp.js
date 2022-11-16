@@ -320,6 +320,27 @@ class CorpAI {
     return 0; //just arbitrary for now
   }
   
+  _bestForfeitOption(optionList) {
+	this._log("considering forfeit options...");
+	var ret = 0;
+	var forfAg = null;
+    for (var i=0; i<corp.scoreArea.length; i++) {
+		if (!forfAg) {
+			ret = i;
+			forfAg = corp.scoreArea[i];
+		}
+		else if (corp.scoreArea[i].agendaPoints < forfAg.agendaPoints) {
+			ret = i;
+			forfAg = corp.scoreArea[i];
+		}
+		else if (corp.scoreArea[i].agendaPoints == forfAg.agendaPoints && Counters(corp.scoreArea[i],"agenda") < Counters(forfAg,"agenda")) {
+			ret = i;
+			forfAg = corp.scoreArea[i];
+		}
+    }
+	return ret;
+  }
+  
   //get the desired advancement limit (may exceed advancement requirement)
   _advancementLimit(card,server) {
 	if (typeof server == 'undefined') server = GetServer(card);
@@ -1577,7 +1598,7 @@ class CorpAI {
 			  intoServerOptions.push({
 				cardToInstall: cards[i],
 				serverToInstallTo: serverToInstallTo,
-				reason: "HVT into new server",
+				reason: "asset into non-scoring server",
 			  });
 			}
 		  }
@@ -1998,6 +2019,7 @@ class CorpAI {
         "PAD Campaign",
         "Clearinghouse",
 		"Daily Business Show",
+		"Corporate Town",
       ];
       for (var i = 0; i < cardsToRezEOT.length; i++) {
         var copyOfCard = this._copyOfCardExistsIn(
@@ -2988,6 +3010,8 @@ class CorpAI {
         ret = this._bestDiscardOption(optionList);
       else if (executingCommand == "advance")
         ret = this._bestAdvanceOption(optionList);
+	  else if (executingCommand == "forfeit")
+		ret = this._bestForfeitOption(optionList);
     }
 
     //call situational subroutine

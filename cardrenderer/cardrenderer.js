@@ -1972,7 +1972,7 @@ var CardRenderer = {
 					if (src.chosenCard) {
 						//positioning assumes ice for now		
 						this.app.ticker.add(function (delta) {
-							if (this.target) {
+							if (this.target && this.transform) {
 								this.rotation = -this.target.rotation;
 							}
 							//acount for the strange pivot (I don't know why it's 30)

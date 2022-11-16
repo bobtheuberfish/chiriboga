@@ -965,8 +965,8 @@ class RunnerAI {
   //bonus breaker is a not-installed card that will be included as a breaker in the run calculation i.e. hypothetical
   //if foresight is true, the run calculation will exchange clicks for credits/cards
   _commonRunCalculationChecks(server,runEventCardToUse,bonusBreaker,foresight) {
-	var poolCreditOffset = 0;
-	var extraCredits = corp.badPublicity; //temporary credits for each run
+	var poolCreditOffset = corp.badPublicity; //temporary credits for each run
+	var extraCredits = 0; //credits that are not in the pool (e.g. recurring)
 	var clickOffset = -1; //assume 1 click will be used to initiate the run
 	var damageOffset = 0;
 	if (foresight) { //i.e. run a click later, do prep first
@@ -1042,11 +1042,27 @@ class RunnerAI {
 	return bestpath;
   }
 
+  //basic pre-checks e.g. don't install resources when tagged
+  _passBasicWastefulInstallCheck(cardToInstall) {
+	if (cardToInstall.cardType == "resource") {
+		//don't install resources when tagged
+		if (runner.tags > 0) return false;
+		//or if a Corporate Town is installed
+		for (var i=0; i<corp.remoteServers.length; i++) {
+		  for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
+            if (PlayerCanLook(runner, corp.remoteServers[i].root[j])) {
+			  if (corp.remoteServers[i].root[j].title == "Corporate Town") return false;
+			}
+		  }
+		}
+	}
+	return true;
+  }
+
   _commonCardToInstallChecks(cardToInstall) {
 	  if (cardToInstall) {
-		this._log("maybe by installing "+cardToInstall.title+"?");
-		//don't install resources when tagged
-		if (cardToInstall.cardType == "resource" && runner.tags > 0) return false;
+		if (!this._passBasicWastefulInstallCheck(cardToInstall)) return false;
+		this._log("maybe by installing "+cardToInstall.title+"?");	
 		var canBeInstalled = true;
 		var choices = ChoicesCardInstall(cardToInstall);
 		if (!CheckInstall(cardToInstall)) canBeInstalled = false;
@@ -1769,6 +1785,14 @@ console.log(this.preferred);
                   Counters(server.root[j], "advancement")
                 );
               //serious danger
+			  else if (server.root[j].title == "Corporate Town") {
+				var installedRunnerCards = InstalledCards(runner);
+				var numResources = 0;
+				for (var k=0; k<installedRunnerCards.length; k++) {
+					if (CheckCardType(installedRunnerCards[k],["resource"])) numResources++;
+				}
+                this.serverList[i].potential += 1.0 + numResources;
+			  }
               else {
                 //assume everything else isn't worth the effort except if there's credits on it or it's unrezzed econ
                 if (!server.root[j].rezzed) {
@@ -2517,8 +2541,8 @@ console.log(this.preferred);
 				cardToPlay: card,
 			  });
 			}
-		  } else if (optionList.includes("install") && (card.cardType !== "resource" || runner.tags == 0)) {
-			//install (except resources if tagged, this check is also done for non-worth-keeping cards below, and in _commonCardToInstallChecks)
+		  } else if (optionList.includes("install") && this._passBasicWastefulInstallCheck(card)) {
+			//install
 			var canBeInstalled = true;
 			var installDestination = null; //directly to rig (no host)
 			var choices = ChoicesCardInstall(card);
@@ -2547,8 +2571,7 @@ console.log(this.preferred);
     if (this.cardsWorthKeeping.length < 1) {
       for (var i = 0; i < runner.grip.length; i++) {
         var card = runner.grip[i];
-		//there is a general check here to not install resources if tagged (and in the worthkeeping version above, and in _commonCardToInstallChecks)
-        if (card.cardType !== "event" && (card.cardType !== "resource" || runner.tags == 0)) {
+        if (card.cardType !== "event" && this._passBasicWastefulInstallCheck(card)) {
 		  //non-event (i.e. install)
           if (
             optionList.includes("install") &&
