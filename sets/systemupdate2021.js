@@ -5783,5 +5783,155 @@ cardSet[31075] = {
   },
 };
 
+cardSet[31076] = {
+  title: "Hortum",
+  imageFile: "31076.png",
+  elo: 1693,
+  player: corp,
+  faction: "Weyland Consortium",
+  influence: 2,
+  cardType: "ice",
+  rezCost: 4,
+  strength: 4,
+  subTypes: ["Code Gate"],
+  cannotBreakUsingAIPrograms: false,
+  //You can advance this ice.
+  canBeAdvanced: true,
+  AIAdvancementLimit: function() {
+	  //if unrezzed, only advance it if can afford to fully advance and rez
+	  /*
+	  if (!this.rezzed) {
+		  var costToFullyAdvanceAndRez = 3 - Counters(this, "advancement") + RezCost(this);
+		  if (!CheckCredits(corp, costToFullyAdvanceAndRez)) return 0;
+	  }
+	  */
+	  //actually I've decided to only advance once rezzed, to preserve secrecy for now
+	  if (!this.rezzed) return 0;
+	  return 3;
+  },
+  //If there are 3 or more hosted advancement counters, the Runner cannot break subroutines on this ice using AI programs.
+  anyChange: {
+	Resolve: function () {
+	  if (CheckCounters(this, "advancement", 3)) this.cannotBreakUsingAIPrograms = true;
+	  else this.cannotBreakUsingAIPrograms = false;
+	},
+	availableWhenInactive:true,
+  },
+  //subroutines:
+  //Gain 1 credit. If there are 3 or more hosted advancement counters, instead gain 4 credits.
+  //End the run. If there are 3 or more hosted advancement counters, instead search R&D for up to 2 cards. Add those cards to HQ, then end the run.
+  subroutines: [
+    {
+      text: "Gain 1[c]. If there are 3 or more hosted advancement counters, instead gain 4[c].",
+      Resolve: function () {
+        if (CheckCounters(this, "advancement", 3)) GainCredits(corp, 4);
+		else GainCredits(corp, 1);
+      },
+      visual: { y: 118, h: 32 },
+    },
+    {
+      text: "End the run. If there are 3 or more hosted advancement counters, instead search R&D for up to 2 cards. Add those cards to HQ, then end the run.",
+      Resolve: function () {
+		var choices = ChoicesArrayCards(corp.RnD.cards);
+		if (choices.length > 0 && CheckCounters(this, "advancement", 3)) {
+			//**AI code (in this case, implemented by setting and returning the preferred options)
+			if (corp.AI) {
+				var madeChoices = [null,null];
+				//don't overdraw too much (inc don't draw last couple of cards to give space for mandatory draws)
+				if (choices.length > 2 && PlayerHand(corp).length <= MaxHandSize(corp)) {
+					var bestTutor = null;
+					//grab an agenda first if HQ not threated and no agendas in hand
+					if (corp.AI._agendasInHand() < 1 && attackedServer != corp.HQ) bestTutor = corp.AI._bestAgendaTutorOption(choices);
+					if (!bestTutor) bestTutor = corp.AI._bestNonAgendaTutorOption(choices);
+					if (bestTutor) {
+						madeChoices[0]=bestTutor.card;
+						//again, don't overdraw too much
+						//note that the AI has not taken the other chosen card to hand yet
+						if (PlayerHand(corp).length < MaxHandSize(corp)) {
+							//don't choose the same card twice
+							choices = ChoicesArrayCards(corp.RnD.cards,function(card) {
+								return (card != bestTutor.card);
+							});
+							if (choices.length > 2) {
+								bestTutor = corp.AI._bestNonAgendaTutorOption(choices);
+								if (bestTutor) madeChoices[1]=bestTutor.card;
+							}
+						}
+					}
+				}
+				choices = [{id:0, cards:madeChoices}];
+			}
+			//for human, set up for multi-choice including a button to continue
+			else {
+				var continueChoice = {
+				  id: choices.length,
+				  label: "Continue",
+				  button: "Continue",
+				  card: null,
+				};
+				choices.push(continueChoice);
+				for (var i = 0; i < choices.length; i++) {
+				  choices[i].cards = [null, null];
+				}
+			}
+			//deal with ui edge case
+			if (corp.RnD.cards.length == 1 && viewingPlayer == corp) {
+				var storedFaceUp = corp.RnD.cards[0].faceUp;
+				corp.RnD.cards[0].faceUp=true;
+			}
+			var decisionCallback = function(params) {
+				//restore from ui edge case
+				if (corp.RnD.cards.length == 1 && viewingPlayer == corp) {
+					corp.RnD.cards[0].faceUp=storedFaceUp;
+				}
+				/* Once a search through a deck is complete, whether or not any cards are found, the deck
+				must be immediately reshuffled before continuing to resolve any remaining effects from
+				the ability that initiated the search.  (NSG CR 1.6 8.7.3) */  
+				Shuffle(corp.RnD.cards);
+				Log("R&D shuffled");
+				var cardsAdded = [];
+				for (var i=0; i<params.cards.length; i++) {
+				  if (params.cards[i]) {
+				    cardsAdded.push(params.cards[i]);
+				    MoveCard(params.cards[i], corp.HQ.cards);
+				  }
+				}
+				if (cardsAdded.length == 0) Log("No cards added from R&D to HQ");
+				else if (cardsAdded.length == 1) Log(GetTitle(cardsAdded[0], true) + " added from R&D to HQ");
+				else Log(cardsAdded.length + " cards added from R&D to HQ");
+				EndTheRun();
+			}
+			DecisionPhase(
+			  corp,
+			  choices,
+			  decisionCallback,
+			  this.title,
+			  this.title,
+			  this
+			);
+		}
+        else EndTheRun();
+      },
+      visual: { y: 160, h: 64 },
+    },  
+  ],
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
+    result.sr = [];
+	if (maxCorpCred > 4 && !CheckCounters(this, "advancement", 3)) {
+	  //i.e. corp has lots of credits (this threshold is arbitrary)
+	  result.sr.push([["misc_minor"]]);
+	} else {
+	  result.sr.push([["misc_moderate"]]);
+	}
+	if (CheckCounters(this, "advancement", 3)) {
+		result.sr.push([["misc_moderate","endTheRun"]]);
+	}
+	else {
+		result.sr.push([["endTheRun"]]);
+	}
+	return result;
+  },
+};
+
 //TODO link (e.g. Reina)
 

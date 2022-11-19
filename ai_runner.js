@@ -1719,12 +1719,14 @@ console.log(this.preferred);
           //i.e., is central
           if (server.cards.length > 0) {
             this.serverList[i].potential = 1;
-            //if top card of R&D is already known, no need to run it
+            //if top card of R&D is already known, no need to run it (except if it's an agenda)
             if (
               server == corp.RnD &&
               server.cards[server.cards.length - 1].knownToRunner
             ) {
-              if (server.cards[server.cards.length - 1].cardType !== "agenda")
+              if (server.cards[server.cards.length - 1].cardType == "agenda")
+				this.serverList[i].potential = server.cards[server.cards.length - 1].agendaPoints + 1.0;
+			  else
                 this.serverList[i].potential = 0;
             } else if (server == corp.RnD) {
               this.serverList[i].potential = 1.0; //arbitrary number
