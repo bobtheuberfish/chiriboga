@@ -72,8 +72,56 @@ function PlaceAdvancement(card, num) {
  *
  * @method Rez
  * @param {Card} card the card to rez
+ * @param {Boolean} [ignoreAllCosts] if set to true, no costs will be paid (except those already paid)
+ * @param {function} [onRezResolve] fires if the rez is not cancelled
+ * @param {Object} [context] for onRezResolve
+ * @param {Boolean} [allowCancel] whether to allow cancel rez when choosing additional costs
  */
-function Rez(card) {
+function Rez(card, ignoreAllCosts=false, onRezResolve=null, context=null, allowCancel=true) {
+  //costs need to be paid? pay them then recurse with ignoreAllCosts=true
+  if (!ignoreAllCosts) {
+	//forfeit agenda first if relevant
+	var payCreditsAndRez = function() {
+	  SpendCredits(
+		corp,
+		RezCost(card),
+		"rezzing",
+		card,
+		function () {
+		  //true here means ignore all costs (we have already paid them)
+		  Rez(card, true, onRezResolve, context);
+		},
+		this
+	  );
+	};
+	var cancelCallback = function () {
+		ChangePhase(oldPhase, true);
+		activePlayer=oldActivePlayer;
+		Cancel();
+	};
+	if (!allowCancel) cancelCallback = undefined;
+	if (card.additionalRezCostForfeitAgenda) {
+		var oldPhase = currentPhase; //in case of cancel
+		var oldActivePlayer = activePlayer; //also for cancel
+		var forfdec = DecisionPhase(
+		  corp,
+		  ChoicesArrayCards(corp.scoreArea),
+		  function(fparams) {
+			  Forfeit(fparams.card);
+			  payCreditsAndRez();
+		  },
+		  "Rezzing "+card.title,
+		  "Rezzing "+card.title,
+		  this,
+		  "forfeit",
+		  cancelCallback
+		);
+	}
+	else payCreditsAndRez();
+	//it's a recursive function so no need to continue here
+	return;
+  }
+  //all costs paid? rez it.	
   card.rezzed = true;
   card.renderer.FaceUp(); //in case Render is not forthcoming
   Log("Corp rezzed " + GetTitle(card, true));
@@ -94,6 +142,8 @@ function Rez(card) {
       }
     }
   }
+  //call the resolve callback
+  if (onRezResolve) onRezResolve.call(context);
   //first the automatic triggers
   AutomaticTriggers("cardRezzed", card);
   //then the Enumerate ones

@@ -4086,25 +4086,13 @@ cardSet[30054] = {
   rezCost: 5,
   strength: 4,
   //When the Runner encounters this ice, end the run unless the Runner takes 1 tag.
-  cardEncountered: {
-    Resolve: function (card) {
+  encounter: {
+    Enumerate: function (card) {
       if (card == this) {
         var choices = [
           { id: 0, label: "Take 1 tag", button: "Take 1 tag" },
           { id: 1, label: "End the run", button: "End the run" },
         ];
-        function decisionCallback(params) {
-          if (params.id == 0) AddTags(1);
-          else EndTheRun();
-        }
-        DecisionPhase(
-          runner,
-          choices,
-          decisionCallback,
-          "Funhouse",
-          "Funhouse",
-          this
-        );
         //**AI code
         if (runner.AI != null) {
           var choice = choices[0]; //take the tag by default
@@ -4116,9 +4104,15 @@ cardSet[30054] = {
 				runner.AI._log("I've committed to this");  
 			}
 		  }
-          runner.AI.preferred = { title: "Funhouse", option: choice }; //title must match currentPhase.title for AI to fire
+          choices = [choice];
         }
+		return choices;
       }
+	  else return [];
+	},
+    Resolve: function (params) {
+      if (params.id == 0) AddTags(1);
+      else EndTheRun();
     },
   },
   //Give the Runner 1 tag unless they pay 4[c]
@@ -4881,7 +4875,7 @@ cardSet[30069] = {
 		  if ( (typeof choices[i].card.hostedCards !== "undefined") && (choices[i].card.hostedCards.length > 0) ) continue;
           var iHighestValue = RezCost(choices[i].card) - servprotmult*corp.AI._protectionScore(GetServer(choices[i].card), {});
 		  //console.log("value of "+choices[i].card.title+" in "+ServerName(GetServer(choices[i].card))+" is "+iHighestValue);
-          if (iHighestValue > highestValue) {
+          if (iHighestValue > highestValue || choices[i].card.additionalRezCostForfeitAgenda) {
             highestValue = iHighestValue;
             mostExpensiveChoice = choices[i];
           }
@@ -4898,7 +4892,7 @@ cardSet[30069] = {
   SharedResolve: function (params) {
     if (corp.AI == null) {
       //human corp
-      if (params.card) Rez(params.card);
+      if (params.card) Rez(params.card, true); //true means ignore all costs
     }
     //**AI code
     else {
@@ -4909,7 +4903,7 @@ cardSet[30069] = {
         "Send a Message",
         this,
         function () {
-          Rez(params.card);
+          Rez(params.card, true); //true means ignore all costs
         }
       );
       corp.AI._log("I know this one");

@@ -1515,7 +1515,7 @@ console.log(this.preferred);
       //console.log("no good!");
     }
 
-    if (currentPhase.identifier == "Run 3.1") {
+    if (currentPhase.identifier == "Run 3.1" || currentPhase.identifier == "Encounter") {
       //mid-encounter
       //console.log("Mid-encounter bestpath:");
       //calculate run path from this point (the 0s mean no credit/click/damage offset)

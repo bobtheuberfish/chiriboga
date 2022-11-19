@@ -1100,11 +1100,10 @@ cardSet[31017] = {
 	},
 	Resolve: function (params) {
 		var thatice = params.card;
-		var thatrezcost = RezCost(thatice);
 		//The Corp may rez that ice. If they do not, they trash it.
 		var choices = [];
 		//don't include rez option if can't afford
-        if (CheckCredits(corp, thatrezcost, "rezzing", thatice)) {
+        if (FullCheckRez(thatice, ["ice"])) {
 			choices.push({
 			  id: 0,
 			  label: "Rez "+thatice.title,
@@ -1118,16 +1117,7 @@ cardSet[31017] = {
 		});
 		function decisionCallback(params) {
 		  if (params.id == 0) {
-			  SpendCredits(
-				corp,
-				thatrezcost,
-				"rezzing",
-				thatice,
-				function () {
-				  Rez(thatice);
-				},
-				this
-			  );
+			Rez(thatice); //this will also handle paying costs
 		  } else {
 			Trash(thatice);
 		  }
@@ -1214,6 +1204,7 @@ cardSet[31018] = {
 		if (!this.encounteredIceThisRun) Bypass();
 		this.encounteredIceThisRun=true;
     },
+	automatic: true,
   },  
   //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
   AIRunEventExtraPotential: function(server,potential) {
@@ -1526,22 +1517,24 @@ cardSet[31022] = {
     },
   },
   //Whenever you encounter the chosen ice, you may pay 1[c] for each subroutine it has. If you do, bypass that ice.
-  cardEncountered: {
-    Resolve: function (card) {
-		if (!card.subroutines) return;
-		if (card != this.chosenCard) return;
-		var numsr = card.subroutines.length;
-		if (!CheckCredits(runner, numsr, "using", this)) return; //can't afford
+  encounter: {
+    Enumerate: function (card) {
+		if (!card.subroutines) return [];
+		if (card != this.chosenCard) return [];
+		var numsr = this.chosenCard.subroutines.length;
+		if (!CheckCredits(runner, numsr, "using", this)) return []; //can't afford
 		var paylabel = numsr+"[c]: Bypass";
         var choices = [
           { id: 0, label: paylabel, button: paylabel, alt:"femme_bypass" },
           { id: 1, label: "Continue", button: "Continue", alt:"continue" },
         ];
-        function decisionCallback(params) {
-          if (params.id == 0) {
+		return choices;
+	},
+    Resolve: function (params) {
+		if (params.id == 0) {
 			SpendCredits(
 			  runner,
-			  numsr,
+			  this.chosenCard.subroutines.length,
 			  "using",
 			  this,
 			  function () {
@@ -1549,16 +1542,7 @@ cardSet[31022] = {
 			  },
 			  this
 			);
-		  }
-        }
-        DecisionPhase(
-          runner,
-          choices,
-          decisionCallback,
-          "Femme Fatale",
-          "Femme Fatale",
-          this
-        );
+		}
     },
   },
   //Interface -> 1[c]: Break 1 sentry subroutine.
@@ -3294,18 +3278,27 @@ cardSet[31040] = {
     },
     automatic: true,
   },
+  chosenIce: null,
+  modifyRezCost: {
+    Resolve: function (card) {
+      if (card==this.chosenIce) return -4;
+      return 0; //no modification to cost
+    },
+  },
   passesIce: {
 	Enumerate: function() {
 		if (this.usedThisTurn) return [];
 		var passedIce = attackedServer.ice[approachIce];
 		if (passedIce.rezzed) {
 			if (CheckSubType(passedIce, "Bioroid")) {
+			  var hbaot = this; //because we lose context in ChoicesInstalledCards
 			  var choices = ChoicesInstalledCards(corp, function (card) {
 			    //any affordable (with discount) rezzable Bioroid cards
-			    if (CheckSubType(card, "Bioroid")) {	
-				  if (CheckRez(card, ["ice", "asset", "upgrade"])) {
-					return CheckCredits(corp, RezCost(card)-4, "rezzing", card);				
-				  }
+			    if (CheckSubType(card, "Bioroid")) {
+				  hbaot.chosenIce=card; //temporary to modify rez cost
+				  var affordableRez = FullCheckRez(card); 
+				  hbaot.chosenIce=null;
+				  return affordableRez;
 			    }
 				return false; //i.e. not an option
 			  });
@@ -3342,16 +3335,12 @@ cardSet[31040] = {
 	Resolve: function (params) {
 	  this.usedThisTurn = true;
 	  if (params.card) {
-        SpendCredits(
-          corp,
-          RezCost(params.card)-4,
-          "rezzing",
-          params.card,
-          function () {
-            Rez(params.card);
-          },
-          this
-        );
+		this.chosenIce=params.card; //temporary to modify rez cost
+		var resolveCallback = function() {
+			this.chosenIce=null;
+		};
+		//false means don't ignore costs
+		Rez(params.card, false, resolveCallback, this, false);
 	  }
 	},
   },
@@ -4832,7 +4821,7 @@ cardSet[31061] = {
 	  return [];
 	},		
     Resolve: function (params) {
-		Rez(this.cardToRez);
+		Rez(this.cardToRez, true); //true means ignore all costs
 		this.cardToRez = null;
     },
   },
@@ -5178,11 +5167,13 @@ cardSet[31065] = {
   rezCost: 0,
   strength: 0,
   //When the Runner encounters this ice, gain 1 credit.
-  cardEncountered: {
-    Resolve: function (card) {
-      if (card == this) {
+  encounter: {
+	Enumerate: function(card) {
+		if (card == this) return [{}];
+		return [];
+	},
+    Resolve: function (params) {
 		GainCredits(corp,1);
-      }
     },
   },
   //End the run unless the Runner pays 1 credit.
@@ -5236,12 +5227,14 @@ cardSet[31066] = {
   rezCost: 8,
   strength: 5,
   //When the Runner encounters this ice, they must pay 3 credits, if able. If they do not, end the run.
-  cardEncountered: {
-    Resolve: function (card) {
-      if (card == this) {
-		if (CheckCredits(runner, 3)) SpendCredits(runner, 3);
-		else EndTheRun();
-	  }
+  encounter: {
+	Enumerate: function(card) {
+      if (card == this) return [{}];
+	  return [];
+	},
+    Resolve: function (params) {
+	  if (CheckCredits(runner, 3)) SpendCredits(runner, 3);
+	  else EndTheRun();
     },
   },
   //subroutines:
@@ -5582,7 +5575,7 @@ cardSet[31074] = {
   rezCost: 1,
   trashCost: 5,
   //As an additional cost to rez this asset, forfeit 1 agenda.
-  additionalCostForfeitAgenda: true,
+  additionalRezCostForfeitAgenda: true,
   //When your turn begins, you may trash 1 installed resource. Trashing a resource this way cannot be prevented.
   corpTurnBegin: {
     Enumerate: function () {
@@ -5666,6 +5659,128 @@ cardSet[31074] = {
     return true;
   },
   AIAvoidInstallingOverThis: true,
+};
+
+cardSet[31075] = {
+  title: "Archer",
+  imageFile: "31075.png",
+  elo: 1750,
+  player: corp,
+  faction: "Weyland Consortium",
+  influence: 2,
+  cardType: "ice",
+  rezCost: 4,
+  //As an additional cost to rez this asset, forfeit 1 agenda.
+  additionalRezCostForfeitAgenda: true,
+  strength: 6,
+  subTypes: ["Sentry", "Destroyer"],
+  //subroutines:
+  //Gain 2 credits.
+  //Trash 1 installed program.
+  //Trash 1 installed program.
+  //End the run.
+  subroutines: [
+    {
+      text: "Gain 2[c].",
+      Resolve: function () {
+        GainCredits(corp, 2);
+      },
+      visual: { y: 88, h: 16 },
+    },
+    {
+      text: "Trash 1 installed program.",
+      Resolve: function () {
+        var choices = ChoicesInstalledCards(runner, function (card) {
+          //only include trashable programs
+          if (CheckCardType(card, ["program"]) && CheckTrash(card)) return true;
+          return false;
+        });
+        if (choices.length > 0) {
+          var decisionCallback = function (params) {
+            Trash(params.card, true); //true means can be prevented
+          };
+          DecisionPhase(
+            corp,
+            choices,
+            decisionCallback,
+            "Archer",
+            "Trash",
+            this,
+            "trash"
+          );
+        }
+      },
+      visual: { y: 104, h: 16 },
+    },
+    {
+      text: "Trash 1 installed program.",
+      Resolve: function () {
+        var choices = ChoicesInstalledCards(runner, function (card) {
+          //only include trashable programs
+          if (CheckCardType(card, ["program"]) && CheckTrash(card)) return true;
+          return false;
+        });
+        if (choices.length > 0) {
+          var decisionCallback = function (params) {
+            Trash(params.card, true); //true means can be prevented
+          };
+          DecisionPhase(
+            corp,
+            choices,
+            decisionCallback,
+            "Archer",
+            "Trash",
+            this,
+            "trash"
+          );
+        }
+      },
+      visual: { y: 120, h: 16 },
+    },
+    {
+      text: "End the run.",
+      Resolve: function () {
+        EndTheRun();
+      },
+      visual: { y: 136, h: 16 },
+    },
+  ],
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
+    result.sr = [];
+	if (maxCorpCred > 4) {
+	  //i.e. corp has lots of credits (this threshold is arbitrary)
+	  result.sr.push([["misc_minor"]]);
+	} else {
+	  result.sr.push([["misc_moderate"]]);
+	}
+	//No need to fear program trash if none are installed
+	var installedPrograms = ChoicesInstalledCards(runner, function (card) {
+	  return CheckCardType(card, ["program"]);
+	});
+	if (installedPrograms.length > 0) {
+		result.sr.push([["misc_serious"]]);
+		result.sr.push([["misc_serious"]]);
+	}
+	else {
+		//push blank srs so that indices match
+		result.sr.push([[]]); 
+		result.sr.push([[]]); 
+	}
+	result.sr.push([["endTheRun"]]);
+	return result;
+  },
+  //for corp to decide whether to install/rez this yet
+  AIWorthwhileIce: function(server) {
+	//worthwhile only if there is a 1 point agenda to forfeit
+	var oneptagendas = false;
+	for (var i=0; i<corp.scoreArea.length; i++) {
+		if (corp.scoreArea[i].agendaPoints < 2) {
+			oneptagendas = true;
+			break;
+		}
+	}
+	return oneptagendas;
+  },
 };
 
 //TODO link (e.g. Reina)

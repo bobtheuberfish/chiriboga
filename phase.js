@@ -112,7 +112,11 @@ phaseTemplates.standardResponse = {
       );
       Log("Encountering " + GetTitle(attackedServer.ice[approachIce], true));
       encountering = true;
+	  //first the automatic triggers
       AutomaticTriggers("cardEncountered", attackedServer.ice[approachIce]);
+	  //then the Enumerate ones
+	  //currently giving whoever's turn it is priority...not sure this is always going to be right
+	  TriggeredResponsePhase(playerTurn, "encounter", [attackedServer.ice[approachIce]]);
     } else if (currentPhase.identifier == "Run 4.3") {
       //Run: Movement (Nisei 2021 4.3)
       movement = true;
@@ -123,27 +127,14 @@ phaseTemplates.standardResponse = {
       if (activePlayer == corp) {
         if (currentPhase.corpSkip) return [];
         var ret = ChoicesInstalledCards(corp, function (card) {
-          var currentRezCost = RezCost(card);
-          //corp can always rez upgrades and assets (except for usability)
-          if (CheckRez(card, ["upgrade", "asset"])) {
-            if (CheckCredits(corp, currentRezCost, "rezzing", card)) {
-			  if (card.additionalCostForfeitAgenda && card.player.scoreArea.length < 1) return false; 
-              if (typeof card.RezUsability == "function")
-                return card.RezUsability.call(card);
-              //for usability, maybe not allowed to rez
-              else return true;
-            }
-          }
-          //but only the approached (not encountered) ice
-          if (CheckApproach() && approachIce < attackedServer.ice.length) {
-            if (card == attackedServer.ice[approachIce]) {
-              if (CheckRez(card, ["ice"]))
-                return CheckCredits(corp, currentRezCost, "rezzing", card);
-            }
-          }
-          //other cards cannot be rezzed
-          return false;
-        });
+			//corp can always rez upgrades and assets (except for usability)
+			var validRezTypes = ["upgrade", "asset"];
+			//but only the approached (not encountered) ice
+			if (CheckApproach() && approachIce < attackedServer.ice.length) {
+				if (card == attackedServer.ice[approachIce]) validRezTypes.push("ice");
+			}
+			return FullCheckRez(card, validRezTypes);
+		});
         return ret;
       } else return [];
     },
@@ -211,40 +202,10 @@ phaseTemplates.standardResponse = {
       }
     },
     rez: function (params) {
-      var mainRezFunc = function() {
-		  SpendCredits(
-			corp,
-			RezCost(params.card),
-			"rezzing",
-			params.card,
-			function () {
-			  Rez(params.card);
-			  actedThisPhase = true;
-			},
-			this
-		  );
-	  };
-	  if (params.card.additionalCostForfeitAgenda) {
-		var oldPhase = currentPhase; //in case of cancel
-		var forfdec = DecisionPhase(
-		  corp,
-		  ChoicesArrayCards(corp.scoreArea),
-		  function(fparams) {
-			  Forfeit(fparams.card);
-			  mainRezFunc();
-		  },
-		  "Rezzing "+params.card.title,
-		  "Rezzing "+params.card.title,
-		  this,
-		  "forfeit",
-		  function () {
-			ChangePhase(oldPhase, true);
-			Cancel();
-			Render();
-		  },		  
-		);
-	  }
-	  else mainRezFunc();
+	  //the false here means don't ignore costs
+      Rez(params.card, false, function() {
+		actedThisPhase = true;
+	  }, this);
     },
     trigger: function (params) {
       /* old code

@@ -57,6 +57,7 @@
  .runnerTurnBegin
  .beforeStartingHand //called before drawing starting hand (currently treats all as automatic)
  .runBegins //called with input (server) (currently treats all as automatic)
+ .encounter //called when a card is encountered (Enumerate takes the encountered card as an input, use cardEncountered instead if you need automatic)
  .encounterEnds //note encountering will now be false but approachIce available to use
  .passesIce //called when movement begins (approachIce still refers to the ice passed)
  .approachServer //called when approaching the server (before runner decides whether to continue the run)
