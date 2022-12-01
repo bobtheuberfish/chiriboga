@@ -5933,5 +5933,63 @@ cardSet[31076] = {
   },
 };
 
+cardSet[31077] = {
+  title: "Ice Wall",
+  imageFile: "31077.png",
+  elo: 1628,
+  player: corp,
+  faction: "Weyland Consortium",
+  influence: 1,
+  cardType: "ice",
+  subTypes: ["Barrier"],
+  rezCost: 1,
+  strength: 1,
+  advancement: 0,
+  canBeAdvanced: true,
+  //You can advance this ice.
+  AIAdvancementLimit: function() {
+	//I've decided to only advance once rezzed, to preserve secrecy for now
+	if (!this.rezzed) return 0;
+	//special case: don't advance against Quetzal
+	if (runner.identityCard.title == "Quetzal: Free Spirit") return 0;
+	//advance if this server needs more protection and it's the only affordable option
+	var thisServer = GetServer(this);
+	if (corp.AI._affordableIce(thisServer) < 1 && corp.AI._serverToProtect() == thisServer) return Counters(this, "advancement")+1;
+	return 0;
+  },
+  //It gets +1 strength for each hosted advancement counter.
+  modifyStrength: {
+    Resolve: function (card) {
+      if (card == this) {
+        return Counters(this, "advancement"); //+1 for each advancement
+      }
+      return 0; //no modification to strength
+    },
+  },
+  //subroutines:
+  //End the run.
+  subroutines: [
+    {
+      text: "End the run.",
+      Resolve: function () {
+        EndTheRun();
+      },
+      visual: { y: 102, h: 16 },
+    },
+  ],
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
+    result.sr = [[["endTheRun"]]];
+	return result;
+  },
+  //for corp to decide whether to install/rez this yet
+  AIWorthwhileIce: function(server) {
+	//don't install more than one copy of Ice Wall in the same server
+	if (server) {
+		if (corp.AI._copyOfCardExistsIn("Ice Wall", server.ice)) return false; //not worthwhile
+	}
+	return true; //worthwhile
+  },
+};
+
 //TODO link (e.g. Reina)
 

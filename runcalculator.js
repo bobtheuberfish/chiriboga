@@ -46,9 +46,30 @@ class RunCalculator {
     if (!iceKnown) {
       //unknown ice
 	  var extraRezCost = RezCost(ice) - ice.rezCost; //this isn't cheating because we only check the bonus cost (easy way of summarising any card effects)
-      //in this set only Pharos can be advanced
-      if (Counters(ice, "advancement") > 0) iceKnown = true;
-      //not Pharos, if corp has credits assume a general ice
+      //advanceable ice assumptions
+	  var advCounters = Counters(ice, "advancement");
+	  if (advCounters > 0) {
+		  if (advCounters < 4 && maxCorpCred > 6 + extraRezCost) {
+			//assume Pharos
+			result.subTypes = ["Barrier"];
+			result.sr = [[["tag"]], [["endTheRun"]], [["endTheRun"]]];
+			if (advCounters < 3) result.strength = 5;
+			else result.strength = 10;
+		  }
+		  else if (advCounters < 4 && maxCorpCred > 3 + extraRezCost) {
+			//assume Hortum (simplified)
+			result.subTypes = ["Code Gate"];
+			result.sr = [[["misc_moderate"]], [["endTheRun"]]];
+			result.strength = 4;
+		  }
+		  else if (advCounters > 0) {
+			//assume Ice Wall
+			result.subTypes = ["Barrier"];
+			result.sr = [[["endTheRun"]]];
+			result.strength = 1 + advCounters;
+		  }
+	  }
+      //not advanced, if corp has credits assume a general ice
       else if (maxCorpCred > 0 + extraRezCost) {
         result.subTypes = ["Sentry"];
         result.strength = Math.min(0.6*(maxCorpCred-extraRezCost), 6); //the 0.6 is somewhat arbitrary, test and tweak

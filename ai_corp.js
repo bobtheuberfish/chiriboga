@@ -7,6 +7,20 @@ class CorpAI {
     console.log("AI: " + message);
   }
 
+  _iceIsDisabled(iceCard) {
+	//for now assume hosted cards disable it
+	if (typeof iceCard.hostedCards !== "undefined") {
+	  if (iceCard.hostedCards.length > 0) return true;
+	}
+	//or if chosen by Femme
+	var femmes = this._copiesOfCardIn("Femme Fatale", runner.rig.programs);
+	for (var i=0; i<femmes.length; i++) {
+		if (femmes[i].chosenCard == iceCard) return true;
+	}
+	//not disabled
+	return false;
+  }
+
   //this returns either a list of affordable ice or a list or not-affordable ice
   //'affordable' isn't necessarily monetary e.g. it may not be tactically 'affordable' right now
   _iceInCardsCommon(
@@ -838,6 +852,8 @@ class CorpAI {
 			if (card.rezCost > 4 || Strength(card) > 3) {
 			  ret++; //plus bonus point for high rez cost (based on printed value) or strong
 			}
+			//special case: ice wall gets extra strength for advancement tokens (constant is arbitrary)
+			if (card.title == "Ice Wall") ret += 0.5 * card.advancement;
 			//ice on centrals is essentially better due to the random 'mystery' nature of central servers
 			var server = GetServer(card); //returns null if not installed
 			if (server != null) {
@@ -2828,6 +2844,9 @@ class CorpAI {
       var installedCards = InstalledCards(corp);
       for (var i = 0; i < installedCards.length; i++) {
         if (installedCards[i].canBeAdvanced) {
+		  //not if it has been disabled
+		  if (this._iceIsDisabled(installedCards[i])) continue;
+		  //ok let's check some more things
           if (CheckCardType(installedCards[i], ["ice"])) {
             var advancementLimit = 5; //arbitrary
             if (typeof installedCards[i].AIAdvancementLimit == "function")
