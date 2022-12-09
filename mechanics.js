@@ -1465,7 +1465,7 @@ function RemoveCounters(card, counter, num = 1) {
  * @param {Object} [context] context for function to be called in
  */
 function Trace(baseStrength, callback, context) {
-  var traceStrength = baseStrength;
+  traceStrength = baseStrength;
   Log("Trace initiated");
   var corpChoices = [
     { num: 0, label: "Continue without increasing trace strength" },
@@ -1474,7 +1474,7 @@ function Trace(baseStrength, callback, context) {
   while (CheckCredits(corp, i, "trace")) {
     corpChoices.push({
       num: i,
-      label: i + "[c]: Increase trace strength by " + i,
+      label: i + "[c]: Increase trace strength to " + (i+traceStrength),
     });
     i++;
   }
@@ -1493,19 +1493,21 @@ function Trace(baseStrength, callback, context) {
             "Trace strength not increased (remains at " + traceStrength + ")"
           );
         //runner link turn
+		linkStrength = Link();
         var runnerChoices = [
           { num: 0, label: "Continue without increasing link strength" },
         ];
         var i = 1;
-        while (CheckCredits(runner, i, "trace")) {
+		//for usability, the option for runner to pay more than required is not given
+        while (CheckCredits(runner, i, "trace") && i+linkStrength <= traceStrength) {
           runnerChoices.push({
             num: i,
-            label: i + "[c]: Increase link strength by " + i,
+            label: i + "[c]: Increase link strength to " + (i+linkStrength),
           });
           i++;
         }
         function decisionCallbackB(paramsB) {
-          var linkStrength = Link() + paramsB.num;
+          linkStrength += paramsB.num;
           SpendCredits(
             runner,
             paramsB.num,
@@ -1532,9 +1534,10 @@ function Trace(baseStrength, callback, context) {
           runner,
           runnerChoices,
           decisionCallbackB,
-          "Trace<sup>" + baseStrength + "</sup>",
-          "Increase link strength (from " + Link() + ")",
-          this
+		  "Trace strength " + traceStrength,
+          "Increase link strength (from " + linkStrength + ")",
+          this,
+		  "trace",
         );
       },
       this
@@ -1544,8 +1547,9 @@ function Trace(baseStrength, callback, context) {
     corp,
     corpChoices,
     decisionCallbackA,
-    "Trace<sup>" + baseStrength + "</sup>",
+	"Trace[" + baseStrength + "]",
     "Increase trace strength (from " + baseStrength + ")",
-    this
+    this,
+	"trace",
   );
 }

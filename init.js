@@ -33,6 +33,8 @@ var playerTurn = corp; //whose turn it is
 var opportunitiesGiven = false; //for player response to opportunity to act
 var actedThisPhase = false; //for use with above
 var checkedClick = false; //used to detect which abilities have click cost
+var traceStrength = 0; //set by the corp during the first part of a trace
+var linkStrength = 0; //set by the runner during the second part of a trace
 var lingeringEffects = []; //used for effects that apply independently of the source card
 function AddLingeringEffect(lingeringEffect) { lingeringEffects.push(lingeringEffect); }
 function RemoveLingeringEffect(lingeringEffect) { var l_idx = lingeringEffects.indexOf(lingeringEffect); if (l_idx > -1) lingeringEffects.splice(l_idx, 1); }

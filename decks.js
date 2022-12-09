@@ -1,5 +1,8 @@
 //GUIDE FOR CARD DEFINITIONS
 
+//IMPORTANT IMPLEMENTATION NOTE:
+//Do not alter card properties directly. Instead use the relevant modifier function. That way effects can stack, be undone, prevented, etc.
+
 //REQUIRED properties:
 /*
 .title
@@ -133,6 +136,8 @@ function InstanceCard(
   cardDefinition.player = null; //unset to prevent recursion going nuts
   var card = jQuery.extend(true, {}, cardDefinition);
   cardDefinition.player = player; //restore now that recursion is done
+  card.isCard = true;
+  card.cardDefinition = cardDefinition; //save in case we need to compare against defaults later
   card.player = player;
   card.setNumber = setNumber;
   //Do some special initialisations

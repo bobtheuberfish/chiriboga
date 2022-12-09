@@ -1185,6 +1185,12 @@ console.log(this.preferred);
       if (typeof this.preferred.command !== "undefined") {
         var cmd = this.preferred.command;
         if (executingCommand == cmd) {
+		  //special: trace
+		  if (cmd == "trace") {
+			return this.preferred.IncreaseStrengthChoice(optionList);
+		  }
+		  
+		  //other commands	
 		  if (typeof this.preferred.useAsCommand != 'undefined') cmd = this.preferred.useAsCommand;
           var data = [];
           if (cmd == "run") data = [{ prop: "server", key: "serverToRun" }];

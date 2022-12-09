@@ -6,6 +6,7 @@ cardSet[31001] = {
   imageFile: "31001.png",
   elo: 1506,
   player: runner,
+  link: 0,
   faction: "Anarch",
   cardType: "identity",
   deckSize: 45,
@@ -103,6 +104,7 @@ cardSet[31002] = {
   elo: 1460,
   player: runner,
   faction: "Anarch",
+  link: 1,
   cardType: "identity",
   deckSize: 45,
   influenceLimit: 15,
@@ -739,6 +741,7 @@ cardSet[31013] = {
   elo: 1566,
   player: runner,
   faction: "Criminal",
+  link: 0,
   cardType: "identity",
   deckSize: 45,
   influenceLimit: 17,
@@ -781,6 +784,7 @@ cardSet[31014] = {
   elo: 1751,
   player: runner,
   faction: "Criminal",
+  link: 0,
   cardType: "identity",
   deckSize: 45,
   influenceLimit: 15,
@@ -1887,6 +1891,7 @@ cardSet[31025] = {
   elo: 1560,
   player: runner,
   faction: "Shaper",
+  link: 0,
   cardType: "identity",
   deckSize: 45,
   influenceLimit: 15,
@@ -2003,6 +2008,7 @@ cardSet[31026] = {
   elo: 1625,
   player: runner,
   faction: "Shaper",
+  link: 0,
   cardType: "identity",
   deckSize: 45,
   influenceLimit: 10,
@@ -3901,6 +3907,18 @@ cardSet[31047] = {
 	if (choices.length < 1) return [];
 	//**AI code (in this case, implemented by setting and returning the preferred option)
 	if (corp.AI != null) {
+		//if a damage kill combo exists, prioritise that
+		var damageOps = [];
+		var opDamageThisTurn = corp.AI._potentialOperationDamageThisTurn(damageOps);
+		if (opDamageThisTurn > runner.grip.length) {
+			for (var i=0; i<damageOps.length; i++) {
+				if (damageOps[i].title != "Archived Memories") {
+					for (var j=0; j<choices.length; j++) {
+						if (choices[j].card == damageOps[i]) return [choices[j]];
+					}
+				}
+			}
+		}
 		//current logic is if there is an agenda in archives or if the best 'tutor' option is an operation
 		var agendaRecur = corp.AI._bestRecurToHQOption(choices,corp.archives);
 		if (agendaRecur) {
@@ -5991,5 +6009,118 @@ cardSet[31077] = {
   },
 };
 
-//TODO link (e.g. Reina)
-
+cardSet[31078] = {
+  title: "Punitive Counterstrike",
+  imageFile: "31078.png",
+  elo: 1807,
+  player: corp,
+  faction: "Weyland Consortium",
+  influence: 2,
+  cardType: "operation",
+  subTypes: ["Black Ops"],
+  playCost: 3,
+  //Trace [5]–. If successful, do X meat damage. X is equal to the sum of the printed agenda points on all agendas the Runner stole during their last turn.
+  printedAgendaPointsLastTurn: 0,
+  Enumerate: function () {
+	if (this.printedAgendaPointsLastTurn < 1) return [];
+	if (corp.AI && !corp.resolvingCards.includes(this)) {
+		//for now AI criteria is either this is next card in kill combo or decent damage (arbitrary) and unlikely to be a better opportunity in future
+		var damageOps = []; //includes this card since it hasn't been played yet
+		var opDamage = corp.AI._potentialOperationDamageThisTurn(damageOps);
+		if (opDamage > runner.grip.length && damageOps[0].title == this.title) return  [{}];
+		var maybeBetterLater = AgendaPointsToWin() - AgendaPoints(runner) > 3;
+		if ( opDamage > 2 && !maybeBetterLater ) return [{}];
+		return [];
+	}
+    return [{}];
+  },
+  Resolve: function (params) {
+	Trace(5, function(successful) {
+		if (successful) MeatDamage(this.printedAgendaPointsLastTurn);
+	}, this);
+	//Trace AI
+	//for a not-tournament-legal analysis, see Slapdash's spreadsheet here:
+	//https://docs.google.com/spreadsheets/d/1wB3sApJjPOBUs5XzzLq4OafHd0gu5mXBI2uZTnZKVug/
+	if (corp.AI) {
+		var availableRunnerCred = AvailableCredits(runner,"trace");
+		var availableCorpCred = AvailableCredits(corp,"trace");
+		var maxIncrease = Link() + availableRunnerCred - traceStrength + 1;
+		//don't try to trace more than corp can afford
+		if (maxIncrease > availableCorpCred) maxIncrease = availableCorpCred;
+		var minIncrease = 0;
+		var strengthToIncrease = minIncrease;
+		if (maxIncrease < minIncrease) maxIncrease = minIncrease;
+		else if (maxIncrease > minIncrease) {	
+			var damageOps = []; //does not include this card, it is in resolvingCards
+			var opDamage = corp.AI._potentialOperationDamageThisTurn(damageOps);
+			var opCost = 0;
+			for (var i=0; i<damageOps.length; i++) {
+				opCost += damageOps[i].playCost;
+			}
+			//don't use up credits planned for other damage ops
+			if (maxIncrease > availableCorpCred - opCost) {
+				maxIncrease = availableCorpCred - opCost;
+				corp.AI._log("I'm willing to spend up to "+maxIncrease);
+			}
+			//for win condition, tax maximum
+			if (opDamage > runner.grip.length) {
+				strengthToIncrease = maxIncrease;
+				corp.AI._log("Really hope to win this trace");
+			}
+			//otherwise random between min and max (inclusive)
+			else {
+				strengthToIncrease = RandomRange(minIncrease, maxIncrease);
+				corp.AI._log("Not sure how much to spend on trace (up to "+maxIncrease+")");
+			}
+		}
+		//limit to selected valid range
+		if (strengthToIncrease < minIncrease) strengthToIncrease = minIncrease;
+		else if (strengthToIncrease > maxIncrease) strengthToIncrease = maxIncrease;
+		corp.AI.preferred = { strengthToIncrease: strengthToIncrease };
+		corp.AI.preferred.command = "trace";
+	}
+	if (runner.AI) {
+		var expectedDmg = this.printedAgendaPointsLastTurn;
+		runner.AI.preferred = { IncreaseStrengthChoice: function(choices) {
+			var availableRunnerCred = AvailableCredits(runner,"trace");
+			var costForFullLink = traceStrength - Link();
+			if (costForFullLink < 0) costForFullLink = 0;
+			var canAffordFullLink = availableRunnerCred >= costForFullLink;
+			//this is all other nothing (no advantage for reducing how much trace exceeds link)
+			if (!canAffordFullLink) {
+				runner.AI._log("I'm too poor to contest that");
+				return 0; //index in choices
+			}
+			//try to survive if too weak
+			if (runner.grip.length < expectedDmg) {
+				runner.AI._log("I want to live");
+				return costForFullLink; //index in choices
+			}
+			//otherwise choose a random number based on cards worth keeping and cards in hand
+			var cwkCount = runner.AI._cardsInHandWorthKeeping().length;
+			runner.AI._log("Not sure it is worth the cost (but I like "+cwkCount+" cards)");
+			//the constant is arbitrary
+			var randNum = RandomRange(0, cwkCount + expectedDmg - runner.grip.length + 5);
+			if (randNum >= costForFullLink) return costForFullLink; //index in choices
+			return 0; //index in choices
+		}};
+		runner.AI.preferred.command = "trace";
+	}
+  },
+  stolen: {
+    Resolve: function () {
+      if (intended.steal !== null)
+        this.printedAgendaPointsLastTurn += intended.steal.agendaPoints; //note printed points, no modifiers
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  corpDiscardEnds: {
+    Resolve: function () {
+      this.printedAgendaPointsLastTurn = 0;
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  AIDamageOperation: true,
+};

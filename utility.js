@@ -70,31 +70,147 @@ function ServerAddress(server) {
 	}
 	return "";
 }
-function LocationStringIfRelevant(src) {
-	if (src.cardLocation) {
-		var server = GetServer(src);
-		if (server) {
-			var idx=-1;
-			if (typeof server.cards != 'undefined') {
-				idx = server.cards.indexOf(src);
-				if (idx > -1) return ServerAddress(server)+".cards["+idx+"]";
-			}
-			idx = server.root.indexOf(src);
-			if (idx > -1) return ServerAddress(server)+".root["+idx+"]";
-			idx = server.ice.indexOf(src);
-			if (idx > -1) return ServerAddress(server)+".ice["+idx+"]";
+
+//returns either the location string or src (optional extra parameter for debugging)
+function LocationStringIfRelevant(src,cardprop="") {
+	if (src.cardLocation) 
+	{
+		var idx = -1;
+		//check host
+		if (src.host) {
+			idx = src.host.hostedCards.indexOf(src);
+			if (idx > -1) return LocationStringIfRelevant(src.host)+".hostedCards["+idx+"]";
 		}
+		//list of locations:
+		var locations = [
+			{ ary: removedFromGame, str:"removedFromGame" },
+			{ ary: runner.rig.programs, str:"runner.rig.programs" },
+			{ ary: runner.rig.hardware, str:"runner.rig.hardware" },
+			{ ary: runner.rig.resources, str:"runner.rig.resources" },
+			{ ary: runner.grip, str:"runner.grip" },
+			{ ary: runner.heap, str:"runner.heap" },
+			{ ary: runner.stack, str:"runner.stack" },
+			{ ary: runner.scoreArea, str:"runner.scoreArea" },
+			{ ary: corp.scoreArea, str:"corp.scoreArea" },
+			{ ary: corp.archives.cards, str:"corp.archives.cards" },
+			{ ary: corp.archives.root, str:"corp.archives.root" },
+			{ ary: corp.archives.ice, str:"corp.archives.ice" },
+			{ ary: corp.HQ.cards, str:"corp.HQ.cards" },
+			{ ary: corp.HQ.root, str:"corp.HQ.root" },
+			{ ary: corp.HQ.ice, str:"corp.HQ.ice" },
+			{ ary: corp.RnD.cards, str:"corp.RnD.cards" },
+			{ ary: corp.RnD.root, str:"corp.RnD.root" },
+			{ ary: corp.RnD.ice, str:"corp.RnD.ice" },
+		];
+		//add remote servers to list
+		for (var i=0; i<corp.remoteServers.length; i++) {
+			locations.push({ ary: corp.remoteServers[i].root, str:"corp.remoteServers["+i+"].root" });
+			locations.push({ ary: corp.remoteServers[i].ice, str:"corp.remoteServers["+i+"].ice" });
+		}
+		//check all and return if found
+		for (var i=0; i<locations.length; i++) {
+			if (src.cardLocation == locations[i].ary) {
+				idx = src.cardLocation.indexOf(src);
+				if (idx > -1) return locations[i].str+"["+idx+"]";;
+			}
+		}
+	}
+	if (src.isCard) {
+		//report unsupported
+		if (cardprop != "") console.error("Converting "+cardprop+"="+src.title+" to string not supported");
+		else console.error("Converting property="+src.title+" to string not supported");
 	}
 	return src;
 }
 
-// Function used to automatically create replication code (src is an array, str is its address)
-function ReplicationCode(src,str) {
+//non-save properties (engine properties)
+const replicationCodeBlacklist = [
+  "isCard",
+  "frontTexture",
+  "renderer",
+  "cardLocation",  
+  "setNumber",
+  
+  "canBeAdvanced", //this is automatically set on install for agendas
+  "subTypes", //this should not change at runtime (blacklist is quicker than a full elementwise check)
+  
+  //on-card properties to ignore (this assumes they will be constant...)
+  "abilities",
+  "subroutines",
+];
+
+//will return value as string, or return "" (and optionally throw an error)
+//optional cardprop parameter for debugging
+function ValueToString(val,reportErrors=false,prop="",cardprop="") {
+	if (typeof val == "object") {
+		//currently only accepted objects are null, player, card, server, array
+		if (val === null) {
+			return "null";
+		}
+		else if (val == runner) {
+			return "runner";
+		}
+		else if (val == corp) {
+			return "corp";
+		}
+		else if (val.isCard) {
+			return LocationStringIfRelevant(val,cardprop);
+		}
+		else if (val.isServer) {
+			return ServerAddress(val);
+		}
+		else if (Array.isArray(val)) {
+			//currently only specific things are saved in arrays
+			//could allow more by using some of this code recursively
+			var ret = "[";
+			val.forEach(function(item) {
+				ret += ValueToString(item, true, prop, cardprop); //report errors
+				ret += ",";
+			});
+			ret += "]";
+			return ret;
+		}
+	}
+	else {
+		if (typeof val == "boolean") return val==true?"true":"false";
+		else if (typeof val == "number") return ""+val;
+		else if (typeof val == "string") return '"'+val.replace(/"/g,'\\"')+'"';
+	}
+	if (reportErrors) {
+		console.log(val);
+		var propstr = "";
+		if (prop) propstr=" (."+prop+")";
+		console.error("Value above"+propstr+" is unsupported in ValueToString.");
+	}
+	return "";
+}
+
+//will return card property as string, or ""
+function CardPropertyToString(card, prop, blacklist) {
+	var ret = "";
+	//no need to save functions
+	if (typeof card[prop] != "function") {
+		//no need to save values that are same as card definition
+		if (typeof card.cardDefinition[prop] != 'undefined') {
+			if (card[prop] === card.cardDefinition[prop]) return ret;
+		}
+		//no need to save certain properties
+		if (!blacklist.includes(prop)) {
+			return ValueToString(card[prop],false,prop,card.title+"."+prop);
+		}
+	}
+	return ret;
+}
+
+// Function used to automatically create replication code (src is an array, str is the string of its location array)
+function ReplicationCode(src,str) {	
   var ret = "";
   for (var j=0; j<src.length; j++) {
 	  var card = src[j];
 	  var addr = str+'['+j+']';
-	  if (card.player == corp) {
+	  var handledProps = [];
+	  //corp information-related properties
+	  if (card.player == corp && !runner.scoreArea.includes(card)) {
 		  if (card.rezzed) {
 			  card.knownToRunner = false; //no need for both to be set
 			  ret += addr+".rezzed=true;\n";
@@ -104,26 +220,70 @@ function ReplicationCode(src,str) {
 			  ret += addr+".faceUp=true;\n";
 		  }
 		  else if (card.knownToRunner) ret += addr+".knownToRunner=true;\n";
+		  //don't autoprop save these properties
+		  handledProps.push("rezzed");
+		  handledProps.push("faceUp");
+		  handledProps.push("knownToRunner");
+	  }
+	  //runner special handled properties
+	  else if (card.player == runner || runner.scoreArea.includes(card)) {
+		  if (card.faceUp) {
+			//assumed face up already
+			if (!runner.rig.programs.includes(card) 
+				&& !runner.rig.hardware.includes(card) 
+				&& !runner.rig.resources.includes(card)
+				&& !runner.scoreArea.includes(card)
+				&& !runner.heap.includes(card))
+			  ret += addr+".faceUp=true;\n";
+			  handledProps.push("knownToRunner");
+		  }
+		  //don't autoprop save it
+		  handledProps.push("faceUp");
 	  }
 	  //counters
 	  for (var i = 0; i < counterList.length; i++) {
-		if (typeof card[counterList[i]] !== "undefined") {
-			if (card[counterList[i]] != 0) ret += addr+"."+counterList[i]+"="+card[counterList[i]]+";\n";
+		if (!handledProps.includes(counterList[i])) {
+			if (typeof card[counterList[i]] !== "undefined") {
+				if (card[counterList[i]] != 0) ret += addr+"."+counterList[i]+"="+card[counterList[i]]+";\n";
+			}
+			//don't autoprop save counters
+			handledProps.push(counterList[i]);
 		}
 	  }
-	  //custom properties
+	  //resettable properties
 	  for (var i = 0; i < cardPropertyResets.length; i++) {
-		if (typeof card[cardPropertyResets[i].propertyName] !== "undefined") {
-		  if (card[cardPropertyResets[i].propertyName] != cardPropertyResets[i].defaultValue) ret += addr+"."+cardPropertyResets[i].propertyName+"="+LocationStringIfRelevant(card[cardPropertyResets[i].propertyName])+";\n";
+		var propName = cardPropertyResets[i].propertyName;
+		if (!handledProps.includes(propName)) {
+			if (typeof card[propName] !== "undefined") {
+			  if (card[propName] != cardPropertyResets[i].defaultValue) ret += addr+"."+propName+"="+LocationStringIfRelevant(card[propName],card.title+"."+propName)+";\n";
+			}
+			//don't autoprop save resettables
+			handledProps.push(propName);
 		}
 	  }
 	  //hosted cards
-	  if (card.hostedCards) {
+	  if (card.hostedCards && !handledProps.includes("hostedCards")) {
 		ret += addr+".hostedCards = [];\n";
 		for (var i=0; i<card.hostedCards.length; i++) {
 			ret += "InstanceCardsPush("+card.hostedCards[i].setNumber+","+addr+".hostedCards,1,cardBackTextures"+PlayerName(card.hostedCards[i].player)+",glowTextures,strengthTextures)[0].host = "+addr+";\n";
 		}
 		ret += ReplicationCode(card.hostedCards,addr+".hostedCards");
+		//don't autoprop save hostedCards
+		handledProps.push("hostedCards");
+	  }
+	  //autoprop saving
+	  var blacklist = replicationCodeBlacklist.concat(handledProps);
+	  if (card.isCard) {
+		for (prop in card) {
+			var pts = CardPropertyToString(card, prop, blacklist);
+			if (pts != "") {
+				ret += addr+"."+prop+"="+pts+";\n";
+			}
+		}
+	  }
+	  else {
+		  console.log(card);
+		  console.error("trying to autoprop save non-card above");
 	  }
   }
   return ret;
@@ -132,6 +292,7 @@ function ReplicationCode(src,str) {
 //make board state fairly easy to reproduce (not comprehensive yet, just a starting point)
 function ReproductionCode(full=false) {
   var ret = "";
+  //Runner:
   var runnerHeap = JSON.stringify(runner.heap,true);
   var runnerStack = JSON.stringify(runner.stack,true);
   var runnerGrip = JSON.stringify(runner.grip,true);
@@ -162,22 +323,33 @@ function ReproductionCode(full=false) {
   var corpRemotes = JSON.stringify(corpRemotesEach,true); //the true isn't needed here but will keep it for visual consistency
   var corpScored = JSON.stringify(corp.scoreArea,true);
   ret += "CorpTestField("+corp.identityCard.setNumber+", "+[corpArchivesCards,corpRndCards,corpHQCards,corpArchivesInstalled,corpRnDInstalled,corpHQInstalled,corpRemotes,corpScored].join(', ')+", cardBackTexturesCorp,glowTextures,strengthTextures);\n";
-  ret += ReplicationCode(corp.scoreArea,'corp.scoreArea');
+  //now that all the cards have been created, we can set properties 
+  //runner arrays
+  ret += ReplicationCode(runner.scoreArea,'runner.scoreArea');
+  ret += ReplicationCode(runner.grip,'runner.grip');
+  ret += ReplicationCode(runner.stack,'runner.stack');
+  ret += ReplicationCode(runner.heap,'runner.heap');
   ret += ReplicationCode(runner.rig.resources,'runner.rig.resources');
   ret += ReplicationCode(runner.rig.hardware,'runner.rig.hardware');
   ret += ReplicationCode(runner.rig.programs,'runner.rig.programs');
+  if (runner.identityCard.setAsideCards) ret += ReplicationCode(runner.identityCard.setAsideCards,'runner.identityCard.setAsideCards');
+  //corp arrays
+  ret += ReplicationCode(corp.scoreArea,'corp.scoreArea');
   ret += ReplicationCode(corp.archives.root,'corp.archives.root');
   ret += ReplicationCode(corp.archives.ice,'corp.archives.ice');
   ret += ReplicationCode(corp.archives.cards,'corp.archives.cards');
   ret += ReplicationCode(corp.RnD.root,'corp.RnD.root');
   ret += ReplicationCode(corp.RnD.ice,'corp.RnD.ice');
+  ret += ReplicationCode(corp.RnD.cards,'corp.RnD.cards');
   ret += ReplicationCode(corp.HQ.root,'corp.HQ.root');
   ret += ReplicationCode(corp.HQ.ice,'corp.HQ.ice');
+  ret += ReplicationCode(corp.HQ.cards,'corp.HQ.cards');
   for (var i=0; i<corp.remoteServers.length; i++) {
 	ret += ReplicationCode(corp.remoteServers[i].root,'corp.remoteServers['+i+'].root');
 	ret += ReplicationCode(corp.remoteServers[i].ice,'corp.remoteServers['+i+'].ice');
 	if (typeof corp.remoteServers[i].AISuccessfulRuns !== 'undefined') ret += "corp.remoteServers["+i+"].AISuccessfulRuns="+corp.remoteServers[i].AISuccessfulRuns+";\n";
   }
+  //and now other properties
   if (typeof corp.archives.AISuccessfulRuns !== 'undefined') ret += "corp.archives.AISuccessfulRuns="+corp.archives.AISuccessfulRuns+";\n";
   if (typeof corp.RnD.AISuccessfulRuns !== 'undefined') ret += "corp.RnD.AISuccessfulRuns="+corp.RnD.AISuccessfulRuns+";\n";
   if (typeof corp.HQ.AISuccessfulRuns !== 'undefined') ret += "corp.HQ.AISuccessfulRuns="+corp.HQ.AISuccessfulRuns+";\n";
@@ -503,6 +675,7 @@ function CardsInOptionList(src) {
  */
 function NewServer(nameStr, isCentral) {
   var newServer = {};
+  newServer.isServer = true;
   if (isCentral) {
     newServer.cards = [];
   }
@@ -571,37 +744,20 @@ function CardIsInArray(card, array) {
  * @returns {Server} the server or null
  */
 function GetServer(card) {
-  //could use cardLocation for more efficiency but this method works and we don't know what weird things could happen
-  //e.g. at the moment we can temporarily put a dummy copy of ice into a hypothetical server when choosing which one to install
-  //for now for efficiency we will rule out runner cards - though these might be possible later
-  if (card.player != corp) return null;
-  //now check cards in roots
-  if (
-    card.cardType == "asset" ||
-    card.cardType == "agenda" ||
-    card.cardType == "upgrade"
-  ) {
-    for (var i = 0; i < corp.remoteServers.length; i++) {
-      if (CardIsInArray(card, corp.remoteServers[i].root))
-        return corp.remoteServers[i];
-    }
-    if (card.cardType == "upgrade") {
-      if (CardIsInArray(card, corp.RnD.root)) return corp.RnD;
-      if (CardIsInArray(card, corp.HQ.root)) return corp.HQ;
-      if (CardIsInArray(card, corp.archives.root)) return corp.archives;
-    }
-  }
-  //and protecting servers
-  else if (card.cardType == "ice") {
-    if (CardIsInArray(card, corp.RnD.ice)) return corp.RnD;
-    if (CardIsInArray(card, corp.HQ.ice)) return corp.HQ;
-    if (CardIsInArray(card, corp.archives.ice)) return corp.archives;
-    for (var i = 0; i < corp.remoteServers.length; i++) {
-      if (CardIsInArray(card, corp.remoteServers[i].ice))
-        return corp.remoteServers[i];
-    }
-  }
-  return null;
+    //warning: in theory it's possible for cardLocation value to not match actual location (if card moved by method other than MoveCard)
+	var prop = "root";
+	if (card.cardType == "ice") prop = "ice";
+	var serverArrays = [];
+	serverArrays.push({server:corp.archives, array:corp.archives[prop]});
+	serverArrays.push({server:corp.HQ, array:corp.HQ[prop]});
+	serverArrays.push({server:corp.RnD, array:corp.RnD[prop]});
+	for (var i=0; i<corp.remoteServers.length; i++) {
+		serverArrays.push({server:corp.remoteServers[i], array:corp.remoteServers[i][prop]});
+	}
+	for (var i=0; i<serverArrays.length; i++) {
+		if (card.cardLocation == serverArrays[i].array) return serverArrays[i].server;
+	}
+	return null;
 }
 
 /**
@@ -2984,6 +3140,10 @@ function DeckBuild(
 		glowTextures,
 		strengthTextures
 	  ));
+	  var agendaDistribution = [0,0,0,0,0,0,0];
+	  cardsAdded.forEach(function(item) {
+		agendaDistribution[cardSet[item].agendaPoints]++;
+	  });
 	  //economy
 	  var economyCards = []; //(credit economy only)
 	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30037, 30048, 30056, 30064, 30071, 30075]);
@@ -3008,9 +3168,11 @@ function DeckBuild(
 	  var iceCards = [];
 	  if (setIdentifiers.includes('sg')) iceCards = iceCards.concat([30038, 30062, 30039, 30046, 30054, 30047, 30072, 30063, 30055, 30073, 30074]);
 	  if (setIdentifiers.includes('su21')) {
-		  iceCards = iceCards.concat([31043, 31044, 31046, 31055, 31056, 31065, 31066, 31067, 31075, 31076, 31077]);
+		  iceCards = iceCards.concat([31043, 31044, 31046, 31055, 31056, 31065, 31066, 31067, 31076, 31077]);
 		  //don't include Ravana 1.0 unless there's likely to be other Bioroid ice (for now just assume Haas-Bioroid decks will have them and other factions won't)
-		  if (identityCard.faction == "Haas-Bioroid") iceCards = iceCards.concat([31045]);
+		  if (identityCard.faction == "Haas-Bioroid") iceCards.push(31045);
+		  //only include Archer if there are 1-point agendas to forfeit (the min here is arbitrary)
+		  if (agendaDistribution[1] > 2) iceCards.push(31075);
 	  }
 	  var numIceCardsToAdd = RandomRange(15, 17);
 	  var iceInfluenceBudget = 9 - influenceUsed;
@@ -3033,7 +3195,13 @@ function DeckBuild(
 	  //other cards (this currently includes, by concatenation of the previous arrays, extras of all the previous non-agenda cards too)
 	  var otherCards = economyCards.concat(iceCards); //so be careful not to include cards both here AND above or you'll get 4+ copies sometimes
 	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30058, 30061, 30066]);
-	  if (setIdentifiers.includes('su21')) otherCards = otherCards.concat([31047, 31048, 31049, 31053, 31054, 31058, 31059, 31063, 31064, 31068, 31069, 31074]);
+	  if (setIdentifiers.includes('su21')) {
+		  otherCards = otherCards.concat([31047, 31048, 31049, 31053, 31054, 31058, 31059, 31063, 31064, 31068, 31069]);
+		  //only include Corporate Town if there are 1-point agendas to forfeit (the min here is arbitrary)
+		  if (agendaDistribution[1] > 2) otherCards.push(31074);
+		  //only include Punitive Counterstrike if there are enough high-agenda point agendas (arbitrary)
+		  if (agendaDistribution[3] >= agendaDistribution[1] + agendaDistribution[0]) otherCards.push(31078);
+	  }
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		otherCards,

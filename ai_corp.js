@@ -532,7 +532,14 @@ class CorpAI {
 			}
 		  }
 	  }
-	  //TODO include kill combos
+	  //damage cards (for now, just if useNowIfPossible, later could check here for kill combos)
+	  if (useNowIfPossible) {
+		  for (var i=0; i<optionList.length; i++) {
+			if (optionList[i].card) {
+			  if (optionList[i].card.AIDamageOperation) return optionList[i];
+			}
+		  }
+	  }
 	  //save the ability for later, if possible
 	  if (!useNowIfPossible) return null;
 	  //for now it's just arbitrary but could potentially add logic here
@@ -2260,6 +2267,196 @@ class CorpAI {
 	return ret;
   }
 
+  //directions function for potential operation damage search
+  //returns an array of possible points from this point
+  //damage cards currently considered: Neurospike, Punitive Counterstrike
+  //and utility cards to increase damage: Archived Memories, Biotic Labor
+  //non-operations are NOT currently considered here (for simplicity) e.g. Orbital Superiority, Ronin
+  _potentialOperationDamageDirections(point) {
+	  var ret = [];
+	  var cardinhand = null; //for reuse
+	  var indexinhand = -1; //for reuse
+	  var newhandcards = []; //for reuse
+	  var newarchivescards = []; //for reuse
+	  //Neurospike
+	  cardinhand = this._copyOfCardExistsIn("Neurospike",point.handCards);
+	  if (point.corpCredits > 2 && point.corpClicks > 0) {
+		  indexinhand = point.handCards.indexOf(cardinhand);
+		  if (indexinhand > -1) {
+			newhandcards = point.handCards.concat([]); //make a copy of the array
+			newarchivescards = newarchivescards.concat(newhandcards.splice(indexinhand,1)); //move played card
+			ret.push({
+			  corpCredits: point.corpCredits - 3,
+			  corpClicks: point.corpClicks - 1,
+			  handCards: newhandcards,
+			  archivesCards: newarchivescards,
+			  damageSoFar: point.damageSoFar + cardinhand.printedAgendaPointsThisTurn,
+			  using: cardinhand,
+			  persist: point.persist,
+			});
+		  }
+	  }
+	  //Punitive Counterstrike
+	  cardinhand = this._copyOfCardExistsIn("Punitive Counterstrike",point.handCards);
+	  //include trace cost if we've got time (agenda points) to wait for another chance (assuming Runner won't score 4+ points in a turn)
+	  var punitiveCost = 3;
+	  if (AgendaPointsToWin() - AgendaPoints(runner) > 3) punitiveCost += Link() + Credits(runner) - 4; //the 4 assumes base strength 5
+	  if (point.corpCredits >= punitiveCost && point.corpClicks > 0) {
+		  indexinhand = point.handCards.indexOf(cardinhand);
+		  if (indexinhand > -1) {
+			newhandcards = point.handCards.concat([]); //make a copy of the array
+			newarchivescards = newarchivescards.concat(newhandcards.splice(indexinhand,1)); //move played card
+			ret.push({
+			  corpCredits: point.corpCredits - punitiveCost,
+			  corpClicks: point.corpClicks - 1,
+			  handCards: newhandcards,
+			  archivesCards: newarchivescards,
+			  damageSoFar: point.damageSoFar + cardinhand.printedAgendaPointsLastTurn,
+			  using: cardinhand,
+			  persist: point.persist,
+			});
+		  }
+	  }
+	  //Biotic Labor
+	  if (point.corpCredits > 3 && point.corpClicks > 0) {
+		  cardinhand = this._copyOfCardExistsIn("Biotic Labor",point.handCards);
+		  indexinhand = point.handCards.indexOf(cardinhand);
+		  if (indexinhand > -1) {
+			newhandcards = point.handCards.concat([]); //make a copy of the array
+			newarchivescards = newarchivescards.concat(newhandcards.splice(indexinhand,1)); //move played card
+			ret.push({
+			  corpCredits: point.corpCredits - 4,
+			  corpClicks: point.corpClicks + 1,
+			  handCards: newhandcards,
+			  archivesCards: newarchivescards,
+			  damageSoFar: point.damageSoFar, //biotic doesn't damage
+			  using: cardinhand,
+			  persist: point.persist,
+			});
+		  }
+	  }
+	  //Archived Memories (note the extra click needed to play the recurred card)
+	  if (point.corpClicks > 1) {
+		  cardinhand = this._copyOfCardExistsIn("Archived Memories",point.handCards);
+		  indexinhand = point.handCards.indexOf(cardinhand);
+		  if (indexinhand > -1) {
+			var cardsToRecur = ["Neurospike","Punitive Counterstrike","Biotic Labor"];
+			for (var i=0; i<cardsToRecur.length; i++) {
+			    var cardinarchives = this._copyOfCardExistsIn(cardsToRecur[i],point.archivesCards);
+			    var indexinarchives = point.archivesCards.indexOf(cardinarchives);
+				if (indexinarchives > -1) {
+					newarchivescards = point.archivesCards.concat([]); //make a copy of the array
+					newhandcards = point.handCards.concat([]); //make a copy of the array
+					newarchivescards = newarchivescards.concat(newhandcards.splice(indexinhand,1)); //move archived memories (to back so it doesn't change indexinarchives)
+					newhandcards = newhandcards.concat(newarchivescards.splice(indexinarchives,1)); //move recurred card
+					ret.push({
+					  corpCredits: point.corpCredits,
+					  corpClicks: point.corpClicks - 1,
+					  handCards: newhandcards,
+					  archivesCards: newarchivescards,
+					  damageSoFar: point.damageSoFar, //archived doesn't damage
+					  using: cardinhand,
+					  persist: point.persist,
+					});
+				}
+			}
+		  }
+	  }
+	  return ret;
+  }
+
+  //returns int
+  //if an output array is specified, the cards will be written to it in the order decided here
+  //see notes on directions for cards currently considered
+  _potentialOperationDamageThisTurn(output=[]) {
+	  var availableCredits = Credits(corp);
+	  var clicksLeft = this._clicksLeft();
+	  //make copies of the source arrays (to prevent accidentally modifying them)
+	  var handCards = corp.HQ.cards.concat([]);
+	  var archivesCards = corp.archives.cards.concat([]);
+	  //start with damage from resolving cards
+	  var startingDamage = 0;
+	  for (var i=0; i<corp.resolvingCards.length; i++) {
+		  if (corp.resolvingCards[i].title == "Neurospike") startingDamage += corp.resolvingCards[i].printedAgendaPointsThisTurn;
+		  else if (corp.resolvingCards[i].title == "Punitive Counterstrike") startingDamage += corp.resolvingCards[i].printedAgendaPointsLastTurn;
+	  }
+	  var startingPoint = {
+		  corpCredits: availableCredits,
+		  corpClicks: clicksLeft,
+		  handCards: handCards,
+		  archivesCards: archivesCards,
+		  damageSoFar: startingDamage,
+		  persist: [],
+	  };
+	  //generate starting directions as todo
+	  var startingDirections = this._potentialOperationDamageDirections(startingPoint);
+	  var todo = [];
+	  for (var i=0; i<startingDirections.length; i++) {
+		  todo.push([startingDirections[i]]);
+	  }
+	  //recurse, keeping track of best path
+	  var bestpath = [];
+	  var loops = 0;
+	  var maxLoops = 100000; //arbitrary to prevent unplanned infinite loops
+	  while (todo.length > 0 && loops < maxLoops) {
+		loops++;
+		var thispath = todo.shift();
+		var directions = this._potentialOperationDamageDirections(thispath[thispath.length-1]);
+		if (directions.length > 0) {
+			directions.forEach(function(item) {
+				todo.push(thispath.concat([item]));
+			});
+		}
+		else {
+			//this path done, check/update bestpath
+			//priorities are:
+			//most damage
+			//most cards remaining
+			//most clicks/credits remaining
+			var clickValueScale = 2.0; //arbitrary
+			var better = false;
+			if (bestpath.length < 1) better = true;
+			else {
+				var bestendpoint = bestpath[bestpath.length - 1];
+				var thisendpoint = thispath[thispath.length - 1];
+				if (thisendpoint.damageSoFar > bestendpoint.damageSoFar) better = true;
+				else if (thisendpoint.damageSoFar == bestendpoint.damageSoFar)  {
+					if (thisendpoint.handCards.length > bestendpoint.handCards.length) better = true;
+					else if (thisendpoint.handCards.length == bestendpoint.handCards.length) {
+						if (clickValueScale*thisendpoint.corpClicks + thisendpoint.corpCredits > clickValueScale*bestendpoint.corpClicks + bestendpoint.corpCredits) better = true;
+					}
+				}
+			}
+			if (better) bestpath = thispath;
+			//special debug code, print path and indicate whether it is best
+			var outstr = "[";
+			for (var i=0; i<thispath.length; i++) {
+				outstr += thispath[i].using.title.charAt(0);
+			}
+			/*
+			if (debugging) {
+				outstr += "](";
+				outstr += "da:"+thispath[thispath.length-1].damageSoFar;
+				outstr += ",ca:"+thispath[thispath.length-1].handCards.length;
+				outstr += ",cl&cr:"+(clickValueScale*thispath[thispath.length-1].corpClicks+thispath[thispath.length-1].corpCredits);
+				outstr += ",cl:"+thispath[thispath.length-1].corpClicks;
+				outstr += ")";
+				if (better) outstr += "**";
+				this._log(outstr);
+			}
+			*/
+		}
+	  }
+	  if (loops == maxLoops) console.log("Damage search exceeded loop limit");
+	  //all paths found, return best
+	  var ret = 0;
+	  if (bestpath.length > 0) ret = bestpath[bestpath.length - 1].damageSoFar;
+	  for (var i=0; i<bestpath.length; i++) {
+		  output.push(bestpath[i].using);
+	  }
+	  return ret;
+  }
+
   //directions function for potential advancement search
   //returns an array of possible points from this point
   //options can include:
@@ -2642,6 +2839,21 @@ class CorpAI {
 		}
 	  }
 	}
+	
+	//check for kill combos
+	if (optionList.includes("play")) {
+		var damageOps = [];
+		var opDamageThisTurn = this._potentialOperationDamageThisTurn(damageOps);
+		this._log("I could do "+opDamageThisTurn+" damage with these cards: "+JSON.stringify(damageOps));
+		if (opDamageThisTurn > runner.grip.length && damageOps.length > 0) {
+			cardToPlay = damageOps[0];
+			if (this._commonCardToPlayChecks(cardToPlay,"for kill combo",true)) {
+				return this._returnPreference(optionList, "play", {
+				  cardToPlay: cardToPlay,
+				});
+			}
+		}
+	}
 
 	//check for an almost-done agenda/hostile asset, if so prioritise it for advancing
 	var almostDoneAgenda = null;
@@ -2686,6 +2898,7 @@ class CorpAI {
 		if (optionList.includes("play")) {
 		  //these are in order of priority, most critical first
 		  var useWhenCanCards = [
+		    "Punitive Counterstrike", //agendas stolen
 			"Neurospike", //agendas scored
 			"Public Trail", //successful run
 			"Archived Memories", //desired target to recur
@@ -2979,6 +3192,8 @@ class CorpAI {
               { prop: "card", key: "cardToInstall" },
               { prop: "server", key: "serverToInstallTo" },
             ];
+		  else if (cmd == "trace")
+			data = [{ prop: "num", key: "strengthToIncrease" }];
 
           if (data.length < 1)
             this._log("process missing for " + cmd + ", so...");
