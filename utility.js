@@ -3196,7 +3196,7 @@ function DeckBuild(
 	  var otherCards = economyCards.concat(iceCards); //so be careful not to include cards both here AND above or you'll get 4+ copies sometimes
 	  if (setIdentifiers.includes('sg')) otherCards = otherCards.concat([30040, 30041, 30042, 30045, 30049, 30050, 30053, 30058, 30061, 30066]);
 	  if (setIdentifiers.includes('su21')) {
-		  otherCards = otherCards.concat([31047, 31048, 31049, 31053, 31054, 31058, 31059, 31063, 31064, 31068, 31069]);
+		  otherCards = otherCards.concat([31047, 31048, 31049, 31053, 31054, 31058, 31059, 31063, 31064, 31068, 31069, 31079]);
 		  //only include Corporate Town if there are 1-point agendas to forfeit (the min here is arbitrary)
 		  if (agendaDistribution[1] > 2) otherCards.push(31074);
 		  //only include Punitive Counterstrike if there are enough high-agenda point agendas (arbitrary)

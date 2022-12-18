@@ -294,6 +294,7 @@ phaseTemplates.discardStart = {
 //subutility for GlobalTriggersPhaseCommonResolveN
 function BuildGlobalTriggerList() {
   currentPhase.triggerList = [];
+  if (!currentPhase.buildTriggerList) return;
   var triggerName = currentPhase.triggerCallbackName;
   var initialList = ChoicesActiveTriggers(triggerName, activePlayer);
   //immediately activate automatic ones and remove from list
@@ -362,11 +363,12 @@ phaseTemplates.globalTriggers = {
   triggerList: [],
   triggerEnumerateParams: [],
   triggerCallbackName: "NOT SET",
+  buildTriggerList: true,
   Init: function () {
+	currentPhase.buildTriggerList = true;
     //follow priority rules
     //https://ancur.fandom.com/wiki/Timing_Priority
     activePlayer = currentPhase.player = playerTurn;
-
     //if start of turn, replenish recurring credits
 	//as far as I can tell, this is correctly implemented as per Nisei CR 1.5
 	//(recurring credits are replenished after gaining allotted clicks and paid ability window, but before turn begins triggers fire)
@@ -400,11 +402,23 @@ phaseTemplates.globalTriggers = {
     }
     //log successful run
     if (currentPhase.identifier == "Run 5.1") {
-	  //first fire any pre-success triggers
-	  AutomaticTriggers("beforeDeclareSuccess");
-	  //now declare successful
-      Log("Run successful");
+	  //first check if run can be "declared successful"
+	  var modifySuccess = ModifyingTriggers("modifyDeclareSuccess", null, 0); //null means no parameter is sent, lower limit of 0 means the total will not be any lower than zero
+	  //in this case a result of 0 means no prevention (i.e. not modified)
+	  if (modifySuccess == 0) {
+		  //fire any pre-success triggers
+		  AutomaticTriggers("ifWouldDeclareSuccess");
+	  }
+	  //check modify again in case the pre-success changed it
+	  var modifySuccess = ModifyingTriggers("modifyDeclareSuccess", null, 0); //null means no parameter is sent, lower limit of 0 means the total will not be any lower than zero
+	  //still can be declared successful? ok!
+	  if (modifySuccess == 0) {
+		  //now declare successful
+		  Log("Run successful");
+	  }
+	  else currentPhase.buildTriggerList = false;
       //store a little extra info to help AIs with decisionmaking
+	  //note that AI currently includes even successful runs that are not "declared" successful
       if (
         typeof attackedServer.cards !== "undefined" ||
         attackedServer.root.length > 0
@@ -416,7 +430,7 @@ phaseTemplates.globalTriggers = {
       }
     }
 	
-    //build trigger list
+    //build trigger list (will just empty the list if currentPhase.buildTriggerList is false)
     BuildGlobalTriggerList();
   },
   PreEnumerate: function () {

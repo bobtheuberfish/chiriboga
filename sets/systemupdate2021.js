@@ -233,11 +233,21 @@ cardSet[31004] = {
   cardType: "event",
   playCost: 3,
   //Run Archives. If successful, instead of breaching Archives, you may install 1 program from your heap, ignoring all costs.
+  runWasSuccessful: false,
+  runSuccessful: {
+    Resolve: function () {
+      this.runWasSuccessful = true;
+    },
+	automatic:true,
+  },
   Resolve: function (params) {
+	this.runWasSuccessful = false;
     MakeRun(corp.archives);
   },
   insteadOfBreaching: {
     Enumerate: function() {
+	  //require successful run to replace breach
+	  if (!this.runWasSuccessful) return [];
 	  //this will only fire while active therefore is available as an option for breach replacement
 	  //as long as there are valid targets in heap
 	  var choices = [];
@@ -273,6 +283,8 @@ cardSet[31004] = {
   AIRunEventExtraPotential: function(server,potential) {
 	  //archives only
 	  if (server == corp.archives) { 
+		  //require successful run
+		  if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0;
 		  //only play if there are cards worth retrieving from heap
 		  if (this.SharedPreferredCard()) 
 		  return 1.5; //arbitrary, for getting that important card install
@@ -1254,23 +1266,36 @@ cardSet[31019] = {
   cardType: "event",
   subTypes: ["Run"],
   playCost: 2,
+  runWasSuccessful: false,
+  runSuccessful: {
+    Resolve: function () {
+      this.runWasSuccessful = true;
+    },
+	automatic:true,
+  },
   //Run HQ. If successful, access 2 additional cards when you breach the attacked server.
   Resolve: function (params) {
+    this.runWasSuccessful = false;
     MakeRun(corp.HQ);
   },
   breachServer: {
     Resolve: function () {
 	  //NOTE: breachServer may be called multiple times (e.g. when determining new candidates)
-      return 2; //access 2 additional cards
+      if (this.runWasSuccessful) return 2; //access 2 additional cards
+	  return 0;
     },
   },
   //indicate bonus to accesses (when active)
   AIAdditionalAccess: function(server) {
+	  //require successful run
+	  if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0;
       if (server != corp.HQ) return 0;
       return 2;
   },
   //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
   AIRunEventExtraPotential: function(server,potential) {
+	  //require successful run
+	  if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0;
 	  //use HQ with no unrezzed ice
 	  if (server == corp.HQ) {
 		var unrezzedIceThisServer = 0;
@@ -1690,10 +1715,10 @@ cardSet[31023] = {
     },
   ],
   //If that run would be declared successful, change the attacked server to HQ for the remainder of that run.
-    //Note re:Crisium (check the interaction)
+    //Note re:Crisium (these interactions have been checked)
     //Crisium on Archives means you don't move.
     //Crisium on HQ you will change to HQ, but the run is not successful.
-  beforeDeclareSuccess: {
+  ifWouldDeclareSuccess: {
     Resolve: function () {
       if (this.runningWithThis) {
 		  Log("Attacked server changed to HQ");
@@ -1714,6 +1739,8 @@ cardSet[31023] = {
   },
   AIRunAbilityExtraPotential: function(server,potential) {
 	  if (server == corp.archives) {
+		//require successful run
+		if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0;
 		//this works because in the AI, HQ potential is calculated and stored before Archives is calculated
 		var HQpotential = runner.AI._getCachedPotential(corp.HQ);
 		if (HQpotential > potential) {
@@ -1872,6 +1899,8 @@ cardSet[31024] = {
   },
   AIRunExtraPotential: function(server,potential) {
 	  if (!this.madeSuccessfulRunOnChosenServerThisTurn && server == this.chosenServer) {
+		//require successful run
+		if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0;
 		//Runner AI knows that this will prevent usual breach so this will probably be the full potential (except e.g. Red Team combo)
 	    //the choice of 1.5 is to prevent the AI from considering it a worthless run
 		return 1.5;
@@ -2267,17 +2296,28 @@ cardSet[31029] = {
   Enumerate: function () {
     return [{}]; //currently assumes a run on R&D is always possible
   },
+  runWasSuccessful: false,
+  runSuccessful: {
+    Resolve: function () {
+      this.runWasSuccessful = true;
+    },
+	automatic:true,
+  },
   Resolve: function (params) {
+    this.runWasSuccessful = false;
     MakeRun(corp.RnD);
   },
   breachServer: {
 	//NOTE: breachServer may be called multiple times (e.g. when determining new candidates)
     Resolve: function () {
-      return 2;
+      if (this.runWasSuccessful) return 2;
+	  return 0;
     },
   },
   //indicate bonus to accesses (when active)
   AIAdditionalAccess: function(server) {
+	  //require successful run
+	  if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0;
       if (server != corp.RnD) return 0;
       return 2;
   },
@@ -2285,6 +2325,8 @@ cardSet[31029] = {
   AIRunEventExtraPotential: function(server,potential) {
 	  //use The Maker's Eye only for R&D with no unrezzed ice
 	  if (server == corp.RnD) {
+	    //require successful run
+	    if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0;
 		var unrezzedIceThisServer = 0;
 		for (var i = 0; i < server.ice.length; i++) {
 		  if (!server.ice[i].rezzed) unrezzedIceThisServer++;
@@ -3140,6 +3182,8 @@ cardSet[31037] = {
   },
   //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
   AIRunEventExtraPotential: function(server,potential) {
+	//require successful run
+	if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0; // don't use
 	//not worth it if run is expensive for no benefit (the 0.5 and 4 are arbitrary)
 	if ( potential < 0.5 && (server.ice.length > 0 || Credits(runner) > 4) ) return 0;
 	//use Dirty Laundry only if there are no unrezzed ice
@@ -6123,4 +6167,52 @@ cardSet[31078] = {
     availableWhenInactive: true,
   },
   AIDamageOperation: true,
+};
+
+cardSet[31079] = {
+  title: "Crisium Grid",
+  imageFile: "31079.png",
+  elo: 1793,
+  player: corp,
+  faction: "Weyland Consortium",
+  influence: 1,
+  cardType: "upgrade",
+  subTypes: ["Region"],
+  rezCost: 3,
+  trashCost: 5,
+  modifyDeclareSuccess: {
+	Resolve: function() {
+		if (attackedServer == GetServer(this)) return 1;
+		return 0;
+    },
+  },
+  AIDefensiveValue: function(server) {
+	//don't install in a new server
+	if (!server) return 0;
+	//defensive value depends on server and threat from Runner
+	if (server == corp.HQ) {
+		if (runner.identityCard.faction == "Criminal") return 1;
+	}
+	else if (server == corp.RnD) {
+		if (corp.AI._extraThreatOnRnD()) return 2;
+		else if (runner.identityCard.faction == "Shaper") return 1;
+	}
+	else if (server == corp.archives) {
+		if (corp.AI._archivesIsBackdoorToHQ()) return 2;
+		else if (corp.AI._copyOfCardExistsIn("Security Testing",runner.rig.resources)) return 1.5;
+		else if (runner.identityCard.faction == "Anarch") return 1;
+	}
+	//don't install in remote server
+	return 0;
+  },
+  RezUsability: function () {
+    if (currentPhase.identifier == "Run 4.5" && approachIce < 1) {
+      if (attackedServer == GetServer(this)) return true;
+    }
+    return false;
+  },
+  //I know it's not an option to trigger but the AI likes this to know when to rez
+  AIWouldTrigger: function () {
+    return this.RezUsability();
+  },
 };

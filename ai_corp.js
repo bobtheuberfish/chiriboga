@@ -155,17 +155,31 @@ class CorpAI {
 	  return false;
   }
 
+  //special case e.g Sneakdoor Beta
+  //returns a protection value to be subtracted
+  _extraThreatOnRnD() {
+	  var conduit = this._copyOfCardExistsIn("Conduit",runner.rig.programs);
+	  if (conduit) {
+		  //the numbers are arbitrary but basically a bit for each counter and some for existing at all
+		  //multiplier was 0.5 and constant was 2.5. AI still seemed to underappreciate it so I increased these.
+		  return 1.0 * Counters(conduit,"virus") + 3.0;
+	  }
+	  return 0;
+  }
+
   //returns the preferred server. input is the upgrade to install
   _bestServerToUpgrade(upgrade) {
     var preferredServer = null; //install into new if necessary
     var nonEmptyProtectedRemotes = this._nonEmptyProtectedRemotes();
     if (nonEmptyProtectedRemotes.length > 0)
       preferredServer = nonEmptyProtectedRemotes[0];
-    else if (this._protectionScore(corp.HQ, {returnArchivesLowerScoreForHQIfBackdoor:true}) < this._protectionScore(corp.RnD, {})) {
-      if (this._archivesIsBackdoorToHQ() && this._protectionScore(corp.archives, {}) < this._protectionScore(corp.HQ, {})) preferredServer = corp.archives;
-	  else preferredServer = corp.HQ;
+    if (!preferredServer || this._protectionScore(corp.RnD, {}) < this._protectionScore(preferredServer, {})) {
+		if (this._protectionScore(corp.HQ, {returnArchivesLowerScoreForHQIfBackdoor:true}) < this._protectionScore(corp.RnD, {})) {
+		  if (this._archivesIsBackdoorToHQ() && this._protectionScore(corp.archives, {}) < this._protectionScore(corp.HQ, {})) preferredServer = corp.archives;
+		  else preferredServer = corp.HQ;
+		}
+		else preferredServer = corp.RnD;
 	}
-    else preferredServer = corp.RnD;
     return preferredServer;
   }
 
@@ -938,11 +952,9 @@ class CorpAI {
 	if (server == corp.archives && !archivesIsBackdoorToHQ) ret += 3; //archives (the 3 is arbitrary)
 	//if it is HQ (or backdoor), increase or decrease priorisation based on agenda points compared to cards in hand
 	if (server == corp.HQ || (server == corp.archives && archivesIsBackdoorToHQ) ) ret += corp.HQ.cards.length - this._agendaPointsInServer(corp.HQ) - 2.5; //the subtracted value is arbitrary (with 2 the AI was underprotective of HQ)
-	//if it is R&D and there is a Conduit, need more protection
+	//if it is R&D and there is extra threat e.g. a Conduit, need more protection
 	if (server == corp.RnD) {
-	  var conduit = this._copyOfCardExistsIn("Conduit",runner.rig.programs);
-	  //the numbers are arbitrary but basically a bit for each counter and some for existing at all
-	  if (conduit) ret -= 0.5 * Counters(conduit,"virus") + 2.5;
+	  ret -= this._extraThreatOnRnD();
 	}
 	if (options.returnArchivesLowerScoreForHQIfBackdoor) {
 		//if it is HQ we will return the lowest protection of either HQ or Archives
@@ -1470,6 +1482,7 @@ class CorpAI {
       { title: "Hokusai Grid", cost: 2 },
 	  { title: "Reversed Accounts", cost: 0 },
 	  { title: "SanSan City Grid", cost: 6 },
+      { title: "Crisium Grid", cost: 3 },
     ];
     for (var i = 0; i < corp.remoteServers.length; i++) {
       for (var j = 0; j < corp.remoteServers[i].root.length; j++) {
@@ -1630,8 +1643,8 @@ class CorpAI {
 	
 	//determine upgrade choices before agenda choices in case there is a scoring upgrade
     serverToInstallTo = this._bestProtectedRemote();
-    if (serverToInstallTo == null)
-      serverToInstallTo = this._serverToProtect(true); //true means don't install to archives
+    if (serverToInstallTo == null || (serverToInstallTo.root.length < 1 && this._agendasInHand() < 1) )
+      serverToInstallTo = this._serverToProtect();
 	var upgradeInstallPreferences = this._upgradeInstallPreferences(serverToInstallTo, cards, inhibit);
 	for (var i=0; i<upgradeInstallPreferences.length; i++) {
 		upgradeInstallPreferences[i].reason = "returned by _upgradeInstallPreferences";

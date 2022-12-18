@@ -1537,6 +1537,8 @@ cardSet[30018] = {
   ],
   //install before run if this server is central and hasn't been run this turn
   AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
+	  //require successful run
+	  if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0;
 	  if (typeof server.cards !== "undefined") {
 		var alreadyRunThisTurn = false;
 		if (server == corp.HQ)
@@ -1553,6 +1555,8 @@ cardSet[30018] = {
 	  return 1; //priority 1 (yes install but there are better options)
   },
   AIRunAbilityExtraPotential: function(server,potential) {
+	  //require successful run
+	  if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0;
 	  //might get a little credit from this (the 0.5 is arbitrary)
 	  if (!this.runHQ && server == corp.HQ)
 		return 0.5;
@@ -1900,6 +1904,12 @@ cardSet[30024] = {
   installCost: 4,
   runningWithThis: false,
   runWasSuccessful: false,
+  runBegins: {
+    Resolve: function (server) {
+      this.runWasSuccessful = false;
+    },
+    automatic: true,
+  },
   runSuccessful: {
     Resolve: function () {
       this.runWasSuccessful = true;
@@ -1919,7 +1929,7 @@ cardSet[30024] = {
 	//NOTE: breachServer may be called multiple times (e.g. when determining new candidates)  
     Resolve: function () {
       var ret = 0; //by default, no additional cards
-      if (this.runningWithThis && attackedServer == corp.RnD) {
+      if (this.runningWithThis && this.runWasSuccessful && attackedServer == corp.RnD) {
         ret += Counters(this, "virus"); //access X additional cards
       }
       return ret;
@@ -1991,6 +2001,8 @@ cardSet[30024] = {
   },
   AIRunAbilityExtraPotential: function(server,potential) {
 	  if (server == corp.RnD) {
+		//require successful run
+		if (runner.AI._rootKnownToContainCopyOfCard(corp.RnD, "Crisium Grid")) return 0; // don't use
 		//extra potential the deeper you can dig (except cards already known)
 		var conduitDepth = Counters(this, "virus") + 1;
 		//ignore top card as it is not 'bonus'
@@ -2313,26 +2325,39 @@ cardSet[30028] = {
   Resolve: function (params) {
     MakeRun(params.server);
   },
+  runWasSuccessful: false,
+  runBegins: {
+    Resolve: function (server) {
+      this.runWasSuccessful = false;
+    },
+    automatic: true,
+  },
   runSuccessful: {
     Resolve: function () {
+      this.runWasSuccessful = true;
       Draw(runner, 1);
     },
   },
   breachServer: {
 	//NOTE: breachServer may be called multiple times (e.g. when determining new candidates)
     Resolve: function () {
-      return 1;
+	  if (this.runWasSuccessful) return 1;
+      return 0;
     },
   },
   //indicate bonus to accesses (when active)
   AIAdditionalAccess: function(server) {
       if (server != corp.HQ && server != corp.RnD) return 0;
+	  //require successful run
+	  if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0;
       return 1;
   },
   //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
   AIRunEventExtraPotential: function(server,potential) {
 	  //use Jailbreak only for HQ and R&D with no unrezzed ice
 	  if (server == corp.HQ || server == corp.RnD) {
+	    //require successful run
+	    if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0; //don't use
 		var unrezzedIceThisServer = 0;
 		for (var i = 0; i < server.ice.length; i++) {
 		  if (!server.ice[i].rezzed) unrezzedIceThisServer++;
@@ -4388,7 +4413,7 @@ cardSet[30060] = {
   player: corp,
   faction: "Weyland Consortium",
   cardType: "agenda",
-  SubTypes: ["Security"],
+  subTypes: ["Security"],
   agendaPoints: 2,
   advancementRequirement: 3,
   limitPerDeck: 1,

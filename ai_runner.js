@@ -70,6 +70,16 @@ class RunnerAI {
     }
     return null;
   }
+  
+  _rootKnownToContainCopyOfCard(server, title) {
+	  if (!server) return false;
+	  for (var j = 0; j < server.root.length; j++) {
+		if (PlayerCanLook(runner, server.root[j])) {
+		  if (server.root[j].title == title) return true;
+		}
+	  }
+	  return false;
+  }
 
   _uniqueCopyAlreadyInstalled(
     card //returns true if is unique and a copy already installed

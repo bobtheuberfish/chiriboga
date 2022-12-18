@@ -89,8 +89,10 @@ function ResolveChoice(idx) {
   }
   //set before execution to allow for things to clear it
   mainLoop = window.setTimeout(function(){
+	//timeout completed, callback code:
 	if (!Narrate(Main)) Main(); //either narrate then call Main, or if no narration just proc Main now
   }, ($('#narration').prop('checked') ? 1 : mainLoopDelay) ); 
+  //note this next line happens before the code in the timeout
   currentPhase.Resolve[executingCommand](chosenOption);
 }
 
