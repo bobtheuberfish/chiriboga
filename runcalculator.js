@@ -317,12 +317,14 @@ class RunCalculator {
 	  var exclude_path = false;
 	  var creditPayment = 0;
 	  var creditLoss = 0;
+	  var clickLoss = 0;
 	  
 	  //loop through effects in order
 	  for (var j=0; j<encounter_effects.length; j++) {
 		  var eff = encounter_effects[j];
-		  
-		  //recalculate current financial situation (ice specific effects may rely on it)
+		  		  
+		  //recalculate current click/financial situation (ice specific effects may rely on it)
+		  var clicksLeft = this.baseClicks - point.runner_clicks_spent - clickLoss;
 		  var poolCreditsLeft = this.basePoolCredits - point.runner_credits_lost - creditLoss;
 		  var otherCreditsLeft = this.baseOtherCredits - point.runner_credits_spent - creditPayment;
 		  var overallCreditsLeft = poolCreditsLeft + otherCreditsLeft;
@@ -372,7 +374,15 @@ class RunCalculator {
 			  j--; //step back so next item isn't skipped
 			  //credits are lost directly from the credit pool
 			  if (poolCreditsLeft > 0) creditLoss++;
-		  }			  
+		  }
+		  
+		  //apply click loss
+		  else if (eff == "loseClicks") {
+			  //remove from encounter_effects (will be included in total costs instead)
+			  encounter_effects.splice(j, 1); //remove 1 item at position j
+			  j--; //step back so next item isn't skipped
+			  if (clicksLeft > 0) clickLoss++;
+		  }
 	  }
 	  
 	  //now put it all together to create a path branch (if not excluded)
@@ -381,7 +391,7 @@ class RunCalculator {
 		  iceIdx: nextIceIdx,
 		  runner_credits_spent: point.runner_credits_spent + creditPayment,
 		  runner_credits_lost: point.runner_credits_lost + creditLoss,
-		  runner_clicks_spent: point.runner_clicks_spent,
+		  runner_clicks_spent: point.runner_clicks_spent + clickLoss,
 		  virus_counters_spent: point.virus_counters_spent,
 		  card_str_mods: card_str_mods,
 		  persistents: persistents.concat(encounter_persistents),

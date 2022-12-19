@@ -6241,3 +6241,42 @@ cardSet[31080] = {
   },
   AIAvoidInstallingOverThis: true,
 };
+
+cardSet[31081] = {
+  title: "Enigma",
+  imageFile: "31081.png",
+  elo: 1763,
+  player: corp,
+  faction: "Neutral",
+  influence: 0,
+  cardType: "ice",
+  rezCost: 3,
+  strength: 2,
+  subTypes: ["Code Gate"],
+  //subroutines:
+  //The Runner loses [click], if able.
+  //End the run.
+  subroutines: [
+    {
+      text: "The Runner loses [click], if able.",
+      Resolve: function () {
+        LoseClicks(runner, 1);
+      },
+      visual: { y: 56, h: 16 },
+    },
+    {
+      text: "End the run.",
+      Resolve: function () {
+        EndTheRun();
+      },
+      visual: { y: 72, h: 16 },
+    },
+  ],
+  AIImplementIce: function(rc, result, maxCorpCred, incomplete) {
+	result.sr = [
+	  [["loseClicks"]], //lose 1 click, if able
+	  [["endTheRun"]],
+	];
+	return result;
+  },
+};
