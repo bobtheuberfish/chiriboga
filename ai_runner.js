@@ -1812,12 +1812,17 @@ console.log(this.preferred);
                 this.serverList[i].potential += 1.0 + numResources;
 			  }
               else {
+				//PAD will generate credits for ever but it's a slow drip...
+                if (server.root[j].title == "PAD Campaign")
+                    this.serverList[i].potential += 0.5;
                 //assume everything else isn't worth the effort except if there's credits on it or it's unrezzed econ
-                if (!server.root[j].rezzed) {
+                else if (!server.root[j].rezzed) {
                   //the constant is arbitrary
                   if (server.root[j].title == "Regolith Mining License")
                     this.serverList[i].potential += 1.0;
                   if (server.root[j].title == "Nico Campaign")
+                    this.serverList[i].potential += 1.0;
+                  if (server.root[j].title == "Marilyn Campaign")
                     this.serverList[i].potential += 1.0;
                 } else
                   this.serverList[i].potential +=

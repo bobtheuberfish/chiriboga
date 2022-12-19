@@ -6216,3 +6216,28 @@ cardSet[31079] = {
     return this.RezUsability();
   },
 };
+
+cardSet[31080] = {
+  title: "PAD Campaign",
+  imageFile: "31080.png",
+  elo: 1688,
+  player: corp,
+  faction: "Neutral",
+  influence: 0,
+  cardType: "asset",
+  subTypes: ["Advertisement"],
+  rezCost: 2,
+  trashCost: 4,
+  //When your turn begins, gain 1 credit.
+  corpTurnBegin: {
+    Resolve: function (params) {
+      GainCredits(corp,1);
+    },
+	automatic:true, //for usability
+  },
+  RezUsability: function () {
+    if (currentPhase.identifier == "Runner 2.2") return true;
+    return false;
+  },
+  AIAvoidInstallingOverThis: true,
+};
