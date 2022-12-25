@@ -1225,6 +1225,8 @@ class CorpAI {
   _economyCards(affordableOnly=false) {
 	var economyCards = [];
 	if (!affordableOnly || corp.creditPool >= 3) economyCards.push("Celebrity Gift"); //we have this first because playing other cards first would reduce cards in hand
+	var subliminal = this._copyOfCardExistsIn("Subliminal Messaging", AllCards(corp));
+	if (subliminal && !subliminal.copyPlayedThisTurn) economyCards.push("Subliminal Messaging"); //this is next priority because it gives the click back
     if (!affordableOnly || corp.creditPool >= 10) economyCards.push("Government Subsidy");
     if (!affordableOnly || corp.creditPool >= 5) economyCards.push("Hedge Fund");
     if ( (!affordableOnly || corp.creditPool >= 5) && (this._agendasInHand() < corp.HQ.cards.length - 1) )
@@ -2050,8 +2052,6 @@ class CorpAI {
       var cardsToRezEOT = [
         "Marilyn Campaign",
 		"Nico Campaign",
-        "Regolith Mining License",
-        "Melange Mining Corp.",
         "PAD Campaign",
         "Clearinghouse",
 		"Daily Business Show",

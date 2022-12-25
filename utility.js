@@ -3147,7 +3147,7 @@ function DeckBuild(
 	  //economy
 	  var economyCards = []; //(credit economy only)
 	  if (setIdentifiers.includes('sg')) economyCards = economyCards.concat([30037, 30048, 30056, 30064, 30071, 30075]);
-	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31042, 31057, 31080]);
+	  if (setIdentifiers.includes('su21')) economyCards = economyCards.concat([31042, 31057, 31080, 31082]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		economyCards,

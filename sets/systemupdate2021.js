@@ -5205,6 +5205,10 @@ cardSet[31064] = {
 		//only if the Runner would actually lose a bunch of credits from this (otherwise better to have the Runner trash it)
 		//this is arbitary but based roughly on how much it would cost the Runner to get in and trash it
 		var minCreditValue = 4.5 + corp.AI._protectionScore(GetServer(this),{});
+		//reduce this if there agendas waiting for the empty server
+		minCreditValue -= 2.0*corp.AI._agendasInHand();
+		//but not lower than 1 credit
+		if (minCreditValue < 1) minCreditValue = 1;
 		if (!CheckCredits(runner,minCreditValue)) return false;
 		//and only when there are sufficient counters
 		if (!CheckCounters(this, "advancement", this.AIAdvancementLimit())) return false;
@@ -6240,6 +6244,18 @@ cardSet[31080] = {
     return false;
   },
   AIAvoidInstallingOverThis: true,
+  //**AI code for installing (return -1 to not install, index in emptyProtectedRemotes to install in a specific server, or emptyProtectedRemotes.length to install in a new server)
+  AIWorthInstalling: function (emptyProtectedRemotes) {
+	//only install if we're not already rich (unless installing from Archives)
+    if ( ( !corp.AI._sufficientEconomy(false) ) || this.cardLocation == corp.archives.cards) {
+        //choose the first non-scoring server (create one if necessary)
+        for (var j = 0; j < emptyProtectedRemotes.length; j++) {
+          if ( !corp.AI._isAScoringServer(emptyProtectedRemotes[j]) ) return j;
+        }
+        return emptyProtectedRemotes.length;
+    }
+    return -1; //don't install
+  },
 };
 
 cardSet[31081] = {
@@ -6278,5 +6294,91 @@ cardSet[31081] = {
 	  [["endTheRun"]],
 	];
 	return result;
+  },
+};
+
+cardSet[31082] = {
+  title: "Subliminal Messaging",
+  imageFile: "31082.png",
+  elo: 1660,
+  player: corp,
+  faction: "Neutral",
+  influence: 0,
+  cardType: "operation",
+  subTypes: ["Gray Ops"],
+  playCost: 0,
+  copyPlayedThisTurn: false,
+  cardPlayed: {
+    Resolve: function (card) {
+		if (!this.copyPlayedThisTurn) {
+			if (card != this) {
+				//cardPlayed fires before Resolve, so if it's the card being played, handle at end of the card's Resolve
+				if (card.title == this.title) {
+					this.copyPlayedThisTurn=true;
+				}
+			}
+		}
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  //Gain 1 credit.
+  //The first time each turn you play a copy of Subliminal Messaging, gain 1 click.
+  Resolve: function (params) {
+    GainCredits(corp, 1);
+	if (!this.copyPlayedThisTurn) {
+		GainClicks(corp, 1);
+		this.copyPlayedThisTurn = true;
+	}
+  },
+  runInitiatedLastTurn: false,
+  runnerTurnBegin: {
+    Resolve: function () {
+      this.runInitiatedLastTurn = false;
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  runBegins: {
+    Resolve: function (server) {
+      this.runInitiatedLastTurn = true;
+    },
+    automatic: true,
+	availableWhenInactive: true,
+  },
+  //When your turn begins, if this card is in Archives and the Runner did not initiate any runs during their last turn, you may reveal this card and add it to HQ.
+  corpTurnBegin: {
+    Enumerate: function () {
+	  this.copyPlayedThisTurn = false;
+	  if (!this.runInitiatedLastTurn) {
+        if (corp.archives.cards.includes(this)) {
+		  return [{}];
+	    }
+	  }
+      return [];
+    },
+    Resolve: function (params) {
+      var binaryChoices = BinaryDecision(
+        corp,
+        "Reveal and add to HQ",
+        "Continue",
+        "Subliminal Messaging",
+        this,
+        function () {
+			Reveal(this, function() {
+				Log("Subliminal Messaging added to HQ"); //prevent reveal not currently implemented so title will always be known
+				MoveCard(this, corp.HQ.cards);
+			},this);
+        }
+      );
+      //**AI code
+      if (corp.AI != null) {
+        corp.AI._log("I know this one");
+        var choice = binaryChoices[0]; //activate by default
+        corp.AI.preferred = { title: "Subliminal Messaging", option: choice }; //title must match currentPhase.title for AI to fire
+      }		
+    },
+    text: "Subliminal Messaging",
+	availableWhenInactive:true,
   },
 };
