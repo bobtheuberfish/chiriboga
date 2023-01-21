@@ -1184,7 +1184,7 @@ function Shuffle(array) {
  *
  * @method AccessCardList
  */
-function AccessCardList(shuffleHQ=false) {
+function AccessCardList() {
   if (!attackedServer) return [];
   var ret = [];
   var num = 0;
@@ -1197,8 +1197,9 @@ function AccessCardList(shuffleHQ=false) {
 		num = attackedServer.cards.length;
 	  } else if (attackedServer == corp.HQ) {
 		//HQ: access 1 (+ effects) at random
-		if (shuffleHQ) Shuffle(corp.HQ.cards);
+		Shuffle(corp.HQ.cards);
 		num = 1 + additional;
+		if (runner.AI != null) runner.AI.GainInfoAboutHQCards(ret); //an obvious limitation here is that the cards will be known before accessing all cards...slight cheat
 	  } else if (attackedServer == corp.RnD) num = 1 + additional; //RnD: access 1 (+ effects)
 	  //take into account accesses that have already happened
 	  num -= accessedCards.cards.length;
@@ -1216,11 +1217,6 @@ function AccessCardList(shuffleHQ=false) {
 			  if (num < attackedServer.cards.length) num++;
 		  }
 		}
-	  }
-	  //now some usability and AI code
-	  if (attackedServer == corp.HQ) {
-		if (runner.AI != null) runner.AI.GainInfoAboutHQCards(ret); //an obvious limitation here is that the cards will be known before accessing all cards...slight cheat
-		if (shuffleHQ) Shuffle(corp.HQ.cards); //this is unnecessary (it's after making the list) but is a better visualisation of randomness
 	  }
   }
   //for all servers, access all cards in root (except cards that have already been accessed)
