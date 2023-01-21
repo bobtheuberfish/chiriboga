@@ -593,6 +593,8 @@ function LoadDecks() {
       glowTextures,
       strengthTextures
     ); //note that card.location is not set for identity cards
+	//rewind is not available during tutorials
+	$('#rewind-select').hide();
 	return;
   }
 

@@ -611,6 +611,27 @@ class RunnerAI {
 	  return this.cachedBestPath;
   }
 
+  async _calculateBestCompleteRunAsync(
+    server,
+    poolCreditOffset,
+	otherCreditOffset,
+    clickOffset,
+    damageOffset,
+	bonusBreaker,
+    startIceIdx,
+  ) {
+    return await this._calculateRunPathAsync(
+      server,
+      poolCreditOffset,
+	  otherCreditOffset,
+      clickOffset,
+      damageOffset,
+      false,
+	  bonusBreaker,
+      startIceIdx,
+    ); //false means don't include incomplete runs
+  }
+
   _calculateBestCompleteRun(
     server,
     poolCreditOffset,
@@ -652,6 +673,81 @@ class RunnerAI {
     ); //true means include incomplete runs
   }
 
+  //***_calculateRunPath has two version (Async and normal i.e. synchronous). These are the two pieces shared (begin, end).
+  //Begin returns data, End returns this.cachedBestPath
+  _calculateRunPathPieceBegin(data) {
+	//console.error("crp "+ServerName(data.server)+(data.incomplete?" incomplete":" complete"));
+    data.clicks = runner.clickTracker + data.clickOffset;
+	data.poolCredits = runner.creditPool + data.poolCreditOffset; //just credit pool
+	data.otherCredits = AvailableCredits(runner) - runner.creditPool + data.otherCreditOffset; //sources other than credit pool
+    data.damageLimit = runner.grip.length + data.damageOffset; //(this gets updated during the run calculation if data.clicks is used up)
+    //this works because potentials are calculated before costs in (optionList.includes("run")). Note the false here prevents an infinite loop
+    if (this._getCachedPotential(data.server) < 2.0)
+      data.damageLimit -= this.cardsWorthKeeping.length; //the 2.0 is arbitrary but basically don't risk stuff for lowish potential
+    if (data.damageLimit < 0) data.damageLimit = 0;
+	data.tagLimit =
+      Math.min(data.clicks, Math.floor(data.poolCredits * 0.5)) - runner.tags; //allow 1 tag for each click+2[c] remaining (pool only atm) but less if tagged (this gets updated during the run calculation)
+    if (data.tagLimit < 0) data.tagLimit = 0;
+	return data;
+  }
+  _calculateRunPathPieceEnd(data) {
+    this.cachedBestPath = null; //by default assume no paths were found
+    this.cachedComplete = !data.incomplete;
+	this.cachedPathServer = data.server;
+    if (!this.runsEverCalculated.includes(data.server))
+      this.runsEverCalculated.push(data.server);
+    //update/store cached cost
+    var bestpath = [];
+    if (data.paths.length > 0) {
+		bestpath = data.paths[data.paths.length - 1];
+		this.cachedBestPath = bestpath;
+	}
+    var bestcost = Infinity;
+    if (bestpath.length > 0) {
+      if (typeof bestpath[bestpath.length - 1].cost !== "undefined")
+        bestcost = bestpath[bestpath.length - 1].cost;
+      else bestcost = this.rc.PathCost(bestpath);
+    }
+    var alreadyCached = false; //or consider maybe only updating cached cost for complete runs?
+    for (var i = 0; i < this.cachedCosts.length; i++) {
+      if (this.cachedCosts[i].server == data.server) {
+        this.cachedCosts[i].cost = bestcost;
+        alreadyCached = true;
+      }
+    }
+    if (!alreadyCached)
+      this.cachedCosts.push({ server: data.server, cost: bestcost });
+    return this.cachedBestPath;
+  }
+
+  async _calculateRunPathAsync(
+    server,
+    poolCreditOffset,
+	otherCreditOffset,
+    clickOffset,
+    damageOffset,
+    incomplete,
+	bonusBreaker,
+    startIceIdx,
+  ) {
+	//use shared begin code
+	var data = this._calculateRunPathPieceBegin({server:server, poolCreditOffset:poolCreditOffset, otherCreditOffset:otherCreditOffset, clickOffset:clickOffset, damageOffset:damageOffset, incomplete:incomplete,bonusBreaker:bonusBreaker, startIceIdx:startIceIdx});
+	//compute paths
+    data.paths = await this.rc.CalculateAsync(
+      data.server,
+      data.clicks,
+      data.poolCredits,
+	  data.otherCredits,
+      data.damageLimit,
+      data.tagLimit,
+      data.incomplete,
+	  data.bonusBreaker,
+      data.startIceIdx,
+    );
+	//use shared end code
+	return this._calculateRunPathPieceEnd(data);
+  }
+
   //wrapper for run calculator (returns null if no path found)
   _calculateRunPath(
     server,
@@ -663,56 +759,22 @@ class RunnerAI {
 	bonusBreaker,
     startIceIdx,
   ) {
-	//console.error("crp "+ServerName(server)+(incomplete?" incomplete":" complete"));
-    var clicks = runner.clickTracker + clickOffset;
-	var poolCredits = runner.creditPool + poolCreditOffset; //just credit pool
-	var otherCredits = AvailableCredits(runner) - runner.creditPool + otherCreditOffset; //sources other than credit pool
-    var damageLimit = runner.grip.length + damageOffset; //(this gets updated during the run calculation if clicks is used up)
-    //this works because potentials are calculated before costs in (optionList.includes("run")). Note the false here prevents an infinite loop
-    if (this._getCachedPotential(server) < 2.0)
-      damageLimit -= this.cardsWorthKeeping.length; //the 2.0 is arbitrary but basically don't risk stuff for lowish potential
-    if (damageLimit < 0) damageLimit = 0;
-	var tagLimit =
-      Math.min(clicks, Math.floor(poolCredits * 0.5)) - runner.tags; //allow 1 tag for each click+2[c] remaining (pool only atm) but less if tagged (this gets updated during the run calculation)
-    if (tagLimit < 0) tagLimit = 0;
-    var paths = this.rc.Calculate(
-      server,
-      clicks,
-      poolCredits,
-	  otherCredits,
-      damageLimit,
-      tagLimit,
-      incomplete,
-	  bonusBreaker,
-      startIceIdx,
+	//use shared begin code
+	var data = this._calculateRunPathPieceBegin({server:server, poolCreditOffset:poolCreditOffset, otherCreditOffset:otherCreditOffset, clickOffset:clickOffset, damageOffset:damageOffset, incomplete:incomplete,bonusBreaker:bonusBreaker, startIceIdx:startIceIdx});
+	//compute paths
+    data.paths = this.rc.Calculate(
+      data.server,
+      data.clicks,
+      data.poolCredits,
+	  data.otherCredits,
+      data.damageLimit,
+      data.tagLimit,
+      data.incomplete,
+	  data.bonusBreaker,
+      data.startIceIdx,
     );
-    this.cachedBestPath = null; //by default assume no paths were found
-    this.cachedComplete = !incomplete;
-	this.cachedPathServer = server;
-    if (!this.runsEverCalculated.includes(server))
-      this.runsEverCalculated.push(server);
-    //update/store cached cost
-    var bestpath = [];
-    if (paths.length > 0) {
-		bestpath = paths[paths.length - 1];
-		this.cachedBestPath = bestpath;
-	}
-    var bestcost = Infinity;
-    if (bestpath.length > 0) {
-      if (typeof bestpath[bestpath.length - 1].cost !== "undefined")
-        bestcost = bestpath[bestpath.length - 1].cost;
-      else bestcost = this.rc.PathCost(bestpath);
-    }
-    var alreadyCached = false; //or consider maybe only updating cached cost for complete runs?
-    for (var i = 0; i < this.cachedCosts.length; i++) {
-      if (this.cachedCosts[i].server == server) {
-        this.cachedCosts[i].cost = bestcost;
-        alreadyCached = true;
-      }
-    }
-    if (!alreadyCached)
-      this.cachedCosts.push({ server: server, cost: bestcost });
-    return this.cachedBestPath;
+	//use shared end code
+	return this._calculateRunPathPieceEnd(data)
   }
 
   //returns something between [] and ["Fracter","Decoder","Killer"]
@@ -970,11 +1032,9 @@ class RunnerAI {
     //console.log("Result: " + JSON.stringify(cwkToSort));
 	return cwkToSort;
   }
-  
-  //planning check for complete run. Returns bestpath
-  //bonus breaker is a not-installed card that will be included as a breaker in the run calculation i.e. hypothetical
-  //if foresight is true, the run calculation will exchange clicks for credits/cards
-  _commonRunCalculationChecks(server,runEventCardToUse,bonusBreaker,foresight) {
+
+  //this function does not have a synchronous version (it is only called, with await, from this._internalChoiceDetermination)
+  async _commonRunCalculationChecksAsync(server,runEventCardToUse,bonusBreaker,foresight) {
 	var poolCreditOffset = corp.badPublicity; //temporary credits for each run
 	var extraCredits = 0; //credits that are not in the pool (e.g. recurring)
 	var clickOffset = -1; //assume 1 click will be used to initiate the run
@@ -1032,7 +1092,7 @@ class RunnerAI {
 	}	
 	//do the run calculation
 	if (debugging) console.log("RC for "+ServerName(server)+":");	  
-	var bestpath = this._calculateBestCompleteRun(server, poolCreditOffset, extraCredits, clickOffset, damageOffset, bonusBreaker);
+	var bestpath = await this._calculateBestCompleteRunAsync(server, poolCreditOffset, extraCredits, clickOffset, damageOffset, bonusBreaker);
 	//restore from temporary changes
     if (madeTemporaryChanges) {
 		if (typeof runEventCardToUse.AIRunEventRestore == 'function') {
@@ -1051,7 +1111,7 @@ class RunnerAI {
 	//return the result
 	return bestpath;
   }
-
+  
   //basic pre-checks e.g. don't install resources when tagged
   _passBasicWastefulInstallCheck(cardToInstall) {
 	if (cardToInstall.cardType == "resource") {
@@ -1139,12 +1199,11 @@ class RunnerAI {
   //returns index of choice
   //DO NOT call this anywhere (except the one time is called, from _computeChoice)
   //otherwise temporarily modified values may not be restored
-  _internalChoiceDetermination(optionList, choiceType) {
+  async _internalChoiceDetermination(optionList, choiceType) {
     if (optionList.length < 1) {
       LogError("No valid commands available");
       return;
     }
-	
     //temporary detailed log for troublesome bugs
 /*
 console.log("AI making choice from:");
@@ -2009,7 +2068,7 @@ console.log(this.preferred);
         }
 
         //and calculate best path
-		var bestpath = this._commonRunCalculationChecks(this.serverList[i].server,this.serverList[i].useRunEvent,this.serverList[i].bonusBreaker,false); //the false is for foresight, i.e. run now not later
+		var bestpath = await this._commonRunCalculationChecksAsync(this.serverList[i].server,this.serverList[i].useRunEvent,this.serverList[i].bonusBreaker,false); //the false is for foresight, i.e. run now not later
         this.serverList[i].bestpath = bestpath;
 		this.serverList[i].bestcost = Infinity;
         if (bestpath && bestpath.length > 0) {
@@ -2046,7 +2105,7 @@ console.log(this.preferred);
         ) {
           var server = this.serverList[i].server;
           //recalculate paths
-          var bestpath = this._commonRunCalculationChecks(server,this.serverList[i].useRunEvent,this.serverList[i].bonusBreaker,true); //the true is for foresight, i.e. prep first
+          var bestpath = await this._commonRunCalculationChecksAsync(server,this.serverList[i].useRunEvent,this.serverList[i].bonusBreaker,true); //the true is for foresight, i.e. prep first
           if (bestpath) {
             this.serverList = []; //don't run this click
             this._log("Gotta do some prep");
@@ -2134,7 +2193,7 @@ console.log(this.preferred);
 	    //if it will improve run cost, install relevant breaker
 		if (this.serverList[0].bonusBreaker) {
 		  this._log("Checking run cost of "+ServerName(this.serverList[0].server)+" without "+this.serverList[0].bonusBreaker.card.title);
-		  var bestpath = this._commonRunCalculationChecks(this.serverList[0].server,this.serverList[0].useRunEvent,null,false); //calculate run without it (false means no foresight)
+		  var bestpath = await this._commonRunCalculationChecksAsync(this.serverList[0].server,this.serverList[0].useRunEvent,null,false); //calculate run without it (false means no foresight)
 		  if (bestpath && bestpath.length > 0) {
 			var costWithoutBonusBreaker = Infinity;
             if (typeof bestpath[bestpath.length - 1].cost !== "undefined") //end point of path has total cost
@@ -2669,65 +2728,69 @@ console.log(this.preferred);
   }
 
   _computeChoice(optionList, choiceType) {
-	var ret = this._internalChoiceDetermination(optionList, choiceType);
-	
-	//restore temporary set values
-	this._RestoreTemporaryValueModifications();
-	
-	return ret;
+	return new Promise((resolve) => {
+		this._internalChoiceDetermination(optionList, choiceType).then((ret) => {		
+			//restore temporary set values
+			this._RestoreTemporaryValueModifications();
+			//return result
+			resolve(ret);
+		}); //end 'then'
+	}); //end 'promise'
   }
 
   CommandChoice(inputOptionList) {
-	//make a local copy so we can add pretend options if we want
-	//note the elements are not new copies, just the container
-	var optionList = [];
-	for (var i=0; i<inputOptionList.length; i++) {
-		optionList.push(inputOptionList[i]);
-	}
-
-	var ret = this._computeChoice(optionList, "command");
-
-	//some return values we may want to replace
-
-	//cards that could be played to install (e.g. with discount)
-	if (ret == optionList.indexOf("install") && this.preferred && typeof this.preferred.cardToInstall != 'undefined') {
-		//use install pref after play preference resolves
-		var nextPrefs = {
-			cardToInstall: this.preferred.cardToInstall,
-			hostToInstallTo: null,
-			command: "continue",
-			useAsCommand: "install",
-		};
-		if (typeof this.preferred.hostToInstallTo != 'undefined') nextPrefs.hostToInstallTo = this.preferred.hostToInstallTo;
-		//but only if a valid card play exists
-		for (var i=0; i<runner.grip.length; i++) {
-			var cardToPlay = runner.grip[i];
-			if (typeof cardToPlay.AIPlayForInstall == 'function') {
-                  if (FullCheckPlay(cardToPlay)) {
-                    if (cardToPlay.AIPlayForInstall.call(cardToPlay, this.preferred.cardToInstall)) {
-						ret = this._returnPreference(inputOptionList, "play", {
-						  cardToPlay: cardToPlay,
-						  nextPrefs: nextPrefs,
-						});	
-						break; //this means we might not be using the best card for the job but prevents crazy incorrect stacking
-					}
-                  }
-			}
+	return new Promise((resolve) => {
+		//make a local copy so we can add pretend options if we want
+		//note the elements are not new copies, just the container
+		var optionList = [];
+		for (var i=0; i<inputOptionList.length; i++) {
+			optionList.push(inputOptionList[i]);
 		}
-	}
-	
-	//if option is not in list, choose 0 and give error
-	if (ret < 0 || ret > inputOptionList.length - 1) {
-		console.log(inputOptionList);
-		console.error("Error in CommandChoice: choice "+ret+" returned for inputOptionList above");
-		ret = 0;
-	}
-		
-    return ret;
+		this._computeChoice(optionList, "command").then((ret) => {
+			//some return values we may want to replace
+			//cards that could be played to install (e.g. with discount)
+			if (ret == optionList.indexOf("install") && this.preferred && typeof this.preferred.cardToInstall != 'undefined') {
+				//use install pref after play preference resolves
+				var nextPrefs = {
+					cardToInstall: this.preferred.cardToInstall,
+					hostToInstallTo: null,
+					command: "continue",
+					useAsCommand: "install",
+				};
+				if (typeof this.preferred.hostToInstallTo != 'undefined') nextPrefs.hostToInstallTo = this.preferred.hostToInstallTo;
+				//but only if a valid card play exists
+				for (var i=0; i<runner.grip.length; i++) {
+					var cardToPlay = runner.grip[i];
+					if (typeof cardToPlay.AIPlayForInstall == 'function') {
+						  if (FullCheckPlay(cardToPlay)) {
+							if (cardToPlay.AIPlayForInstall.call(cardToPlay, this.preferred.cardToInstall)) {
+								ret = this._returnPreference(inputOptionList, "play", {
+								  cardToPlay: cardToPlay,
+								  nextPrefs: nextPrefs,
+								});	
+								break; //this means we might not be using the best card for the job but prevents crazy incorrect stacking
+							}
+						  }
+					}
+				}
+			}
+			//if option is not in list, choose 0 and give error
+			if (ret < 0 || ret > inputOptionList.length - 1) {
+				console.log(inputOptionList);
+				console.error("Error in CommandChoice: choice "+ret+" returned for inputOptionList above");
+				ret = 0;
+			}
+			resolve(ret);
+		}); //end 'then'
+	}); //end 'promise'
   }
 
   SelectChoice(optionList) {
-    return this._computeChoice(optionList, "select");
+	return new Promise((resolve) => {
+		this._computeChoice(optionList, "select").then((ret) => {
+			resolve(ret);
+		}); //end 'then'
+	}); //end 'promise'
   }
 
   GameEnded(winner) {}

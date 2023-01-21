@@ -93,7 +93,8 @@ function ResolveChoice(idx) {
 	if (!Narrate(Main)) Main(); //either narrate then call Main, or if no narration just proc Main now
   }, ($('#narration').prop('checked') ? 1 : mainLoopDelay) ); 
   //note this next line happens before the code in the timeout
-  currentPhase.Resolve[executingCommand](chosenOption);
+  //(the existence check is in case the game has ended and therefore there are no more choices)
+  if (typeof currentPhase.Resolve[executingCommand] == 'function') currentPhase.Resolve[executingCommand](chosenOption);
 }
 
 //return the card availability for rendering/interacting
@@ -625,7 +626,11 @@ function EnumeratePhase() {
     $("#footer").html(footerHtml);
     $("#footer").show();
   }
-  //else $("#footer").hide();
+  else {
+	  $("#footer").html("<h2>Thinking...</h2>");
+	  $("#footer h2").hide().fadeIn(400);
+	  $("#footer").show();
+  }
   //console.log(currentPhase.identifier);
   //console.log(currentPhase.title);
   //console.log(optionList);
@@ -717,14 +722,16 @@ function MakeChoice() {
   //and be confused when that option is not offered to it
   if (activePlayer.AI != null) {
     //active player is AI controlled
-    try {
-      ResolveChoice(activePlayer.AI.SelectChoice(validOptions));
-    } catch (e) {
-      LogError(e);
-      Log("AI: Error executing select choice, using arbitrary option from:");
-      console.log(validOptions);
-      ResolveChoice(0);
-    }
+	activePlayer.AI.SelectChoice(validOptions)
+	.then((result) => {
+	  ResolveChoice(result);
+	})
+	.catch((e) => {
+	  LogError(e);
+	  Log("AI: Error executing select choice asynchronously, using arbitrary option from:");
+	  console.log(validOptions);
+	  ResolveChoice(0);
+	});
     return;
   } else if (activePlayer.testAI != null) {
     //say what the AI would have done if it was playing

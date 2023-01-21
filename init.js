@@ -1440,9 +1440,33 @@ function NicelyFormatCommand(cmdstr) {
   return cmdstr.charAt(0).toUpperCase() + cmdstr.slice(1);
 }
 
+function delay(t, v) {
+    return new Promise(resolve => setTimeout(resolve, t, v));
+}
+
+//Modified from:
+//Copyright 2009 Nicholas C. Zakas. All rights reserved.
+//MIT Licensed
+var ProcessChunks;
+function ProcessChunks(items, context, callback) {
+	var todo = items.concat(); //create a clone of the original
+    setTimeout(function(){
+        var start = +new Date();
+        do {
+             todo.shift().call(context); //call the next function, in the given context
+        } while (todo.length > 0 && (+new Date() - start < 50));
+        if (todo.length > 0){
+            setTimeout(ProcessChunks, 25, todo, context, callback); //call this function again
+        } else {
+            //finished
+			callback.call(context);
+        }
+    }, 25);
+}
+
 var mainLoop;
 var mainLoopDelay = 350;
-function Main() {
+async function Main() {
   if (corp.AI && runner.AI && pauseFaceoff) return;
 	
   var optionList = EnumeratePhase();
@@ -1454,10 +1478,20 @@ function Main() {
   if (autoExecute) ExecuteChosen(optionList[0]);
   else if (activePlayer.AI != null) {
     try {
-      ExecuteChosen(optionList[activePlayer.AI.CommandChoice(optionList)]); //active player is AI controlled
+	  //active player is AI controlled
+	  activePlayer.AI.CommandChoice(optionList)
+		.then((result) => {
+		  ExecuteChosen(optionList[result]);
+		})
+		.catch((e) => {
+		  LogError(e);
+		  Log("AI: Error executing command choice asynchronously, using arbitrary option from:");
+		  console.log(optionList);
+		  ExecuteChosen(optionList[0]);
+		});
     } catch (e) {
       LogError(e);
-      Log("AI: Error executing command choice, using arbitrary option from:");
+      Log("AI: Error executing player command choice, using arbitrary option from:");
       console.log(optionList);
       ExecuteChosen(optionList[0]);
     }

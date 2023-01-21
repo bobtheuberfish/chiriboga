@@ -5206,7 +5206,7 @@ cardSet[30076] = {
   subTypes: ["Natural"],
   Tutorial: function(str) {
     if ((str=="Corp Mulligan")||(str=="Runner Mulligan")) {
-		if (globalProperties.agendaPointsToWin == 6) TutorialMessage("For this game we will be playing with the System Gateway starter decks.\n\nThe first player to earn 6 agenda points wins (for a normal game it would be 7 points).");
+		if (globalProperties.agendaPointsToWin == 6) TutorialMessage("For this game we will be playing with the System Gateway starter decks.\n\nThe first player to earn 6 agenda points wins (for a normal game it would be 7 points).\n\nTo undo a decision, use Rewind in the game menu (hat button).");
 		else TutorialMessage("The Corp now has these abilities:\n• @, 2$: Trash a resource (use only when Runner is tagged)\n• @@@: Purge virus counters\n\nThe Runner now has this ability:\n• @, 2$: Remove a tag");
 	}
 	else TutorialMessage("");

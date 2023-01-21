@@ -3345,22 +3345,34 @@ class CorpAI {
   }
 
   CommandChoice(optionList) {
-    if (this.preferred !== null) {
-      if (optionList.indexOf(this.preferred.command) > -1)
-        return optionList.indexOf(this.preferred.command);
-    }
-    if (optionList.length == 1) return 0;
-    return this.Choice(optionList, "command");
+	return new Promise((resolve) => {
+		if (this.preferred !== null) {
+		  if (optionList.indexOf(this.preferred.command) > -1) {
+			resolve(optionList.indexOf(this.preferred.command));
+			return;
+		  }
+		}
+		if (optionList.length == 1) {
+			resolve(0);
+			return;
+		}
+		resolve(this.Choice(optionList, "command"));
+		return;
+	}); //end 'promise'
   }
 
   SelectChoice(optionList) {
-    if (optionList.length == 1) {
-      if (this.preferred !== null) {
-        if (executingCommand == this.preferred.command) this.preferred = null; //whether it succeeded or not, the preference is done
-      }
-      return [0];
-    }
-    return this.Choice(optionList, "select");
+	return new Promise((resolve) => {
+		if (optionList.length == 1) {
+		  if (this.preferred !== null) {
+			if (executingCommand == this.preferred.command) this.preferred = null; //whether it succeeded or not, the preference is done
+		  }
+		  resolve(0);
+		  return;
+		}
+		resolve(this.Choice(optionList, "select"));
+		return;
+	}); //end 'promise'
   }
 
   GameEnded(winner) {}

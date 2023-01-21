@@ -800,56 +800,36 @@ class RunCalculator {
 	  return ret;
   }
 
-  //modifies this.paths and also returns it
-  //set incomplete to true to return lowest cost exit strategy
-  //if incomplete is false, paths that include misc_serious effect will be ignored (careful! if no valid path is found, serious sr may fire).
-  //if incomplete is true, a non-empty, non-complete path is expected (i.e. will jack out or fire etr at earliest opportunity)
-  Calculate(
-    server,
-    clicks,
-    poolCredits,
-	otherCredits,
-    damageLimit,
-    tagLimit,
-    incomplete,
-	bonusBreaker,
-    startIceIdx,
-	rcOptions,
-  ) {
-	if (typeof rcOptions != 'undefined') {
-		if (typeof rcOptions.suppressOutput != 'undefined') this.suppressOutput = rcOptions.suppressOutput;
-		if (typeof rcOptions.avoidETR != 'undefined') this.avoidETR = rcOptions.avoidETR;
+  //***Calculate has two version (Async and normal i.e. synchronous). These are the three pieces shared (begin, middle, end).
+  //Begin returns data, Middle and End do not have return values
+  CalculatePieceBegin(data) {
+	if (typeof data.rcOptions != 'undefined') {
+		if (typeof data.rcOptions.suppressOutput != 'undefined') this.suppressOutput = data.rcOptions.suppressOutput;
+		if (typeof data.rcOptions.avoidETR != 'undefined') this.avoidETR = data.rcOptions.avoidETR;
 	}
-    //if (!this.suppressOutput) console.log("Calculating "+(incomplete ? "incomplete" : "complete")+" run");
-    if (typeof startIceIdx == "undefined") startIceIdx = server.ice.length - 1;
-	if (typeof bonusBreaker == "undefined") bonusBreaker = null;
-	this.bonusBreaker = bonusBreaker;
-
+    //if (!this.suppressOutput) console.log("Calculating "+(data.incomplete ? "data.incomplete" : "complete")+" run");
+    if (typeof data.startIceIdx == "undefined") data.startIceIdx = data.server.ice.length - 1;
+	if (typeof data.bonusBreaker == "undefined") data.bonusBreaker = null;
+	this.bonusBreaker = data.bonusBreaker;
     var installedRunnerCards = InstalledCards(runner);
-
-	var clickLimit = clicks; //this is maybe not ideal (e.g. Enigma might break things)
-	var poolCreditLimit = poolCredits; //same as above, maybe
-    this.baseClicks = clicks;
-    this.basePoolCredits = poolCredits;
-	this.baseOtherCredits = otherCredits;
-	
+	data.clickLimit = data.clicks; //this is maybe not ideal (e.g. Enigma might break things)
+	data.poolCreditLimit = data.poolCredits; //same as above, maybe
+    this.baseClicks = data.clicks;
+    this.basePoolCredits = data.poolCredits;
+	this.baseOtherCredits = data.otherCredits;
     this.paths = []; //completed paths
-
     //default approach cost is none (but not an empty approachOptions array - that would mean no path ever and this process would fail)
-    var approachOptions = [{ clicks: 0, credits: 0, effects: 0, tags: 0 }];
-
+    data.approachOptions = [{ clicks: 0, credits: 0, effects: 0, tags: 0 }];
     //for complete runs, include known trash costs any other costs to get into server
-    if (!incomplete) {
+    if (!data.incomplete) {
       var approachClicks = 0;
       var approachCredits = 0;
       var approachEffects = [];
       var approachTags = 0;
       var knownCardsInRoot = [];
 	  var numUnknownCardsInRoot = 0;
-	  
       var runnerAI = runner.AI;
       if (runnerAI == null) runnerAI = runner.testAI;
-	  
 	  //effects that might happen regardless of breach
 	  //1 net damage for each House of Knives that hasn't been used this run
 	  var activeHOKs = 0;
@@ -865,17 +845,15 @@ class RunCalculator {
 		}
 		approachEffects.push(hokEffect);
 	  }
-	  
 	  //currently assumes the only cards that would prevent breach are installed Runner cards
-	  var breach = !runnerAI._breachWouldBePrevented(installedRunnerCards,server);
-	  
+	  var breach = !runnerAI._breachWouldBePrevented(installedRunnerCards,data.server);
 	  //costs etc that may apply if breaching:
 	  if (breach) {
-		  for (var i = 0; i < server.root.length; i++) {
-			if (server.root[i].rezzed || server.root[i].knownToRunner)
-			  knownCardsInRoot.push(server.root[i]);
+		  for (var i = 0; i < data.server.root.length; i++) {
+			if (data.server.root[i].rezzed || data.server.root[i].knownToRunner)
+			  knownCardsInRoot.push(data.server.root[i]);
 			else {
-			  var advancement = Counters(server.root[i], "advancement");
+			  var advancement = Counters(data.server.root[i], "advancement");
 			  if (advancement > 4 && corp.identityCard.faction == "Weyland Consortium") {
 				//might be Clearinghouse, in which case need to be able to pay trashcost
 				approachCredits += 3;
@@ -899,10 +877,10 @@ class RunCalculator {
 		  }
 		  //simple check (not comprehensive, that would be complex e.g. random access, R&D could be shuffled, etc)
 		  var mightAccessAnAgenda = true;
-		  if (typeof server.cards == 'undefined' && knownCardsInRoot.length == server.root.length) {
+		  if (typeof data.server.cards == 'undefined' && knownCardsInRoot.length == data.server.root.length) {
 			mightAccessAnAgenda = false;
-			for (var i = 0; i < server.root.length; i++) {
-			  if (CheckCardType(server.root[i], ["agenda"])) {
+			for (var i = 0; i < data.server.root.length; i++) {
+			  if (CheckCardType(data.server.root[i], ["agenda"])) {
 				  mightAccessAnAgenda = true;
 				  break;
 			  }
@@ -924,20 +902,18 @@ class RunCalculator {
 				}
 			}
 		  }
-
 		  //effects from upgrade
 		  var mightHitHokusai = false;
 		  if (numUnknownCardsInRoot > 0) mightHitHokusai = true;
 		  else {
-			for (var i = 0; i < server.root.length; i++) {
-			  if (server.root[i].title == "Hokusai Grid") {
+			for (var i = 0; i < data.server.root.length; i++) {
+			  if (data.server.root[i].title == "Hokusai Grid") {
 				  mightHitHokusai = true;
 				  break;
 			  }
 			}
 		  }
 		  if (mightHitHokusai) approachEffects.push(["netDamage"]);
-
 		  //calculate any required trash payment, taking into account potential discount (just considering max for one known card trash cost with just one discounting ability atm)
 		  //note cards in server (e.g. in corp hand) are not considered atm
 		  var highestTrashCost = 0;
@@ -961,10 +937,9 @@ class RunCalculator {
 			  }
 		  }
 		  approachCredits += highestTrashCost - highestTrashDiscount;
-	  }
-	  
+	  }	  
       //combine approach costs
-      approachOptions = [
+      data.approachOptions = [
         {
           clicks: approachClicks,
           credits: approachCredits,
@@ -972,27 +947,26 @@ class RunCalculator {
           tags: approachTags,
         },
       ];
-
       //Manegarm creates additional path forks
       if (
         runnerAI._copyOfCardExistsIn("Manegarm Skunkworks", knownCardsInRoot)
       ) {
         //create a fork
-        approachOptions.push({
+        data.approachOptions.push({
           clicks: approachClicks,
           credits: approachCredits,
           effects: approachEffects,
           tags: approachTags,
         });
         //add Manegarm tax to the fork costs
-        approachOptions[0].clicks += 2;
-        approachOptions[1].credits += 5;
+        data.approachOptions[0].clicks += 2;
+        data.approachOptions[1].credits += 5;
       }
     }
-
-    if (server.ice.length > 0 && startIceIdx > -1) {
+	data.doInnerLoop = data.server.ice.length > 0 && data.startIceIdx > -1;
+    if (data.doInnerLoop) {
       //record execution time for testing
-      var timeInMS = Date.now();
+      data.timeInMS = Date.now();
 
       //precalculate the precalculatables
       this.precalculated.runnerInstalledCardsLength =
@@ -1002,28 +976,27 @@ class RunCalculator {
         if (CheckSubType(installedRunnerCards[i], "Icebreaker"))
           this.precalculated.runnerInstalledIcebreakersLength++;
       }
-
       this.precalculated.iceAIs = [];
       var unknownIce = 0; //accumulate during the next loop (used to limit risk-estimation)
       var maxCorpCred = AvailableCredits(corp);	  
-      for (var i = startIceIdx; i > -1; i--) {
+      for (var i = data.startIceIdx; i > -1; i--) {
         if (unknownIce == 0)
           this.precalculated.iceAIs[i] = this.IceAI(
-			server.ice[i], 
+			data.server.ice[i], 
 			maxCorpCred, 
 			false, 
-			incomplete,
-			startIceIdx
+			data.incomplete,
+			data.startIceIdx
 		  ); //just assume the next unknown ice is dangerous
         else
           this.precalculated.iceAIs[i] = this.IceAI(
-            server.ice[i],
+            data.server.ice[i],
             maxCorpCred,
             true,
-			incomplete,
-			startIceIdx
+			data.incomplete,
+			data.startIceIdx
           ); //the true here means 'assume weaker unknown ice'
-        if (!PlayerCanLook(runner, server.ice[i])) unknownIce++;
+        if (!PlayerCanLook(runner, data.server.ice[i])) unknownIce++;
         else maxCorpCred++; //very rough heuristic but essentially allows for rezzed unbroken Tithe
       }
 	  var potentialActiveCards = ActiveCards(null);
@@ -1032,151 +1005,210 @@ class RunCalculator {
 	  for (var i=0; i<potentialActiveCards.length; i++) {
 		  if (CheckHasAbilities(potentialActiveCards[i])) this.precalculated.activeCards.push(potentialActiveCards[i]);
 	  }
-
       //create a pathfinding-style approach
-      var todo = []; //array of path arrays that are not finished
-
+      data.todo = []; //array of path arrays that are not finished
       //encounter options at starting ice
-	  var iceAI = this.precalculated.iceAIs[startIceIdx];
-      var encounterOptions = this.EncounterOptions(startIceIdx,iceAI);
+	  var iceAI = this.precalculated.iceAIs[data.startIceIdx];
+      var encounterOptions = this.EncounterOptions(data.startIceIdx,iceAI);
 	  //create encounter option points
       for (var i = 0; i < encounterOptions.length; i++) {
 		//set up starting conditions
-		var startingPoint = this.EmptyPoint(startIceIdx);
+		var startingPoint = this.EmptyPoint(data.startIceIdx);
         //compute total effects if these options are selected
         var encounter_effects = encounterOptions[i].effects;
 		var encounter_persistents = encounterOptions[i].persistents;
 		//note we send null as iceAI because it's the previous ice (which there isn't, this is the first), not this new one we're encountering
 		//and [] as card_str_mods and persistents because there are no such persisting things to pass on yet
-		var encounter_point = this.ValidateEncounterPoint(startIceIdx, startingPoint, incomplete, encounter_effects, encounter_persistents, null, [], []);		  
+		var encounter_point = this.ValidateEncounterPoint(data.startIceIdx, startingPoint, data.incomplete, encounter_effects, encounter_persistents, null, [], []);		  
         if (encounter_point) {
-            todo.push([encounter_point]);
+            data.todo.push([encounter_point]);
         }
       }
-
       //for performance checking
-      var unsuccessful_paths = 0;
-      var successful_paths = 0;
-      var disregarded_paths = 0; //suboptimal
-      var invalid_paths = 0; //exceed limits
-      var max_path_length = 0;
-
-      var max_loops = 1000; //this is arbitrary - allows for fairly complex runs but not extreme compute times (the minimum is usually found before 500 loops)
-      var num_loops_left = max_loops;
-      var min_cost = Infinity; //keep track for optimisation
-      while (todo.length > 0 && num_loops_left > 0) {
+      data.unsuccessful_paths = 0;
+      data.successful_paths = 0;
+      data.disregarded_paths = 0; //suboptimal
+      data.invalid_paths = 0; //exceed limits
+      data.max_path_length = 0;
+      data.max_loops = 1000; //this is arbitrary - allows for fairly complex runs but not extreme compute times (the minimum is usually found before 500 loops)
+      data.num_loops_left = data.max_loops;
+      data.min_cost = Infinity; //keep track for optimisation	  
+	}
+	return data;
+  }
+  CalculatePieceMiddle(data) {
         var continuing = false;
         var report_as = "error processing todo"; //for reporting only
-        num_loops_left--;
-        var current = todo.pop();
+        data.num_loops_left--;
+        var current = data.todo.pop();
         var this_cost = this.PathCost(current);
         //if cost is less than best so far and still valid, continue processing (this optimisation reduced typical full paths processed from 178 to 4! The test case was Ansel 1.0 with Botulus then an unrezzed)
         if (
-          this_cost < min_cost &&
+          this_cost < data.min_cost &&
           this.ValidPath(
             current,
-            damageLimit,
-            clickLimit,
-			poolCreditLimit,
-			otherCredits,
-            tagLimit
+            data.damageLimit,
+            data.clickLimit,
+			data.poolCreditLimit,
+			data.otherCredits,
+            data.tagLimit
           )
         ) {
           var path_finished = false;
           //complete paths finish at server, incomplete paths finish after encounter or at etr
-          if (!incomplete)
+          if (!data.incomplete)
             path_finished = current[current.length - 1].iceIdx < 0;
-          else path_finished = current[current.length - 1].iceIdx < startIceIdx;
+          else path_finished = current[current.length - 1].iceIdx < data.startIceIdx;
 
           if (path_finished) {
-            min_cost = this_cost;
+            data.min_cost = this_cost;
             this.paths.push(current); //since here we only store better paths, this.paths[this.paths.length-1] will always be the best path
-            successful_paths++;
+            data.successful_paths++;
             report_as = "success";
           } //otherwise keep going
           else {
             var directions = this.Directions(
-              server,
+              data.server,
               current[current.length - 1],
-              min_cost,
-              damageLimit,
-              clickLimit,
-			  poolCreditLimit,
-			  otherCredits,
-              tagLimit,
-              incomplete
+              data.min_cost,
+              data.damageLimit,
+              data.clickLimit,
+			  data.poolCreditLimit,
+			  data.otherCredits,
+              data.tagLimit,
+              data.incomplete
             );
-
             //for heuristic's sake ideally back (last) in directions should be the 'cheapest' because we are about to 'pop' it
-
             if (directions.length < 1) {
-              unsuccessful_paths++; //path ended without reaching server
+              data.unsuccessful_paths++; //path ended without reaching server
               report_as = this.reason;
             } else continuing = true; //for reporting
 
             for (var i = 0; i < directions.length; i++) {
               //I'm not sure if need to check here to make sure don't end up in an infinite loop
               var nextstep = current.concat([directions[i]]);
-              todo.push(nextstep);
+              data.todo.push(nextstep);
             }
           }
-        } else if (this_cost < min_cost) {
-          invalid_paths++;
+        } else if (this_cost < data.min_cost) {
+          data.invalid_paths++;
           report_as = "invalid";
         } else {
-          disregarded_paths++;
+          data.disregarded_paths++;
           report_as = "ignore";
         }
-        if (current.length > max_path_length) max_path_length = current.length; //for reporting/testing
+        if (current.length > data.max_path_length) data.max_path_length = current.length; //for reporting/testing
         //uncomment other console.log lines if more detail is desired to debug the run calculator
         if (!continuing && debugging && !this.suppressOutput) console.log(this.OneLiner(current,report_as));
-      }
-      //if (!this.suppressOutput) console.log(max_loops - num_loops_left);
-      if (num_loops_left == 0) {
+  }
+  CalculatePieceEnd(data) {
+	if (data.doInnerLoop) {
+      //if (!this.suppressOutput) console.log(data.max_loops - data.num_loops_left);
+      if (data.num_loops_left == 0) {
         if (!this.suppressOutput) console.log(
           "Run calculator exceeded loop limit for " +
-            ServerName(server) +
+            ServerName(data.server) +
             " with an execution time of " +
-            (Date.now() - timeInMS) +
+            (Date.now() - data.timeInMS) +
             " ms"
         );
 		//if (!this.suppressOutput) {
-        //  console.log("Successful paths: "+successful_paths);
-        //  console.log("Max path length: "+max_path_length);
-        //  console.log("Min cost: "+min_cost);
+        //  console.log("Successful paths: "+data.successful_paths);
+        //  console.log("Max path length: "+data.max_path_length);
+        //  console.log("Min cost: "+data.min_cost);
 		//}
       }
     }
     //if there is no ice, the only path is straight into server (this.paths=[] means no valid paths)
-    else this.paths = [[this.EmptyPoint(startIceIdx)]]; //should this be -1?
-	
+    else this.paths = [[this.EmptyPoint(data.startIceIdx)]]; //should this be -1?
 	//finish each path with any possible approach options
 	var finalpaths = [];
 	for (var i=0; i<this.paths.length; i++) {
-      for (var j = 0; j < approachOptions.length; j++) {
+      for (var j = 0; j < data.approachOptions.length; j++) {
 		var possiblePath = this.paths[i].concat([]); //make a copy of the path
 		//add the effects of this approach option (so far this only handles credits spent, clicks spent, and effects)
 		var approachPoint = this.CopyPoint(possiblePath[possiblePath.length-1]);
 		approachPoint.iceIdx = -1;
-		approachPoint.runner_credits_spent += approachOptions[j].credits;
-		approachPoint.runner_clicks_spent += approachOptions[j].clicks;
-		approachPoint.effects = approachPoint.effects.concat(approachOptions[j].effects);
+		approachPoint.runner_credits_spent += data.approachOptions[j].credits;
+		approachPoint.runner_clicks_spent += data.approachOptions[j].clicks;
+		approachPoint.effects = approachPoint.effects.concat(data.approachOptions[j].effects);
 		possiblePath.push(approachPoint);
-        if (this.ValidPath(possiblePath, damageLimit, clickLimit, poolCreditLimit,	otherCredits, tagLimit))
+        if (this.ValidPath(possiblePath, data.damageLimit, data.clickLimit, data.poolCreditLimit, data.otherCredits, data.tagLimit))
           finalpaths.push(possiblePath);
 	    else this._log("Ignoring path "+i+" due to invalid approach");
 	  }
 	}
 	this.paths = finalpaths;
+  }
 
-	//incomplete path not found, try again permitting more tags
+  async CalculateAsync(
+    server,
+    clicks,
+    poolCredits,
+	otherCredits,
+    damageLimit,
+    tagLimit,
+    incomplete,
+	bonusBreaker,
+    startIceIdx,
+	rcOptions,
+  ) {
+	//use shared begin code
+	var data = this.CalculatePieceBegin({ server:server, clicks:clicks, poolCredits:poolCredits, otherCredits:otherCredits, damageLimit:damageLimit, tagLimit:tagLimit, incomplete:incomplete, bonusBreaker:bonusBreaker, startIceIdx:startIceIdx, rcOptions:rcOptions });
+	if (data.doInnerLoop) {
+	  var skip_counter=0;
+      while (data.todo.length > 0 && data.num_loops_left > 0) {
+		skip_counter++;
+		if (skip_counter % 10 == 0) await new Promise(resolve => setTimeout(resolve, 0));
+		//use shared middle code
+		this.CalculatePieceMiddle(data);
+      }
+    }
+	//use shared end code
+	this.CalculatePieceEnd(data);
+	//if incomplete path not found, try again permitting more tags
+	if (this.paths.length == 0 && incomplete && tagLimit != Infinity) {
+		var infiniteTagPath = await this.CalculateAsync(server,clicks,poolCredits,otherCredits,damageLimit,Infinity,true,bonusBreaker,startIceIdx);
+		if (infiniteTagPath.length > 0) return infiniteTagPath;
+		//failing that, permit damage (this may lose the game but should reduce chance of error)
+		return await this.CalculateAsync(server,clicks,poolCredits,otherCredits,Infinity,Infinity,true,bonusBreaker,startIceIdx);
+	}
+    return this.paths;
+  }
+
+  //modifies this.paths and also returns it
+  //set incomplete to true to return lowest cost exit strategy
+  //if incomplete is false, paths that include misc_serious effect will be ignored (careful! if no valid path is found, serious sr may fire).
+  //if incomplete is true, a non-empty, non-complete path is expected (i.e. will jack out or fire etr at earliest opportunity)
+  Calculate(
+    server,
+    clicks,
+    poolCredits,
+	otherCredits,
+    damageLimit,
+    tagLimit,
+    incomplete,
+	bonusBreaker,
+    startIceIdx,
+	rcOptions,
+  ) {
+	//use shared begin code
+	var data = this.CalculatePieceBegin({ server:server, clicks:clicks, poolCredits:poolCredits, otherCredits:otherCredits, damageLimit:damageLimit, tagLimit:tagLimit, incomplete:  incomplete, bonusBreaker:bonusBreaker, startIceIdx:startIceIdx, rcOptions:rcOptions });
+	if (data.doInnerLoop) {
+      while (data.todo.length > 0 && data.num_loops_left > 0) {
+		//use shared middle code
+		this.CalculatePieceMiddle(data);
+      }
+    }
+	//use shared end code
+	this.CalculatePieceEnd(data);
+	//if incomplete path not found, try again permitting more tags
 	if (this.paths.length == 0 && incomplete && tagLimit != Infinity) {
 		var infiniteTagPath = this.Calculate(server,clicks,poolCredits,otherCredits,damageLimit,Infinity,true,bonusBreaker,startIceIdx);
 		if (infiniteTagPath.length > 0) return infiniteTagPath;
 		//failing that, permit damage (this may lose the game but should reduce chance of error)
 		return this.Calculate(server,clicks,poolCredits,otherCredits,Infinity,Infinity,true,bonusBreaker,startIceIdx);
 	}
-
     return this.paths;
   }
 

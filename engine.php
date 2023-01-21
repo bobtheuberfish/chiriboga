@@ -78,7 +78,7 @@
 				<button id="editdeck" onclick="window.location.href='decklauncher.php';" class="button">Edit this deck</button>
 				<button id="randomdeck" onclick="window.location.href='decklauncher.php';" class="button">Edit new random deck</button>
 				<div style="float:right;" class="options">
-					<label for="narration"><input type="checkbox" id="narration">Narrate AI (experimental)</label>
+					<label for="narration"><input type="checkbox" id="narration">Narrate AI</label>
 				</div>
 				<p>Chiriboga implements the game <a href="https://nullsignal.games/about/netrunner/">Android: Netrunner</a> with an AI opponent. Source is <a href="https://github.com/bobtheuberfish/chiriboga">available on github</a>.</p>
 				<p>Includes all cards in Null Signal Games' <a href="https://nullsignal.games/products/system-gateway/">System Gateway</a> set. Card front art is the property of Null Signal Games.<br/>
