@@ -431,11 +431,23 @@ function Install(
 				else if (CheckCardType(installingCard, ["ice"]))
 				  outStr = "ice protecting " + CardServerName(installingCard, true);
 				Log(PlayerName(installingCard.player) + " installed " + outStr);
-				//if unique, old one is immediately and unpreventably trashed (except if facedown, and facedown cards don't count for check)
+				//if unique or a console, old one is immediately and unpreventably trashed (except if facedown, and facedown cards don't count for check)
 				if (
 				  typeof installingCard.unique !== "undefined" &&
 				  installingCard.faceUp
 				) {
+				  var cardToReplace = null;
+				  var replaceReason = "";
+				  if (CheckSubType(installingCard, "Console")) {
+					//console subtype
+					var cardlist = runner.rig.hardware; //assuming for now this is the only place you'll find a console (and chances are a hosted console is probably not installed)
+					for (var i = 0; i < cardlist.length; i++) {
+					  if (installingCard != cardlist[i] && CheckSubType(cardlist[i], "Console")) {
+						cardToReplace = cardlist[i];
+						replaceReason = "a console";
+					  }
+					}
+				  }
 				  if (installingCard.unique == true) {
 					var installedCards = InstalledCards(installingCard.player);
 					for (var i = 0; i < installedCards.length; i++) {
@@ -446,14 +458,18 @@ function Install(
 						if (
 						  GetTitle(installedCards[i]) == GetTitle(installingCard)
 						) {
-						  Log(
-							GetTitle(installingCard) +
-							  " is unique, the older copy will be unpreventably trashed."
-						  );
-						  Trash(installedCards[i], false);
+						  cardToReplace = installedCards[i];
+						  replaceReason = "unique";
 						}
 					  }
 					}
+				  }
+				  if (cardToReplace) {
+					Log(
+						GetTitle(installingCard) +
+						  " is "+replaceReason+", the older card will be unpreventably trashed."
+					);
+					Trash(cardToReplace, false);
 				  }
 				}
 				//install done, card becomes active

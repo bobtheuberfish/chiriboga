@@ -350,15 +350,6 @@ function CheckInstall(card) {
     return false;
   }
 
-  //check some special cases like limit 1 console per player
-  if (CheckSubType(card, "Console")) {
-    //console subtype
-    var cardlist = runner.rig.hardware; //assuming for now this is the only place you'll find a console (and chances are a hosted console is probably not installed)
-    for (var i = 0; i < cardlist.length; i++) {
-      if (CheckSubType(cardlist[i], "Console")) return false;
-    }
-  }
-
   LogDebug("Card can be installed");
   return true;
 }

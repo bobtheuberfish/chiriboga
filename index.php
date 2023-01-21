@@ -157,7 +157,8 @@
 		</style>
 	</head>
 	<?php
-	if ($dev) echo '<body onload="document.getElementById(\'dev-info\').innerHTML = \'Development version (cards up to \' + cardSet[cardSet.length-1].title + \')&emsp;&emsp;|&emsp;&emsp;\';">';
+	//if ($dev) echo '<body onload="document.getElementById(\'dev-info\').innerHTML = \'Development version (cards up to \' + cardSet[cardSet.length-1].title + \')&emsp;&emsp;|&emsp;&emsp;\';">';
+	if ($dev) echo '<body onload="document.getElementById(\'dev-info\').innerHTML = \'Development version&emsp;&emsp;|&emsp;&emsp;\';">';
 	else echo '<body>';
 	?>
 		<div class="header"><a href="engine.php?faceoff=true"><img class="header-contents" src="images/chiriboga_icon.png"><span class="header-contents">Chiriboga<span></a></div>
