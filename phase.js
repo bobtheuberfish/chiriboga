@@ -133,6 +133,7 @@ phaseTemplates.standardResponse = {
 			if (CheckApproach() && approachIce < attackedServer.ice.length) {
 				if (card == attackedServer.ice[approachIce]) validRezTypes.push("ice");
 			}
+			//check rezzability inc. costs
 			return FullCheckRez(card, validRezTypes);
 		});
         return ret;

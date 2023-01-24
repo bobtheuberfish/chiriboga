@@ -379,6 +379,17 @@ function ReproductionCode(full=false) {
   return ret;
 }
 
+//Helper for rendering auto-continue button
+function AutoContinueButtonStr() {
+	var boxChar = "☑";
+	if (!autoContinue) boxChar = "☐";
+	return "Auto skip "+boxChar;
+}
+function AutoContinueButtonHTML(showEvenIfOff=false) {
+	if ( (!autoContinue && !showEvenIfOff) || (runner.AI && corp.AI) || (specifiedMentor != "") ) return "";
+	return '<button style="font-size:80%; position:fixed; left:100%; top:-6px; height:67px;" id="autocontinue" title="Automatically continue" class="button autocontinue" onclick="autoContinue = !autoContinue; autoContinueTimer=0.0; $(\'#autocontinue\').html(AutoContinueButtonStr());">'+AutoContinueButtonStr()+'</button>';
+}
+
 // Function to download capturedlog to a file
 //source: https://stackoverflow.com/questions/13405129/javascript-create-and-save-file
 function DownloadCapturedLog() {
@@ -834,12 +845,19 @@ function OptionsAreOnlyUniqueServers() {
   if (validOptions.length < 1) return false;
   //maybe we can use click-to-choose servers - to do so all must have server set and each be unique
   var uniqueServers = [];
+  var numButtons = 0;
   for (var i = 0; i < validOptions.length; i++) {
-    if (typeof validOptions[i].button !== "undefined") continue; //nor relevant, rendered as a button
+    if (typeof validOptions[i].button !== "undefined") {
+		//not relevant, rendered as a button
+		numButtons++;
+		continue;
+	}
     if (typeof validOptions[i].server === "undefined") return false;
     if (uniqueServers.includes(validOptions[i].server)) return false;
     uniqueServers.push(validOptions[i].server);
   }
+  //don't use click-to-choose-server if all options are buttons (the buttons are there for a reason!)
+  if (numButtons == validOptions.length) return false;
   return true;
 }
 
@@ -992,6 +1010,7 @@ function PlayerWin(player, msgstr) {
     location.reload(); //restart game
   };
   ChangePhase(winPhase);
+  Render();
   SetHistoryThumbnail("", "Game Over");
   $("#history").children().first().css({ opacity: "1" });
   Log(msgstr);
@@ -1199,7 +1218,6 @@ function AccessCardList() {
 		//HQ: access 1 (+ effects) at random
 		Shuffle(corp.HQ.cards);
 		num = 1 + additional;
-		if (runner.AI != null) runner.AI.GainInfoAboutHQCards(ret); //an obvious limitation here is that the cards will be known before accessing all cards...slight cheat
 	  } else if (attackedServer == corp.RnD) num = 1 + additional; //RnD: access 1 (+ effects)
 	  //take into account accesses that have already happened
 	  num -= accessedCards.cards.length;
@@ -1227,6 +1245,8 @@ function AccessCardList() {
   for (var i = 0; i < ret.length; i++) {
     if (ret[i].renderer.zoomed) ret[i].renderer.ToggleZoom();
   }
+  //easiest way to handle AI learning from HQ multi-access is this - an obvious limitation here is that the cards will be known before accessing all cards...slight cheat
+  if (runner.AI != null && attackedServer == corp.HQ) runner.AI.GainInfoAboutHQCards(ret);
   return ret;
 }
 
@@ -2404,17 +2424,17 @@ function FullCheckPlay(card,requireActionPhase=true) {
  *
  * @method FullCheckRez
  * @param {Card} card to full check rez
- * @param {Card} requireCosts set false for "ignoring all costs"
+ * @param {String[]} validTypes rezzable types e.g. ["upgrade", "asset", "ice"]
  * @returns {boolean} true if can rez, false if not
  */
-function FullCheckRez(card,validTypes=["upgrade", "asset", "ice"],requireCosts=true) {
+function FullCheckRez(card,validTypes=["upgrade", "asset", "ice"]) {
   if (card.additionalRezCostForfeitAgenda && card.player.scoreArea.length < 1) return false; 
   if (CheckRez(card, validTypes)) {
     var currentRezCost = RezCost(card);
 	if (CheckCredits(corp, currentRezCost, "rezzing", card)) {
-	  if (typeof card.RezUsability == "function")
+	  //for usability, maybe not allowed to rez (here AI only, human check for this is in EnumeratePhase)
+	  if (activePlayer.AI && typeof card.RezUsability == "function")
 		return card.RezUsability.call(card);
-	  //for usability, maybe not allowed to rez
 	  else return true;
 	}
   }

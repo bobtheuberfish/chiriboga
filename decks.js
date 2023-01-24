@@ -545,6 +545,7 @@ var cardBackTexturesCorp = {};
 var cardBackTexturesRunner = {};
 var glowTextures = {};
 var strengthTextures = {};
+var specifiedMentor = URIParameter("mentor");
 function LoadDecks() {
   //Special variables to store card back textures and strength and install cost textures
   var knownTexture = cardRenderer.LoadTexture("images/known.png");
@@ -579,7 +580,6 @@ function LoadDecks() {
   };
 
   //run the intro tutorial, if specified
-  var specifiedMentor = URIParameter("mentor");
   if (specifiedMentor != "") { //later, more options?
     runner.identityCard = InstanceCard(
       specifiedMentor,

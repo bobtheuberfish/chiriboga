@@ -243,7 +243,7 @@ function ResolveClick(input) {
   if (
     typeof currentPhase.Resolve.draw == "function" &&
     activePlayer == viewingPlayer &&
-    renderer !== null
+    renderer
   ) {
     if (
       (activePlayer == corp &&
@@ -355,12 +355,11 @@ function ResolveClick(input) {
   }
 
   if (relevantOptions.length > 0) {
-    //choices narrowed but check for hosts
     //if it is the only valid option with this .card or .host or .server, ResolveChoice
     if (relevantOptions.length == 1) ResolveChoice(latestRelevantIndex);
-    //otherwise > 1, need to choose from only those options
+    //otherwise > 1, need to choose from only those options (e.g. hosts)
     else {
-      //determine the closest potential host
+      //determine whether selection can be made by closest potential host
       var closestOption = 0; //index in relevantOptions, not validOptions
       for (var i = 0; i < relevantOptions.length; i++) {
         //no host? need to manually select (by button)
@@ -382,8 +381,49 @@ function ResolveClick(input) {
 					uniqueCommands.push(relevantOptions[j].command);
 				}
 			}
-			//this will also recreate phaseOptions with only these options
+			//if possible, use *Usability to narrow choices (if all options have card defined, the same card, and commands - 1 Usability are defined and false)
+			//otherwise, recreate phaseOptions with only these options
 			if (uniqueChecked) {
+				//check for unique card
+				var uniqueCard = null;
+				for (var j=0; j<relevantOptions.length; j++) {
+					if (relevantOptions[j].card) {
+						if (uniqueCard) {
+							if (uniqueCard != relevantOptions[j].card) {
+								//more than one .card defined i.e. not unique
+								uniqueCard = null;
+								break;
+							}
+						} else uniqueCard = relevantOptions[j].card;
+					} else {
+						//at least one option does not have .card i.e. there can be no unique card
+						uniqueCard = null;
+						break;
+					}
+				}
+				if (uniqueCard) {
+					//check usabilities
+					var numberOfOptionsWithUsabilityFalse = 0;
+					for (var j=0; j<relevantOptions.length; j++) {
+						var cmd = relevantOptions[j].command;
+						var usabilityFunc = cmd[0].toUpperCase()+cmd.substring(1)+'Usability';
+						relevantOptions[j].usability = true;
+						if (typeof uniqueCard[usabilityFunc] == 'function') {
+							relevantOptions[j].usability = uniqueCard[usabilityFunc].call(uniqueCard);
+							if (!relevantOptions[j].usability) numberOfOptionsWithUsabilityFalse++;
+						}
+					}
+					//autoresolve based on usability, if relevant
+					if (numberOfOptionsWithUsabilityFalse == uniqueCommands.length - 1) {
+						for (var j=0; j<relevantOptions.length; j++) {
+							if (relevantOptions[j].usability) {
+								ResolveChoice(validOptions.indexOf(relevantOptions[j]));
+								return true; //returning true prevents any remaining code in renderer.OnClick() from firing
+							}
+						}
+					}
+				}
+				//recreate phaseOptions
 				phaseOptions = [];
 				for (var j=0; j<relevantOptions.length; j++) {
 					var cmd = relevantOptions[j].command;
@@ -531,6 +571,8 @@ function EnumeratePhase() {
     AddHistoryBreakIfRequired(currentPhase.deferredHistoryBreak);
     currentPhase.deferredHistoryBreak = null;
   }
+  var totalNumberOfOptions = 0;
+  var numberOfOptionsWithUsabilityFalse = 0;
   for (var id in currentPhase.Resolve) {
     if (typeof currentPhase.Resolve[id] === "function") {
 	  var actionPermitted = true;
@@ -546,17 +588,36 @@ function EnumeratePhase() {
           //if it has an inbuilt check
           if (typeof currentPhase.Enumerate[id] === "function") {
             LogDebug("Enumerating " + id);
+			var usabilityFunc = id[0].toUpperCase()+id.substring(1)+'Usability';
             phaseOptions[id] = currentPhase.Enumerate[id].call(currentPhase);
-			//label with command in case we need to distinguish later
+			//special processing for each option
 			for (var j=0; j<phaseOptions[id].length; j++) {
+				//label with command in case we need to distinguish later
 				phaseOptions[id][j].command=id;
+				//check any usability preclusion (stricter than rules)
+				if (typeof phaseOptions[id][j].card != 'undefined' && phaseOptions[id][j].card != null) {
+					if (typeof phaseOptions[id][j].card[usabilityFunc] == "function") {
+						if (!phaseOptions[id][j].card[usabilityFunc].call(phaseOptions[id][j].card)) numberOfOptionsWithUsabilityFalse++;
+					}
+				}
 			}
           }
         }
+		totalNumberOfOptions += phaseOptions[id].length;
 	  }
     }
   }
 
+  //special case for human player usability (stricter than rules, although allow the option anyway if there are already options)
+  //if the only available actions are precluded by usability functions, assume continue
+  //(usability checks also help the AI but only rez for now; the check for AI is done in FullCheckRez)
+  if (activePlayer.AI == null) {
+	  if (numberOfOptionsWithUsabilityFalse > 0 && totalNumberOfOptions == numberOfOptionsWithUsabilityFalse+1 && typeof phaseOptions.n != 'undefined' && phaseOptions.n.length == 1) {
+		console.log("All options have usability false, skipping phase");
+		phaseOptions = { n:[{}] };
+	  }
+  }
+  
   //some actions need no button (human control only)
   var noButton = [];
   if (activePlayer.AI == null) {
@@ -598,6 +659,7 @@ function EnumeratePhase() {
   var optionList = [];
   var comstr = "";
   var footerHtml = "";
+  var buttoned = [];
   for (var id in phaseOptions) {
     if (phaseOptions[id].length > 0) {
       comstr += id + " ";
@@ -608,8 +670,9 @@ function EnumeratePhase() {
         }
       }
       if (!noButton.includes(id)) {
+	    buttoned.push(id);
         footerHtml +=
-          '<button class="button" onclick="ExecuteChosen(\'' +
+          '<button id="footerbutton-'+id+'" class="button" onclick="ExecuteChosen(\'' +
           id +
           "');\"" +
           titleText +
@@ -620,6 +683,13 @@ function EnumeratePhase() {
       optionList.push(id);
     }
   }
+  //if the only button is 'Continue' but there are other non-button options, include auto-continue option
+  if (buttoned.length == 1 && buttoned.includes("n") && totalNumberOfOptions > 1) {
+	  footerHtml += AutoContinueButtonHTML(true); //true means show even if auto is off
+	  //and the timer bar
+	  footerHtml = '<div id="timerbar" style="background-color:#f1f1f1; width:0%; height:3px; position:fixed; top:0px; left:0px;"></div>' + footerHtml;
+  }
+  //render footer
   if (activePlayer.AI == null) {
     //active player is human-controlled
     LogDebug("Available commands: " + comstr);
@@ -627,7 +697,8 @@ function EnumeratePhase() {
     $("#footer").show();
   }
   else {
-	  $("#footer").html("<h2>Thinking...</h2>");
+	  //AutoContinueButtonHTML will be blank if both players are AI
+	  $("#footer").html("<h2>Thinking...</h2>"+AutoContinueButtonHTML());
 	  $("#footer h2").hide().fadeIn(400);
 	  $("#footer").show();
   }
@@ -790,6 +861,9 @@ function MakeChoice() {
   if (footerHtml != "") $("#footer").html(footerHtml);
 
   //return before rendering modal if it's not required
+
+  //only buttons? then we're done.
+  if (nonButtonOptions.length == 0) return; //skip render of modal
 
   //only a list of unique servers/subroutines? choose by click!
   if (OptionsAreOnlyUniqueServers()) return; //skip render of modal
