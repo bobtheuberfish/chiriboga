@@ -59,6 +59,11 @@ var pauseFaceoff = false;
 //for rewind
 var rewinding = false;
 var rewindStates = [];
+//for auto-skip paid ability windows
+var autoContinue = false;
+var autoContinueLimit = 1.0;
+var autoContinueTimer = 0.0;
+
 
 //INITIALISATION
 // Performs the initialisation of game state. Contains the main loop for command mode (user interaction).
@@ -1549,7 +1554,10 @@ function ExecuteChosen(chosenCommand) {
 	  }
     }
 
-    $("#footer").html("<h2>" + footerText + "</h2>");
+	var autoContinueToggleButton = '';
+	//include 'auto' toggle during player downtime
+	if (footerText == "") autoContinueToggleButton = AutoContinueButtonHTML();
+    $("#footer").html("<h2>" + footerText + "</h2>" + autoContinueToggleButton);
 
     Execute(chosenCommand);
 

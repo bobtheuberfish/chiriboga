@@ -1491,13 +1491,14 @@ cardSet[30018] = {
     availableWhenInactive: true,
   },
   runSuccessful: {
-    Resolve: function () {
-      if (this.runningWithThis) {
+	Enumerate: function() {
+		if (this.runningWithThis) return [{}];
+		return [];
+	},
+    Resolve: function (params) {
         if (CheckCounters(this, "credits", 3)) TakeCredits(runner, this, 3); //won't happen with less than 3 because it doesn't say 'take *up to* ...'
         if (!CheckCounters(this, "credits", 1)) Trash(this);
-      }
-    },
-    automatic: true,
+    }
   },
   //Rulings: "Red Team cares about the server the Runner declared to be the attacked server at the beginning of the run."
   runBegins: {
@@ -4082,7 +4083,8 @@ cardSet[30053] = {
     }
     return -1; //don't install
   },
-  RezUsability: function () {
+  //shared usability returns true for both rez and trigger (in this case - this is internal to Spin Doctor implementation)
+  SharedUsability: function() {
     if (currentPhase.identifier == "Run 4.5" && approachIce < 1) {
       if (attackedServer == GetServer(this)) return true;
       if (attackedServer == corp.RnD) return true; //since we might want to shuffle R&D
@@ -4090,13 +4092,21 @@ cardSet[30053] = {
       if (attackedServer == corp.archives && corp.archives.cards.length > 0)
         return true; //since we might want to remove cards from archives
     }
-    if (CheckActionClicks(corp, 1)) return true; //might want to rez for the extra card draw
-	else if (corp.AI != null) { //so might the AI
+    if (currentPhase.identifier == "Corp 2.2") return true; //might want to rez for the extra card draw (and therefore we allow trigger here too)
+	return false;
+  },
+  RezUsability: function () {
+	if (this.SharedUsability()) return true;
+	//this next check allows the AI to rez for extra card draw (its phases are split into 2.2 and 2.2*)
+	if (corp.AI != null) {
 		if (typeof(this.AITurnsInstalled) !== 'undefined') {
 			if ( CheckClicks(corp, 1) && (this.AITurnsInstalled > 1) ) return true;
 		}
 	}
     return false;
+  },
+  TriggerUsability: function() {
+	  return this.SharedUsability();
   },
   AITriggerWhenCan: true,
   AIAvoidInstallingOverThis: true,
@@ -5040,9 +5050,9 @@ cardSet[30071] = {
     },
   ],
   RezUsability: function () {
-    //only rez if there will be clicks to use it
-    if (CheckClicks(corp, 1)) return true;
-    return false;
+    //only rez if there will be clicks to use it (for convenience this excludes first start-of-turn window)
+	if ( currentPhase.identifier.substring(0,6) != "Corp 2" || !CheckClicks(corp, 1) ) return false;
+    return true;
   },
   //**AI code for installing (return -1 to not install, index in emptyProtectedRemotes to install in a specific server, or emptyProtectedRemotes.length to install in a new server)
   AIWorthInstalling: function (emptyProtectedRemotes) {

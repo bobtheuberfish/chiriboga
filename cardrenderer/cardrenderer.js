@@ -1481,7 +1481,7 @@ var CardRenderer = {
 
       this.showFPS = false;
       this.framerates = []; //to calculate a periodic average
-      //key event to toggle fps display and faceoff AI
+      //key events to toggle fps display and faceoff AI, and as shortcut for continue
       window.addEventListener(
         "keydown",
         function (event) {
@@ -1493,6 +1493,9 @@ var CardRenderer = {
 		  else if (event.key == "g" && corp.AI && runner.AI) {
 			pauseFaceoff = !pauseFaceoff;
 			if (!pauseFaceoff) Main();
+		  }
+		  else if (event.key == "Enter") {
+			  $('#footerbutton-n').click();
 		  }
         },
         false
@@ -1695,6 +1698,24 @@ var CardRenderer = {
 		
 		//update counter rotations each frame (but not text, the true here skips that)
 		this.UpdateCounters(true); //doing this every frame might cost us a millisecond or so, that's worth it
+		
+		//update auto-continue timer (and proc, if appropriate)
+		if ($('#timerbar').is(":visible")) {
+			if (autoContinue) autoContinueTimer += PIXI.ticker.shared.elapsedMS / 1000.0;
+			var timeLineLength = 100.0*autoContinueTimer/autoContinueLimit;
+			var procTimer = false;
+			if (timeLineLength > 100) {
+				timeLineLength = 100;
+				procTimer = true;
+			}
+			$('#timerbar').css('width',timeLineLength+'%');
+			if (procTimer) {
+				$('#timerbar').hide();
+				autoContinueTimer = 0.0;
+				$('#footerbutton-n').click();
+			}
+		}
+		
       }, this);
 
       //a special particle trail that travels between breakers and encountered ice

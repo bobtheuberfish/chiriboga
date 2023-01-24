@@ -4267,11 +4267,10 @@ cardSet[31051] = {
     {
       text: "Do 1 net damage.",
       Enumerate: function () {
+		//checking attackedServer is equivalent to 'during a run'
 		if (attackedServer) {
 			if (!this.usedThisRun) {
 				if (CheckCounters(this, "agenda", 1)) {
-					//for usability we will only use this on approach
-					if (currentPhase.identifier != "Run 4.5" || approachIce > 0) return [];
 					//**AI code
 					if (corp.AI) {
 						//only on approach to server (4e) and if runner would breach, for maximum effect
@@ -4396,7 +4395,8 @@ cardSet[31053] = {
   RezUsability: function () {
 	//only when could use the ability
 	if (!CheckCounters(this, "advancement", 4)) return false;
-	if (!CheckClicks(corp, 1)) return false;
+    //only rez if there will be clicks to use it (for convenience this excludes first start-of-turn window)
+	if ( currentPhase.identifier.substring(0,6) != "Corp 2" || !CheckClicks(corp, 1) ) return false;
 	return true;
   },
   AITriggerWhenCan: true,
@@ -5199,7 +5199,8 @@ cardSet[31064] = {
   RezUsability: function () {
 	//only when could use the ability
 	if (!CheckCounters(this, "advancement", 1)) return false; //for usability
-	if (!CheckClicks(corp, 1)) return false;
+    //only rez if there will be clicks to use it (for convenience this excludes first start-of-turn window)
+	if ( currentPhase.identifier.substring(0,6) != "Corp 2" || !CheckClicks(corp, 1) ) return false;
 	//**AI code
 	if (corp.AI) {
 		//only if the Runner would actually lose a bunch of credits from this (otherwise better to have the Runner trash it)
