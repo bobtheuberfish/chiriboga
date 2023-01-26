@@ -209,6 +209,7 @@ cardSet[30004] = {
   },
   runnerTurnBegin: {
     Resolve: function () {
+console.log(this.host);
       AddCounters(this, "virus", 1);
     },
     automatic: true, //for usability, this is not strict implementation
