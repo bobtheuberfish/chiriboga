@@ -800,130 +800,135 @@ cardSet[31014] = {
   cardType: "identity",
   deckSize: 45,
   influenceLimit: 15,
-  madesSuccessfulRunOnHQThisTurn: false,
+  madeSuccessfulRunOnHQThisTurn: false,
+  thisRunOnHQWasSuccessful: false,
   runnerTurnBegin: {
     Resolve: function () {
-      this.madesSuccessfulRunOnHQThisTurn = false;
+      this.madeSuccessfulRunOnHQThisTurn = false;
     },
     automatic: true,
   },
   corpTurnBegin: {
     Resolve: function () {
-      this.madesSuccessfulRunOnHQThisTurn = false;
+      this.madeSuccessfulRunOnHQThisTurn = false;
     },
     automatic: true,
   },
   //The first time each turn you make a successful run on HQ, you may choose 2 cards in your heap. If you do, the Corp removes 1 of those cards from the game, then you add the other card to your grip.
-  //(note that the "first time" would be proc'd even if Steve isn't active
+  //The weird use of three callbacks here is because updating madeSuccessfulRunOnHQThisTurn is conditionless but the other is a conditional ability
+  declaredSuccessful: {
+    Resolve: function (server) {
+      if (server==corp.HQ && !this.madeSuccessfulRunOnHQThisTurn) {
+		  this.madeSuccessfulRunOnHQThisTurn=true;
+		  this.thisRunOnHQWasSuccessful=true;
+	  }
+    },
+    availableWhenInactive: true,
+    automatic: true,
+  },
+  runBegins: {
+    Resolve: function () {
+       this.thisRunOnHQWasSuccessful=false;
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
   runSuccessful: {
     Enumerate() {
-		if (!this.madesSuccessfulRunOnHQThisTurn) {
-			if (attackedServer==corp.HQ) {
-				if (CheckActive(this)) {
-					var choices = ChoicesArrayCards(runner.heap);
-					if (choices.length < 2) return [];
-					var continueChoice = {
-					  id: choices.length,
-					  label: "Continue without choosing",
-					  button: "Continue without choosing",
-					};
-					//**AI code (in this case, implemented by setting and returning the preferred option)
-					if (runner.AI != null) {
-					  //first, check for cards in heap worth keeping
-					  var ctcf = runner.AI._cardsWorthKeeping(runner.heap); //cards to choose from
-					  //not enough important cards? (ignore single cwk because corp chooses)
-					  if (ctcf.length < 2) {
-						  ctcf = [];
-						  for (var i=0; i<choices.length; i++) {
-							  ctcf.push(choices[i].card);
+		if (this.thisRunOnHQWasSuccessful) {
+			var choices = ChoicesArrayCards(runner.heap);
+			if (choices.length < 2) return [];
+			var continueChoice = {
+			  id: choices.length,
+			  label: "Continue without choosing",
+			  button: "Continue without choosing",
+			};
+			//**AI code (in this case, implemented by setting and returning the preferred option)
+			if (runner.AI != null) {
+			  //first, check for cards in heap worth keeping
+			  var ctcf = runner.AI._cardsWorthKeeping(runner.heap); //cards to choose from
+			  //not enough important cards? (ignore single cwk because corp chooses)
+			  if (ctcf.length < 2) {
+				  ctcf = [];
+				  for (var i=0; i<choices.length; i++) {
+					  ctcf.push(choices[i].card);
+				  }
+			  }
+			  //if two have the same name, return those
+			  for (var i=0; i<ctcf.length-1; i++) {
+				  for (var j=i+1; j<ctcf.length; j++) {
+					  if (ctcf[i].title == ctcf[j].title) return [{ cards: [ ctcf[i], ctcf[j]] }];
+				  }
+			  }
+			  //if two share a subtype, return those
+			  for (var i=0; i<ctcf.length-1; i++) {
+				  if (typeof ctcf[i].subTypes != 'undefined') {
+					  for (var j=i+1; j<ctcf.length; j++) {
+						  if (typeof ctcf[j].subTypes != 'undefined') {
+							if (ctcf[i].subTypes.some(item => ctcf[j].subTypes.includes(item))) return [{ cards: [ ctcf[i], ctcf[j]] }];
 						  }
 					  }
-					  //if two have the same name, return those
-					  for (var i=0; i<ctcf.length-1; i++) {
-						  for (var j=i+1; j<ctcf.length; j++) {
-							  if (ctcf[i].title == ctcf[j].title) return [{ cards: [ ctcf[i], ctcf[j]] }];
-						  }
-					  }
-					  //if two share a subtype, return those
-					  for (var i=0; i<ctcf.length-1; i++) {
-						  if (typeof ctcf[i].subTypes != 'undefined') {
-							  for (var j=i+1; j<ctcf.length; j++) {
-								  if (typeof ctcf[j].subTypes != 'undefined') {
-									if (ctcf[i].subTypes.some(item => ctcf[j].subTypes.includes(item))) return [{ cards: [ ctcf[i], ctcf[j]] }];
-								  }
-							  }
-						  }
-					  }
-					  //if two cards share a cost (install/play), return those
-					  for (var i=0; i<ctcf.length-1; i++) {
-						  var costA = 0;
-						  if (typeof ctcf[i].installCost != 'undefined') costA = InstallCost(ctcf[i]);
-						  else if (typeof ctcf[i].playCost != 'undefined') costA = ctcf[i].playCost; //should probably use PlayCost but not implemented yet
-						  for (var j=i+1; j<ctcf.length; j++) {
-							  var costB = 0;
-							  if (typeof ctcf[j].installCost != 'undefined') costB = InstallCost(ctcf[j]);
-							  else if (typeof ctcf[j].playCost != 'undefined') costB = ctcf[j].playCost; //should probably use PlayCost but not implemented yet
-							  if (costA == costB) return [{ cards: [ ctcf[i], ctcf[j]] }];
-						  }
-					  }
-					  //random from ctcf
-					  var cardAIdx = RandomRange(0, ctcf.length - 1);
-					  var cardA = ctcf.splice(cardAIdx,1)[0];
-					  var cardB = ctcf[RandomRange(0, ctcf.length - 1)];
-					  return [{ cards: [ cardA, cardB] }];
-					  //is there any reason not to proc Steve?
-					  //return continueChoice;
-					}
-					//not AI? set up for human choice (multi-choice)
-					for (var i = 0; i < choices.length; i++) {
-					  choices[i].cards = [null, null];
-					}
-					choices.push(continueChoice); // include a button to continue without swapping
-					return choices;
-				}
+				  }
+			  }
+			  //if two cards share a cost (install/play), return those
+			  for (var i=0; i<ctcf.length-1; i++) {
+				  var costA = 0;
+				  if (typeof ctcf[i].installCost != 'undefined') costA = InstallCost(ctcf[i]);
+				  else if (typeof ctcf[i].playCost != 'undefined') costA = ctcf[i].playCost; //should probably use PlayCost but not implemented yet
+				  for (var j=i+1; j<ctcf.length; j++) {
+					  var costB = 0;
+					  if (typeof ctcf[j].installCost != 'undefined') costB = InstallCost(ctcf[j]);
+					  else if (typeof ctcf[j].playCost != 'undefined') costB = ctcf[j].playCost; //should probably use PlayCost but not implemented yet
+					  if (costA == costB) return [{ cards: [ ctcf[i], ctcf[j]] }];
+				  }
+			  }
+			  //random from ctcf
+			  var cardAIdx = RandomRange(0, ctcf.length - 1);
+			  var cardA = ctcf.splice(cardAIdx,1)[0];
+			  var cardB = ctcf[RandomRange(0, ctcf.length - 1)];
+			  return [{ cards: [ cardA, cardB] }];
+			  //is there any reason not to proc Steve?
+			  //return continueChoice;
 			}
+			//not AI? set up for human choice (multi-choice)
+			for (var i = 0; i < choices.length; i++) {
+			  choices[i].cards = [null, null];
+			}
+			choices.push(continueChoice); // include a button to continue without swapping
+			return choices;
 		}
       return []; //no valid options to use this ability
     },
     Resolve: function (params) {
-		//if it is the first successful run on HQ then update the variable regardless of whether there were valid options to use the ability
-		if (!this.madesSuccessfulRunOnHQThisTurn) {
-			if (attackedServer==corp.HQ) {
-				this.madesSuccessfulRunOnHQThisTurn=true;
-				if (CheckActive(this)) {
-					if (typeof params.cards != 'undefined') {
-						//two were chosen, pseudophase for corp to choose one to RFG
-						var choices = ChoicesArrayCards(params.cards);
-						choices[0].otherCard = choices[1].card;
-						choices[1].otherCard = choices[0].card;
-						function decisionCallback(corpParams) {
-							RemoveFromGame(corpParams.card);
-							MoveCard(corpParams.otherCard, runner.grip);
-							Log(GetTitle(corpParams.otherCard) + " added to grip");
-						}
-						var pseudophaseTitle = "Steve Cambridge: Remove from game";
-						DecisionPhase(
-						  corp,
-						  choices,
-						  decisionCallback,
-						  pseudophaseTitle,
-						  pseudophaseTitle,
-						  this
-						);
-						//**AI code
-						if (corp.AI != null) {
-						  corp.AI._log("I know this one");
-						  //for now, just random. In theory could use corp.AI._rankedThreats or something like it
-						  //but we don't totally know what the Runner's motivations are, so random is less manipulatable
-						  var choice = choices[RandomRange(0,1)];
-						  corp.AI.preferred = { title: pseudophaseTitle, option: choice };
-						}
-					}
-				}
+		if (typeof params.cards != 'undefined') {
+			//two were chosen, pseudophase for corp to choose one to RFG
+			var choices = ChoicesArrayCards(params.cards);
+			choices[0].otherCard = choices[1].card;
+			choices[1].otherCard = choices[0].card;
+			function decisionCallback(corpParams) {
+				RemoveFromGame(corpParams.card);
+				MoveCard(corpParams.otherCard, runner.grip);
+				Log(GetTitle(corpParams.otherCard) + " added to grip");
+			}
+			var pseudophaseTitle = "Steve Cambridge: Remove from game";
+			DecisionPhase(
+			  corp,
+			  choices,
+			  decisionCallback,
+			  pseudophaseTitle,
+			  pseudophaseTitle,
+			  this
+			);
+			//**AI code
+			if (corp.AI != null) {
+			  corp.AI._log("I know this one");
+			  //for now, just random. In theory could use corp.AI._rankedThreats or something like it
+			  //but we don't totally know what the Runner's motivations are, so random is less manipulatable
+			  var choice = choices[RandomRange(0,1)];
+			  corp.AI.preferred = { title: pseudophaseTitle, option: choice };
 			}
 		}
     },
-    availableWhenInactive: true,
 	text: "Steve Cambridge: Choose 2 cards in heap",
   },
 };

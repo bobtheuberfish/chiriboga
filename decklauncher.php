@@ -37,10 +37,32 @@
 		?>
 		<script>
 			var json = {};
+			var opponentdeckstr = "";
+			var opponentdeckimg = "";
 			var uid = 0;
 
+			function IdentityImageFromDeckString(compressed) {
+				var oppjson = JSON.parse(
+				  LZString.decompressFromEncodedURIComponent(compressed)
+				);
+				opponentdeckimg = "images/"+cardSet[oppjson.identity].imageFile;
+			}
+
 			var deckPlayer = corp;
-			if (URIParameter("r") !== "") deckPlayer = runner;
+			if (URIParameter("r") !== "" && URIParameter("p") !== "c") {
+				deckPlayer = runner;
+				var uric = URIParameter("c");
+				if (uric) {
+					opponentdeckstr = "c="+uric+"&";
+					IdentityImageFromDeckString(uric);
+				}					
+			} else {
+				var urir = URIParameter("r")
+				if (urir) {
+					opponentdeckstr = "r="+urir+"&";
+					IdentityImageFromDeckString(urir);
+				}
+			}
 
 			//generate available titles
 			var titles = [];
@@ -88,9 +110,12 @@
 			  return justTheWord;
 			}
 
-			if (deckPlayer == corp) dC = "c";
-			//deckchar is c for corp
-			else dC = "r"; //deckchar is r for runner
+			var dC = "r"; //deckchar is r for runner
+			var oC = "c"; //opponentchar is c for corp
+			if (deckPlayer == corp) {
+				dC = "c"; //deckchar is c for corp
+				oC = "r"; //opponentchar is r for runner
+			}
 			var setStr = "";
 			if (URIParameter("sets") !== "") setStr = "sets="+URIParameter("sets")+"&";
 
@@ -107,12 +132,14 @@
 			  //console.log(json);
 			  var string = JSON.stringify(json);
 			  var compressed = LZString.compressToEncodedURIComponent(string);
-			  var launchAddress = "engine.php?" + setStr + dC + "=" + compressed;
+			  var launchAddress = "engine.php?p=" + dC + "&" + setStr + opponentdeckstr + dC + "=" + compressed;
+			  var opponentAddress = "decklauncher.php?p=" + oC + "&" + setStr + oC + "=random&" + dC + "=" + compressed;
 			  $("#launch").prop("href", launchAddress);
+			  $("#opponent").prop("href", opponentAddress);
 			  history.replaceState(
 				null,
 				"Chiriboga",
-				"decklauncher.php?" + setStr + dC + "=" + compressed
+				"decklauncher.php?" + setStr + opponentdeckstr + dC + "=" + compressed
 			  );
 			}
 
@@ -486,8 +513,10 @@
 				$("#output").html(validityOutput);
 				$("#launch").prop("disabled", false);
 			  }
-			  $("#launch").html("Launch");
+			  $("#launch").html("Play using this deck");
 			  UpdateLaunchStrings();
+			  //update opponent image
+			  if (opponentdeckimg != "") $("#opponentid").html('Opponent: <img src="'+opponentdeckimg+'"/>');
 			}
 			
 			//function for testing and debugging
@@ -527,6 +556,10 @@
 			}
 			
 			.button {
+			  padding: 15px;
+			}
+			
+			.leftrow.buttons {
 				margin-bottom: -15px;
 			}
 			
@@ -542,7 +575,7 @@
 				padding-top:30px;
 			}
 			
-			#output {
+			.rightpart {
 				display:inline-block;
 				vertical-align:top;
 				width:160px;
@@ -552,6 +585,17 @@
 			.ui-widget-content {
 				background: #113;
 			}
+			
+			#opponentid {
+				margin-top: 20px;
+			}
+			
+			#opponentid img {
+				width: 50px;
+				margin: 0px;
+				vertical-align: middle;
+			}
+			
 		</style>
 	</head>
 
@@ -562,13 +606,17 @@
 				<div class="leftrow toprow">
 					<select id="identityselect" style="max-width: 340px;"></select>
 					<img id="identity" src="images/glow_outline.png">
-					<div id="output">
+					<div class="rightpart">
+						<div id="output">
+						</div>
+						<div id="opponentid"></div>
 					</div>
 				</div>
-				<div class="leftrow">
+				<div class="leftrow buttons">
 					<button id="exittomenu" onclick="window.location.href='index.php';" class="button">Exit</button>
-					<button id="randomise" onclick="$('#identityselect').change();" class="button">Random</button>
-					<button id="launch" class="button" onclick="window.location.href=$(this).prop('href');">Launch</button>
+					<button id="launch" class="button" onclick="window.location.href=$(this).prop('href');">Play using this deck</button>
+					<button id="randomise" onclick="$('#identityselect').change();" class="button">Randomise</button>
+					<button id="opponent" class="button" onclick="window.location.href=$(this).prop('href');">Set as opponent</button>
 				</div>
 				<div class="leftrow toprow">
 					<textarea id="deck" spellcheck="false" cols="30" style="max-width:340px; min-width:340px;"></textarea><br/>

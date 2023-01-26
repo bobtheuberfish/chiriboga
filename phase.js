@@ -416,6 +416,8 @@ phaseTemplates.globalTriggers = {
 	  if (modifySuccess == 0) {
 		  //now declare successful
 		  Log("Run successful");
+		  //and fire the pre-phase succesful automatics
+		  AutomaticTriggers("declaredSuccessful", attackedServer);
 	  }
 	  else currentPhase.buildTriggerList = false;
       //store a little extra info to help AIs with decisionmaking

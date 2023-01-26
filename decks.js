@@ -66,6 +66,7 @@
  .approachServer //called when approaching the server (before runner decides whether to continue the run)
  .modifyDeclareSuccess //called before ifWouldDeclareSuccess (return 1 to prevent, 0 to allow normal success declaration)
  .ifWouldDeclareSuccess //called before declaring successful run (currently treats all as automatic, and not called if run is not able to declared successful)
+ .declaredSuccessful //called with input (server) before .runSuccessful (and unlike runSuccessful, treats all as automatic)
  .runSuccessful //called before breaching the server
  .insteadOfBreaching //called after runSuccessful, will replace breaching server (return choices with required:true to prevent Breach option appearing)
  .breachServer //called before accessing cards, return an int modifier e.g. -1, 0, 1 to access more or less cards (currently treats all as automatic)
@@ -670,9 +671,11 @@ function LoadDecks() {
     var compressedDeckString = LZString.compressToEncodedURIComponent(
       JSON.stringify(deckJson)
     );
+	var opponentDeckString = "";
+	if (URIParameter("c")) opponentDeckString = "c="+URIParameter("c")+"&";
     $("#editdeck").attr(
       "onclick",
-      "window.location.href='decklauncher.php?"+setStr+"r=" + compressedDeckString + "';"
+      "window.location.href='decklauncher.php?p=r&"+setStr+opponentDeckString+"r=" + compressedDeckString + "';"
     );
   }
   PrintDeck(runner.identityCard, runner.stack);
@@ -742,9 +745,11 @@ function LoadDecks() {
     var compressedDeckString = LZString.compressToEncodedURIComponent(
       JSON.stringify(deckJson)
     );
+	var opponentDeckString = "";
+	if (URIParameter("r")) opponentDeckString = "r="+URIParameter("r")+"&";
     $("#editdeck").attr(
       "onclick",
-      "window.location.href='decklauncher.php?"+setStr+"c=" + compressedDeckString + "';"
+      "window.location.href='decklauncher.php?p=c&"+setStr+opponentDeckString+"c=" + compressedDeckString + "';"
     );
   }
   PrintDeck(corp.identityCard, corp.RnD.cards);
