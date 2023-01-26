@@ -1421,7 +1421,8 @@ function MoveCardTriggers(card, locationfrom, locationto) {
 		  }
 	  }
     }
-	//if new location is a card, set .host
+	//by default, deset host. if new location is a card, set .host
+	if (card.host) card.host = null; //note we don't delete it, .host might be used by card implementation
 	//for now, this assumes hosts can only be installed cards
 	var installedCards = InstalledCards();
 	for (var i=0; i<installedCards.length; i++) {

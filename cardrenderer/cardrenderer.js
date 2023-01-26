@@ -1993,7 +1993,7 @@ var CardRenderer = {
 					if (src.chosenCard) {
 						//positioning assumes ice for now		
 						this.app.ticker.add(function (delta) {
-							if (this.target && this.transform) {
+							if (this.target && this.target.transform && this.transform) {
 								this.rotation = -this.target.rotation;
 							}
 							//acount for the strange pivot (I don't know why it's 30)
@@ -2256,6 +2256,7 @@ function pixi_playThreshold(cardToPlay) {
       return pixi_SqDistToPile(pile, cardToPlay.card.player) < 50000; //arbitrary to feel right
     } else if (
       activePlayer == corp &&
+	  typeof phaseOptions.draw != 'undefined' &&
       cardToPlay.card == corp.RnD.cards[corp.RnD.cards.length - 1]
     ) {
       //corp drawing card
@@ -2263,6 +2264,7 @@ function pixi_playThreshold(cardToPlay) {
     }
     if (
       activePlayer == runner &&
+	  typeof phaseOptions.draw != 'undefined' &&
       cardToPlay.card == runner.stack[runner.stack.length - 1]
     ) {
       //runner drawing card
