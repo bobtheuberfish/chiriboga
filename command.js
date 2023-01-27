@@ -698,7 +698,7 @@ function EnumeratePhase() {
   }
   else {
 	  //AutoContinueButtonHTML will be blank if both players are AI
-	  $("#footer").html("<h2>Thinking...</h2>"+AutoContinueButtonHTML());
+	  $("#footer").html('<h2 id="thinking">Thinking</h2>'+AutoContinueButtonHTML());
 	  $("#footer h2").hide().fadeIn(400);
 	  $("#footer").show();
   }

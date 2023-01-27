@@ -63,7 +63,8 @@ var rewindStates = [];
 var autoContinue = false;
 var autoContinueLimit = 1.0;
 var autoContinueTimer = 0.0;
-
+//animate the thinking text to be clear the game isn't frozen
+setInterval(function () { var tstr=$('#thinking').html(); if (tstr) { if (tstr.length < 11) $('#thinking').append("."); else $('#thinking').html("Thinking"); } }, 1000);
 
 //INITIALISATION
 // Performs the initialisation of game state. Contains the main loop for command mode (user interaction).

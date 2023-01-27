@@ -1245,8 +1245,6 @@ function AccessCardList() {
   for (var i = 0; i < ret.length; i++) {
     if (ret[i].renderer.zoomed) ret[i].renderer.ToggleZoom();
   }
-  //easiest way to handle AI learning from HQ multi-access is this - an obvious limitation here is that the cards will be known before accessing all cards...slight cheat
-  if (runner.AI != null && attackedServer == corp.HQ) runner.AI.GainInfoAboutHQCards(ret);
   return ret;
 }
 

@@ -1339,7 +1339,7 @@ phases.runBreachServer = {
   identifier: "Run 5.2",
   Enumerate: {
     access: function () {
-      return ChoicesAccess(true); //the true shuffles HQ (if this server is HQ)
+      return ChoicesAccess();
     },
     n: function () {
       if (ChoicesAccess().length < 1) return [{}];
@@ -1443,7 +1443,7 @@ phases.runAccessingCard = {
     n: function () {
       ResolveAccess(); //has an internal check so will not double-resolve if it has already been done
 	  //prepare for next access, if relevant
-	  var choices = ChoicesAccess(true); //the true shuffles HQ (if this server is HQ)
+	  var choices = ChoicesAccess();
 	  if (choices.length > 0) {
 	    //still cards to access
 		if (autoAccessing) choices = [choices[0]];
@@ -1461,8 +1461,18 @@ phases.runAccessingCard = {
 		  "access"
 		);
 		decisionPhase.chosenString = "accessed";
-	  } //all cards have been accessed
+	  } 
 	  else {
+		//all cards have been accessed
+		//handle AI learning from HQ multi-access
+		if (runner.AI != null && attackedServer == corp.HQ) {
+			var cardsViewedInHQ = [];
+			for (var i=0; i<accessedCards.cards.length; i++) {
+				if (accessedCards.cards[i].cardLocation == corp.HQ.cards) cardsViewedInHQ.push(accessedCards.cards[i]);
+			}
+			runner.AI._log("Gaining info about HQ from this breach: "+JSON.stringify(cardsViewedInHQ));
+			runner.AI.GainInfoAboutHQCards(cardsViewedInHQ);
+		}
 		//make all R&D cards visible (in case they were hidden during multi-access)
 		for (var i = 0; i < corp.RnD.cards.length; i++) {
 		  corp.RnD.cards[i].renderer.sprite.visible = true;
