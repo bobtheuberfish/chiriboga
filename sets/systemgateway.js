@@ -269,7 +269,11 @@ cardSet[30004] = {
   },
   AIMatchingBreakerInstalled: function (iceCard) {
 	//returns a matching breaker installed, or null
-	if (iceCard == this.host) return this;
+	if (this.host) {
+		var knownToBeDisabled = false;
+		if (PlayerCanLook(runner, this.host)) knownToBeDisabled = this.host.AIDisablesHostedPrograms;
+		if (iceCard == this.host && !knownToBeDisabled) return this;
+	}
 	return null;
   },
   AIOkToTrash: function() {
@@ -4905,12 +4909,27 @@ cardSet[30069] = {
         //choose the most expensive one, taking into account server protection that exists already
 		servprotmult = 0.5; //arbitrary, this mostly exists to break ties
         var mostExpensiveChoice = choices[0];
-        var highestValue = RezCost(choices[0].card) - servprotmult*corp.AI._protectionScore(GetServer(choices[0].card), {});
+        var highestValue = -Infinity; //we're going to check all ice but this gives us a default
 		//console.log("value of "+choices[0].card.title+" in "+ServerName(GetServer(choices[0].card))+" is "+highestValue);
         for (var i = 0; i < choices.length; i++) {
-	      //ignore ice that has a card hosted (e.g. Tranquilizer but just a general check for now)
-		  if ( (typeof choices[i].card.hostedCards !== "undefined") && (choices[i].card.hostedCards.length > 0) ) continue;
           var iHighestValue = RezCost(choices[i].card) - servprotmult*corp.AI._protectionScore(GetServer(choices[i].card), {});
+		  //if it disables hosts it may be better to rez than other ice
+		  if (choices[i].card.AIDisablesHostedPrograms) {
+			  //particularly if Magnet and there are any runner cards hosted on non-disabling ice
+			  if (choices[i].card.title == "Magnet") {
+				  var runnerCardsHostedNotDisabled = false;
+				  var installedRunnerCards = InstalledCards(runner);
+				  for (var j=0; j<installedRunnerCards.length; j++) {
+					  if (installedRunnerCards[j].host && !installedRunnerCards[j].host.AIDisablesHostedPrograms) {
+						  runnerCardsHostedNotDisabled = true;
+						  break;
+					  }
+				  }
+				  if (runnerCardsHostedNotDisabled) iHighestValue += 1.0; //arbitrary
+			  }
+		  }
+	      //otherwise ignore ice that has a card hosted (e.g. Tranquilizer but just a general check for now)
+		  else if ( (typeof choices[i].card.hostedCards !== "undefined") && (choices[i].card.hostedCards.length > 0) ) continue;
 		  //console.log("value of "+choices[i].card.title+" in "+ServerName(GetServer(choices[i].card))+" is "+iHighestValue);
           if (iHighestValue > highestValue || choices[i].card.additionalRezCostForfeitAgenda) {
             highestValue = iHighestValue;

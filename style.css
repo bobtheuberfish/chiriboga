@@ -117,6 +117,7 @@ canvas {
  display: flex;
  align-items: center;
  justify-content: center;
+ border-top-right-radius: 5px;
 }
 
 #header {
@@ -131,6 +132,7 @@ canvas {
  align-items: center;
  justify-content: center;
  padding-left: 10px;
+ border-bottom-left-radius: 5px;
 }
 
 #menubar {
@@ -145,6 +147,7 @@ canvas {
  align-items: left;
  justify-content: left;
  padding: 5px;
+ border-bottom-right-radius: 5px;
 }
 
 /* unfortunately the css spec doesn't allow y scroll with x overflow visible...*/
@@ -180,8 +183,9 @@ canvas {
 
 #history {
  width:56px;
- min-height:100%;
+ display:grid;
  background:#77777799;
+ border-bottom-left-radius: 15px;
 }
 
 .historyentry-corp {

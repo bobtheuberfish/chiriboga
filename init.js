@@ -675,7 +675,8 @@ function Render() {
   $(".historyentry").css("height", interfaceScale * 50 + "px");
   $(".historyentry").css("width", interfaceScale * 50 + "px");
   $(".fullscreen-button").css("transform-origin", "top right");
-  $(".fullscreen-button").css("transform", "scale(" + interfaceScale + ")");
+  //scale doesn't affect margin so we do that ourselves here
+  $(".fullscreen-button").css("transform", "translate(5px, -10px) scale(" + interfaceScale + ") translate(-5px, 10px)");
   corpHeaderFooter *= interfaceScale;
   runnerHeaderFooter *= interfaceScale;
 

@@ -1052,7 +1052,7 @@ cardSet[31016] = {
 			  if (typeof iceCard.hostedCards !== "undefined") {
 				if (iceCard.hostedCards.length > 0) continue;
 			  }
-			  //don't derez cheap ice (3 is arbitrary)
+			  //don't derez cheap ice (3 is arbitrary but it is useful in that it decreases likelihood of derezzing Magnet which would disable another host on re-rez)
 			  if (thisScore > 3) {
 				  if (thisScore > bestScore) {
 					bestScore = thisScore;
