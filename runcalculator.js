@@ -16,6 +16,8 @@ class RunCalculator {
 	
 	this.bonusBreaker = null; //for hypothetical calculations
 	
+	this.runEvent = null; //for hypothetical calculations
+	
 	//used by corp for hypothetical runs
 	this.suppressOutput = false; 
 	this.avoidETR = false;
@@ -413,12 +415,19 @@ class RunCalculator {
 		encounterOptions.push({effects:encounterEffects[i], persistents:[]});
 	  }
 	  //special from card effects
+	  //active cards
 	  var activeCards = this.precalculated.activeCards;
 	  for (var i = 0; i < activeCards.length; i++) {
 		if (typeof activeCards[i].AIEncounterOptions == 'function') {
 		  encounterOptions = encounterOptions.concat(activeCards[i].AIEncounterOptions.call(activeCards[i],nextIceIdx,nextIceAI));
 		}
 	  };
+	  //and hypothetical
+	  if (this.runEvent) {
+		if (typeof this.runEvent.AIEncounterOptions == 'function') {
+		  encounterOptions = encounterOptions.concat(this.runEvent.AIEncounterOptions.call(this.runEvent,nextIceIdx,nextIceAI));
+		}
+	  }
 	  return encounterOptions;
   }
 
@@ -677,9 +686,15 @@ class RunCalculator {
     if (typeof p.cost == "undefined") {
       //check for already calculated and stored value
       var result = 0;
+	  
+	  //reduce cost of credit spend depending on bad pub credits i.e. corp.badPublicity or runner.temporaryCredits (depending on whether run is hypothetical)
+	  var spentCredits = p.runner_credits_spent;
+	  if (attackedServer) spentCredits -= runner.temporaryCredits;
+	  else spentCredits -= corp.badPublicity;
+	  if (spentCredits < 0) spentCredits = 0;
 
       //tweak this algorithm
-      result += 0.6 * p.runner_credits_spent;
+      result += 0.6 * spentCredits;
       result += 0.7 * p.runner_credits_lost;
       result += 0.8 * p.runner_clicks_spent;
       result += 0.3 * p.virus_counters_spent;
@@ -1215,7 +1230,8 @@ class RunCalculator {
   //convert a path to a concise string
   OneLiner(p, report_as) {
     var result = "[ ";
-    if (report_as == "success") result = "**[ ";
+	//** indicates best so far, and value in round brackets is numerical cost valuation
+    if (report_as == "success") result = "**("+this.PathCost(p).toFixed(1)+")[ ";
     if (p.length < 1) return "[ ]";
     //the idea here is to represent each node of the path with something small
     var br = 0;
@@ -1263,10 +1279,9 @@ class RunCalculator {
       st = p[i].card_str_mods.length;
       if (!nospc) result += " ";
     }
-    //and also output the cost
+    //and also output the effects
     result += "]";
     if (report_as == "success")
-      //result += " => " + this.PathCost(p).toPrecision(3); //numerical cost valuation
       result += " => " + JSON.stringify(this.TotalEffect(p[p.length-1])); //actual effects (more verbose)
     else result += " " + report_as;
     return result;

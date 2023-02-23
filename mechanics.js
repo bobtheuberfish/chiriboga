@@ -221,14 +221,20 @@ function Trash(card, canBePrevented, afterTrashing, context) {
 		if (card.player == runner) card.faceUp = true;
 		Log(GetTitle(card, true) + " trashed");
 
+		//first the automatic triggers
 		AutomaticTriggers("cardTrashed", card);
-
-		if (typeof card.hostedCards !== "undefined") {
-		  while (card.hostedCards.length > 0) Trash(card.hostedCards[0], false);
-		}
-		if (typeof afterTrashing === "function") {
-		  afterTrashing.call(context);
-		}
+		//then the Enumerate ones
+		//currently giving whoever's turn it is priority...not sure this is always going to be right
+		TriggeredResponsePhase(playerTurn, "trashed", [card], function() {
+			//current implementation assumes no non-automatic triggers will fire from trashing hosted cards
+			//to do it properly you would need to chain each trash as afterTrashing of the card before it
+			if (typeof card.hostedCards !== "undefined") {
+			  while (card.hostedCards.length > 0) Trash(card.hostedCards[0], false);
+			}
+			if (typeof afterTrashing === "function") {
+			  afterTrashing.call(context);
+			}
+		});
 	};
 	//special case: if card has a 'would trash' trigger (a decision needs to be made)
 	//note this will totally break if the card is trashed by an automatic trigger
@@ -777,7 +783,7 @@ function Purge() {
 	}
   });
   Log("Virus counters purged");
-  AutomaticTriggers("purged", numPurged);
+  TriggeredResponsePhase(playerTurn, "purged", [numPurged]);
 }
 
 /**

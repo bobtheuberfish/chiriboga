@@ -29,17 +29,20 @@ cardSet[30001] = {
   trash: {
 	Resolve: function() {
 	  if (intended.trash == accessingCard) this.wasAccessingCard = true;
+	  else this.wasAccessingCard = false;
 	},
 	automatic: true,
   },
-  cardTrashed: {
-    Resolve: function (card) {
-      if (this.wasAccessingCard && !this.usedThisTurn) {
-        this.usedThisTurn = true;
-		this.wasAccessingCard = false;
-        GainCredits(runner, 1);
-        Draw(runner, 1);
-      }
+  trashed: {
+	Enumerate: function(card) {
+      if (this.wasAccessingCard && !this.usedThisTurn) return [{}];
+	  return [];
+	},
+    Resolve: function (params) {
+      this.usedThisTurn = true;
+	  this.wasAccessingCard = false;
+      GainCredits(runner, 1);
+      Draw(runner, 1);
     },
   },
 };
@@ -3538,13 +3541,13 @@ cardSet[30045] = {
   trashCost: 2,
   advancement: 0,
   //When the Runner accesses this asset while it is installed, do 2 net damage plus 1 net damage for each hosted advancement counter.
-  cardAccessed: {
-    Resolve: function (card) {
-      if (card == this) {
-        if (CheckInstalled(this)) {
-          NetDamage(2 + this.advancement);
-        }
-      }
+  accessed: {
+    Enumerate: function () {
+      if (accessingCard == this && CheckInstalled(this)) return [{}];
+      return [];
+    },
+    Resolve: function () {
+	  NetDamage(2 + this.advancement);
     },
   },
   RezUsability: function () {
@@ -3924,12 +3927,13 @@ cardSet[30053] = {
   unique: true,
   trashCost: 2,
   //When you rez this asset, draw 2 cards.
-  cardRezzed: {
-    Resolve: function (card) {
-      if (card == this) {
+  rez: {
+    Enumerate: function (card) {
+      if (card == this) return [{}];
+	  return [];
+	},
+    Resolve: function (params) {
         Draw(corp, 2);
-        Render(); //needed to show the cards were drawn
-      }
     },
   },
   //helper functions for the ability
@@ -4201,13 +4205,17 @@ cardSet[30055] = {
   rezCost: 2,
   strength: 1,
   //When you rez this ice during a run against this server, give the Runner 1 tag
-  cardRezzed: {
-    Resolve: function (card) {
+  rez: {
+    Enumerate: function (card) {
       if (card == this) {
         if (attackedServer !== null) {
-          if (attackedServer == GetServer(this)) AddTags(1);
-        }
-      }
+          if (attackedServer == GetServer(this)) return [{}];
+		}
+	  }
+	  return [];
+	},
+    Resolve: function (params) {
+		AddTags(1);
     },
   },
   //subroutines:

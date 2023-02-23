@@ -86,10 +86,12 @@
  .netDamage //called when net damage is to be given/taken
  .meatDamage //called when meat damage is to be given/taken
  .trash //called when a card is to be trashed, providing opportunity to prevent it (change intended.trash to null to prevent it)
- .wouldTrash //called when trash has not been prevented (Enumerate takes the trashed card as an input, use cardTrashed instead if you need automatic)
+ .wouldTrash //called when trash has not been prevented but before it is trashed (Enumerate takes the trashed card as an input)
+ .trashed //called when trash has been trashed (Enumerate takes the trashed card as an input, use cardTrashed instead if you need automatic)
  .expose //called when a card is to be exposed
  .steal //called when a card is to be stolen
  .score //called when a card is to be scored
+ .purged //called with input (number of virus counters removed) when virus counters are purged
  .anyChange //called after any change but before render, essentially adds this to the main loop (currently treats all as automatic)
  .modifyMaxHandSize //called with input (player) when getting maximum hand size, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
  .modifyStrength //called with input (card) when getting strength, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
@@ -112,7 +114,6 @@
  .cardTrashed //called with input (card) when a card is trashed (currently treats all as automatic)
  .cardAdvanced //called with input (card) when a card is advanced (currently treats all as automatic)
  .cardPlayed //called with input (card) after a card is played (currently treats all as automatic)
- .purged //called with input (number of virus counters removed) when virus counters are purged (currently treats all as automatic)
  .cannot //called with input (string, card) where the string is a phase option (e.g. "score"), if true is returned, Check<String> will return false (all automatic)
 */
 

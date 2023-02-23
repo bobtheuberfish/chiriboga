@@ -1070,6 +1070,7 @@ class RunnerAI {
 		}
 	}
 	//if a run event is being used, a click is needed to play it, and a card slot (reduce max damage by 1)	
+	this.rc.runEvent = runEventCardToUse;
     if (runEventCardToUse) {
 		//playCost probably should be PlayCost (here and everywhere) but it is not implemented yet
 		if (typeof runEventCardToUse.AIRunEventExtraCredits != 'undefined') {
@@ -1108,6 +1109,8 @@ class RunnerAI {
 			bonusBreaker.card.AIRestoreHypotheticalFromRC.call(bonusBreaker.card);
 		}
 	}
+	//and hypothetical run event
+	this.rc.runEvent = null;
 	//return the result
 	return bestpath;
   }
@@ -1604,18 +1607,41 @@ console.log(this.preferred);
         //console.log("approachIce = "+approachIce);
         //console.log("subroutine = "+subroutine);
 		//console.log(JSON.stringify(bestpath));
+		//this.rc.Print(bestpath, attackedServer);		
+
 		//the last point for this ice has all the info in it (and the first point is the start of encounter)
+		//but the info may not be in the right order! e.g. Leech Leech Atman Leech Cleaver will fire as Leech Leech Leech ...
+		//so we process nodes in order but splice data from all this ice's actions as we go
 		var p = null;
-		for (var i=bestpath.length-1; i>0; i--) {
-			if (bestpath[i].iceIdx == approachIce) {
-				p = bestpath[i];
+		//precheck continue path alt in options in case we need it
+		var continuePathAlt = -1;
+		for (var i = 0; i < optionList.length; i++) {
+			if (optionList[i].alt && optionList[i].alt == "continue") {
+				continuePathAlt = i;
 				break;
 			}
+		}		
+		//first we clear out any persist card_str_mods from previous iceIdx (don't retrigger them)
+		for (var i=0; i<bestpath.length; i++) {
+			while (bestpath[i].card_str_mods.length > 0 && bestpath[i].card_str_mods[0].iceIdx > bestpath[i].iceIdx) {
+			  bestpath[i].card_str_mods = bestpath[i].card_str_mods.concat([]); //set unique
+			  bestpath[i].card_str_mods.splice(0,1);
+			}
+			//and persistents from previous iceIdx (don't retrigger them) or non-triggering (.use != 'undefined')
+			while (bestpath[i].persistents.length > 0 && 
+				(typeof bestpath[i].persistents[0].iceIdx == 'undefined' 
+					|| bestpath[i].persistents[0].iceIdx > approachIce 
+					|| typeof bestpath[i].persistents[0].use == 'undefined') ) {
+			  bestpath[i].persistents = bestpath[i].persistents.concat([]); //set unique
+			  bestpath[i].persistents.splice(0,1);
+			}
 		}
-		//in some cases there can be info in the start of encounter (e.g. full bypass)
-		if (p == null) {
-			if (bestpath[0].iceIdx == approachIce) {
-				p = bestpath[0];
+		//choose first unresolved path node for this iceIdx (still has unspliced sr_broken, card_str_mods or persistents)
+		for (var i=0; i<bestpath.length; i++) {
+			//check if actions are left
+			if (bestpath[i].iceIdx == approachIce && ( bestpath[i].card_str_mods.length > 0 || bestpath[i].sr_broken.length > 0 || bestpath[i].persistents.length > 0) ) {
+				p = bestpath[i];
+				break;
 			}
 		}
 		if (p != null) {
@@ -1623,21 +1649,29 @@ console.log(this.preferred);
 			var ice = GetApproachEncounterIce();
 			if (ice) {
 				  for (var i=p.sr_broken.length-1; i>-1; i--) {
-					  if (ice.subroutines[p.sr_broken[i].idx].broken) p.sr_broken.splice(i,1);
+					  if (ice.subroutines[p.sr_broken[i].idx].broken) bestpath.forEach(function(path_node) {
+						  if (path_node.iceIdx == approachIce) {
+							  path_node.sr_broken = path_node.sr_broken.concat([]); //set unique
+							  path_node.sr_broken.splice(i,1);
+						  }
+					  });
 				  }
 			}
 			if (optionList.includes("trigger") && ((p.card_str_mods.length > 0)||(p.sr_broken.length > 0)) ) {
 			  //console.log("trigger");
 			  //console.log(p);
 			  //e.g. str up/down and break srs
-			  //first we clear out any persist card_str_mods from previous iceIdx (don't retrigger them)
-			  while (p.card_str_mods.length > 0 && p.card_str_mods[0].iceIdx > approachIce) {
-				  p.card_str_mods.splice(0,1);
-			  }
-			  //now assume there will only be one ability possible for this card, so we just prefer the card
+			  //assume there will only be one ability possible for this card, so we just prefer the card
 			  if (p.card_str_mods.length > 0 && p.card_str_mods[0].iceIdx == approachIce) {
+				var ret_str_mod_use = p.card_str_mods[0].use; //assumes they are added to the array in order of use, discard immediately
+				bestpath.forEach(function(path_node) {
+				  if (path_node.iceIdx == approachIce) {
+					  path_node.card_str_mods = path_node.card_str_mods.concat([]); //set unique
+					  path_node.card_str_mods.splice(0,1);
+				  }
+				});
 				return this._returnPreference(optionList, "trigger", {
-				  cardToTrigger: p.card_str_mods.splice(0,1)[0].use, //assumes they are added to the array in order of use, discard immediately
+				  cardToTrigger: ret_str_mod_use, 
 				});
 			  }
 			  else if (p.sr_broken.length > 0) {		
@@ -1659,21 +1693,28 @@ console.log(this.preferred);
 				var sr = ice.subroutines[sridx];
 				for (var i = 0; i < optionList.length; i++) {
 				  if (typeof optionList[i].subroutine != 'undefined' && optionList[i].subroutine == sr) {
-					  p.sr_broken.splice(0,1); //used, discard
+					  bestpath.forEach(function(path_node) {
+						  if (path_node.iceIdx == approachIce) {
+							  path_node.sr_broken = path_node.sr_broken.concat([]); //set unique
+							  path_node.sr_broken.splice(0,1);
+						  }
+					  });
 					  return i;
 				  }
 				}
 			  }
 			}	
-			//first we clear out any other persistents from previous iceIdx (don't retrigger them) and persistents which are not triggering a card ability (.use != 'undefined)
-			while (p.persistents.length > 0 && (typeof p.persistents[0].iceIdx == 'undefined' || p.persistents[0].iceIdx > approachIce || typeof p.persistents[0].use == 'undefined') ) {
-			  p.persistents.splice(0,1);
-			}
 			//check for abilities indicated by persistent
 			if (p.persistents.length > 0 && p.persistents[0].iceIdx == approachIce) {
 				//maybe triggerable?
 				if (optionList.includes("trigger"))  {
-					var persistent = p.persistents.splice(0,1)[0]; //assumes they are added to the array in order of use, discard immediately
+					var persistent = p.persistents[0]; //assumes they are added to the array in order of use, discard immediately
+					bestpath.forEach(function(path_node) {
+					  if (path_node.iceIdx == approachIce) {
+						  path_node.persistents = path_node.persistents.concat([]); //set unique
+						  path_node.persistents.splice(0,1);
+					  }
+					});
 					var retPref = { cardToTrigger: persistent.use, abilityAlt: persistent.alt };					
 					return this._returnPreference(optionList, "trigger", retPref);
 				}
@@ -1681,19 +1722,27 @@ console.log(this.preferred);
 				for (var j=0; j<p.persistents.length; j++) {
 					var persistent = p.persistents[j];
 					for (var i = 0; i < optionList.length; i++) {
+						//first look for alt directly in option
 						if (optionList[i].alt && optionList[i].alt == persistent.alt ) {
-							p.persistents.splice(j,1); //found a match, now we can discard
+							//found a match, now we can discard
+							bestpath.forEach(function(path_node) {
+							  if (path_node.iceIdx == approachIce) {
+								  path_node.persistents = path_node.persistents.concat([]); //set unique
+								  path_node.persistents.splice(j,1);
+							  }
+							});
 							return i;
+						}
+						//but also look nested
+						if (optionList[i].choices && optionList[i].choices.length) {
+							for (var k=0; k<optionList[i].choices.length; k++) {
+								if (optionList[i].choices[k].alt && optionList[i].choices[k].alt == persistent.alt ) return i;
+							}
 						}
 					}
 				}
 			}
-			//look for a continue path alt in the options
-			for (var i = 0; i < optionList.length; i++) {
-				if (optionList[i].alt && optionList[i].alt == "continue") {
-					return i;
-				}
-			}
+			if (continuePathAlt > -1) return continuePathAlt;
 			//game is asking for something unanticipated. if this happens, investigate.
 			if (!optionList.includes("trigger")) {
 				console.log(JSON.stringify(p));
@@ -1703,11 +1752,18 @@ console.log(this.preferred);
 		}
 		//nothing specified, do nothing
 		if (optionList.includes("n")) return optionList.indexOf("n");
+		else if (continuePathAlt > -1) return continuePathAlt;
+		else {
+		  console.log(JSON.stringify(optionList));
+		  console.error("Path specifies nothing but a choice is required (optionList above)");
+		}
       }
-	  //no path exists? this shouldn't happen so swing wildly
-	  console.log(JSON.stringify(optionList));
-	  console.error("No path to resolve (optionList above)");
-      if (optionList.includes("trigger")) return optionList.indexOf("trigger"); //by default, trigger abilities if possible
+	  else {
+		  //no path exists? this shouldn't happen so swing wildly
+		  console.log(JSON.stringify(optionList));
+		  console.error("No path to resolve (optionList above)");
+		  if (optionList.includes("trigger")) return optionList.indexOf("trigger"); //by default, trigger abilities if possible
+	  }
     }
 
     if (currentPhase.identifier == "Run 5.1") {

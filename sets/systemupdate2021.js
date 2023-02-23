@@ -341,9 +341,12 @@ cardSet[31005] = {
   },
   //When the Corp purges virus counters, trash this program.
   purged: {
-		Resolve: function (numPurged) {
-			Trash(this,true); //true means it can be prevented
-		}
+	Enumerate: function(numPurged) {
+		return [{}];
+	},
+	Resolve: function (params) {
+		Trash(this,true); //true means it can be prevented
+	}
   },
   AIPreferredInstallChoice: function (
     choices //outputs the preferred index from the provided choices list (return -1 to not install)
@@ -1220,13 +1223,16 @@ cardSet[31018] = {
 	this.encounteredIceThisRun=false;
     MakeRun(params.server);
   },
-  cardEncountered: {
-    Resolve: function (card) {
-		if (!this.encounteredIceThisRun) Bypass();
+  encounter: {
+    Enumerate: function (card) {
+		if (!this.encounteredIceThisRun) return [{alt:"insidejob_bypass"}];
+		return [];
+	},
+    Resolve: function (params) {
 		this.encounteredIceThisRun=true;
+		Bypass();
     },
-	automatic: true,
-  },  
+  },
   //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
   AIRunEventExtraPotential: function(server,potential) {
 	  //use for high value targets with a decent outermost ice (or moderate targets with an overfull hand, better than throwing it out)
@@ -1243,21 +1249,29 @@ cardSet[31018] = {
 	  }
 	  return 0; //no benefit (don't play)
   },
-  //make temporary changes during run calculations
-  AIRunEventModify: function(server) {
-	if (server.ice.length < 1) return;
-	//store and change (replace outermost ice with a blank)
-	this.storedImplementIce = server.ice[server.ice.length-1].AIImplementIce;
-	server.ice[server.ice.length-1].AIImplementIce = function(rc, result, maxCorpCred, incomplete) {
-		//intentionally empty
-		return result;
-	};
-  },
-  //then restore from changes afterwards (put the outermost ice back)
-  AIRunEventRestore: function(server) {
-	if (server.ice.length < 1) return;
-	//restore
-	server.ice[server.ice.length-1].AIImplementIce = this.storedImplementIce;
+  
+  //AIEncounterOptions returns an array of objects with .effects and .persistent
+  //the runcalculator will add/concatenate these into the point where needed
+  AIEncounterOptions: function(iceIdx,iceAI) {
+	//if set as run event then it is hypothetical so assume nothing has been encountered yet
+	if (!this.encounteredIceThisRun || runner.AI.rc.runEvent == this) {
+	  //include option to bypass
+	  //crucially this will be recalculated when an unrezzed ice is rezzed
+	  //so by default assume the outermost rezzed ice (if any) otherwise innermost unrezzed ice
+	  var bypassTarget = 0;
+	  var serverIce = GetServer(iceAI.ice).ice;
+	  for (var i=serverIce.length-1; i>0; i--) {
+		  if (serverIce[i].rezzed) {
+			  bypassTarget=i;
+			  break;
+		  }
+	  }
+	  if (iceIdx == bypassTarget) {
+		var persistents = [{use:this, target:iceAI.ice, iceIdx:iceIdx, action:"bypass", alt:"insidejob_bypass"}];
+		return [{effects:[], persistents:persistents}];
+	  }
+ 	}
+	return [];
   },
 };
 
@@ -3275,16 +3289,12 @@ cardSet[31039] = {
       if (card == this) AddCounters(this, "power", 3);
     },
   },
-  //When it is empty, trash it.
-  anyChange: {
-	Resolve: function () {
-	  if (!CheckCounters(this, "power", 1)) Trash(this);
-	},
-  },
   //When your turn begins 
   runnerTurnBegin: {
     Resolve: function () {
 		RemoveCounters(this, "power", 1);
+	    //The "when it is empty" check should probably be in anyChange but they're automatic-only for now
+	    if (!CheckCounters(this, "power", 1)) Trash(this);
 		Draw(runner, 2);
     },
   },

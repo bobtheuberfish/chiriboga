@@ -2042,6 +2042,8 @@ function ChoicesActiveTriggers(callbackName, player = null) {
  * @returns {Params[]} array of {card,label} where card[callbackName] is defined
  */
 function AutomaticTriggers(callbackName, parameter = null) {
+  //store current phase to ensure that the automatics are only doing what they're allowed
+  var startingPhase = currentPhase;
   //any relevant triggers (assume automatic for now, if you want player choice use TriggeredResponsePhase)
   var triggerList = ChoicesActiveTriggers(callbackName);
   for (var i = 0; i < triggerList.length; i++) {
@@ -2049,6 +2051,16 @@ function AutomaticTriggers(callbackName, parameter = null) {
       triggerList[i].card,
       parameter
     );
+	//if phase has changed then the trigger shouldn't have been automatic
+	if (currentPhase != startingPhase) {
+        LogError(
+          "." +
+            callbackName +
+            " on " +
+            GetTitle(triggerList[i].card) +
+            " should not be automatic (it includes a phase change)"
+        );
+	}
   }
   return triggerList;
 }
