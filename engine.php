@@ -84,7 +84,7 @@
 				<p>Includes all cards in Null Signal Games' <a href="https://nullsignal.games/products/system-gateway/">System Gateway</a> set. Card front art is the property of Null Signal Games.<br/>
 				Includes <a href="https://nullsignal.games/about/nisei-visual-assets/">game symbols permitted for use by Null Signal Games</a> under CC BY-ND 4.0.<br/>
 				Chiriboga is not endorsed by Null Signal Games.</p>
-				<p class="acknowledgements">Special thanks to testers, including: <em>BadEpsilon, bowlsley, D-Smith, eniteris, Kwaice, Mentlegen, R41B, saff, Saintis, Ysengrin</em>.</p>
+				<p class="acknowledgements">Special thanks to testers, including: <em>BadEpsilon, bowlsley, D-Smith, eniteris, Kwaice, Mentlegen, olompumpa, R41B, saff, Saintis, Ysengrin</em>.</p>
 				<p class="disclaimer">Netrunner and Android are trademarks of Fantasy Flight Publishing, Inc. and/or Wizards of the Coast LLC.<br/>
 				Chiriboga is not affiliated with Fantasy Flight Games or Wizards of the Coast.</p>
 				<p><a href="https://netrunnerdb.com/en/card/26098"><em>...but who ordered him to wear that hat?</em></a></p>
