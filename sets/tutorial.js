@@ -23,6 +23,7 @@ tutorial[5] = {
   hideMU: false,
   hideBrainDamage: true,
   hideHandSize: false,
+  hideBadPublicity: true,
   tutorialIncrementer: 0,
   //each step has a triggering phase identifier string and a function action to take
   tutorialSteps: [
@@ -311,6 +312,7 @@ tutorial[4] = {
   hideMU: false,
   hideBrainDamage: true,
   hideHandSize: false,
+  hideBadPublicity: true,
   tutorialIncrementer: 0,
   //each step has a triggering phase identifier string and a function action to take
   tutorialSteps: [
@@ -383,7 +385,11 @@ tutorial[4] = {
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
-        TutorialMessage("During their turn, the Corp used the advance action three times.\n\nEach advance action costs one click and one credit, so they spent a total of 3 clicks and 3 credits.",true);
+		corp.remoteServers[1].root[0].advancement=4; //hack because the fourth token hasn't rendered yet
+		Render();
+        TutorialMessage("During their turn, the Corp used the advance action three times.\n\nEach advance action costs one click and one credit, so they spent a total of 3 clicks and 3 credits.",true,function() {
+			corp.remoteServers[1].root[0].advancement=4; //completes the above hack because otherwise there will be 5
+		});
       },
     },
     {
@@ -431,7 +437,7 @@ tutorial[4] = {
 	},	
 	{
 		//Taking damage
-		str: "About to Net  Damage",
+		str: "Run Subroutines",
 		action: function () {
 			TutorialMessage("The Runner's hand is called the GRIP.\nIf the Runner takes damage with no cards in their grip, the Corp wins.\n\nThe Corp cannot take damage but will lose if they draw when R&D is empty.",true);
 		},
@@ -470,25 +476,17 @@ tutorial[4] = {
 	{
 		str: "Run 4.5",
 		action: function () {
-			TutorialMessage("");
+			TutorialMessage("The card you are about to access has a counter HOSTED on it.\n\nVarious things can be hosted on cards, including credits and even other cards.",true);
 		},
 	},
 	{
-		str: "About to Net  Damage",
+		str: "Accessed",
 		action: function () {
-			TutorialMessage("This card is an AMBUSH.\n\nThe Corp can advance it, tricking the Runner into thinking it could be an agenda.\n\nWhen the Runner accesses it, they take damage!",true,function(){
-				TutorialMessage("Urtica Cipher has a HOSTED advancement counter.\n\nVarious things can be hosted on cards, including credits and even other cards.",true);
-			});
-		},
-	},
-	{
-		str: "About to Trash",
-		action: function () {
-			TutorialMessage("There is no need to trash the ambush.\n\nNow that we know it is there, we just won't run it again.\n\nIf the card was in R&D or HQ we might consider trashing it to prevent the Corp using it.");
+			TutorialMessage("This card is an AMBUSH.\n\nThe Corp can advance it, tricking the Runner into thinking it could be an agenda.\n\nWhen the Runner accesses it, they take damage!");
 			TutorialReplacer = function (input) {
 			  if (input == "trash")
 				TutorialMessage(
-				  "There is no need to trash the ambush.\nWe know it is there so it is no longer a threat.\n\nChoose End."
+				  "There is no need to trash the ambush.\n\nNow that we know it is there, we just won't run it again.\n\nIf the card was in R&D or HQ we might consider trashing it to prevent the Corp using it."
 				);
 			  else return false;
 			  return true;
@@ -496,12 +494,12 @@ tutorial[4] = {
 		},
 	},
 	{
-		str: "About to Trash",
+		str: "Accessed",
 		action: function () {
 			TutorialReplacer = function (input) {
 			  if (input == "trash")
 				TutorialMessage(
-				  "There is no need to trash the ambush.\nWe know it is there so it is no longer a threat.\n\nChoose End."
+				  "There is no need to trash the ambush.\n\nNow that we know it is there, we just won't run it again.\n\nIf the card was in R&D or HQ we might consider trashing it to prevent the Corp using it."
 				);
 			  else return false;
 			  return true;
@@ -509,12 +507,12 @@ tutorial[4] = {
 		},
 	},
 	{
-		str: "About to Trash",
+		str: "Accessed",
 		action: function () {
 			TutorialReplacer = function (input) {
 			  if (input == "trash")
 				TutorialMessage(
-				  "There is no need to trash the ambush.\nWe know it is there so it is no longer a threat.\n\nChoose End."
+				  "There is no need to trash the ambush.\n\nNow that we know it is there, we just won't run it again.\n\nIf the card was in R&D or HQ we might consider trashing it to prevent the Corp using it."
 				);
 			  else return false;
 			  return true;
@@ -557,6 +555,7 @@ tutorial[3] = {
   hideMU: false,
   hideBrainDamage: true,
   hideHandSize: false,
+  hideBadPublicity: true,
   tutorialIncrementer: 0,
   //each step has a triggering phase identifier string and a function action to take
   tutorialSteps: [
@@ -579,8 +578,8 @@ tutorial[3] = {
 			cardBackTexturesRunner,glowTextures,strengthTextures);
 		CorpTestField(30077, //identity
 			[], //archivesCards
-			[30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30075,30075,30075], //rndCards
-			[30075,30074,30071,30071,30071], //hqCards
+			[30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30074,30075,30071,30071], //rndCards
+			[30071,30071,30071,30071,30071], //hqCards
 			[], //archivesInstalled
 			[], //rndInstalled
 			[], //hqInstalled
@@ -589,6 +588,7 @@ tutorial[3] = {
 			cardBackTexturesCorp,glowTextures,strengthTextures);
 		corp.identityCard.faceUp=true; //not sure why this is needed but it is
         ChangePhase(phases.runnerMulligan);
+		runner.clickTracker=0;
         TutorialMessage("In a normal game, both players start with 5 credits, 5 cards in hand, and no cards installed.\n\nEach player's IDENTITY card is shown face up, and can have abilities (these ones don't).",true,function(){
 			TutorialMessage("At the start of a normal game, each player has an opportunity to take a MULLIGAN (shuffle the five cards back into the deck and draw five new cards).\n\nIn this case, choose to keep your hand.");
 			TutorialReplacer = function (input) {
@@ -622,6 +622,7 @@ tutorial[3] = {
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
+		Render();
         TutorialMessage("The Corp used their first click to draw another card.\n\nJust like the Runner, the Corp can use a basic action to draw a card.",true);
       },
     },
@@ -631,6 +632,7 @@ tutorial[3] = {
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
+		TutorialBlacklist = ["draw","gain"];
         TutorialMessage("");
       },
     },
@@ -640,6 +642,7 @@ tutorial[3] = {
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
+		Render();
         TutorialMessage("The Corp used their second click to install a card in a new remote server.",true);
       },
     },
@@ -740,6 +743,7 @@ tutorial[2] = {
   hideMU: true,
   hideBrainDamage: true,
   hideHandSize: true,
+  hideBadPublicity: true,
   tutorialIncrementer: 0,
   //each step has a triggering phase identifier string and a function action to take
   tutorialSteps: [
@@ -790,6 +794,7 @@ tutorial[2] = {
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
+		Render();
         TutorialMessage("The Corp used a click to INSTALL a card.\n\nUnlike Runner cards, Corp cards are installed facedown.\n\nIn this case, the Corp installed a card in front of R&D.",true);
       },
     },
@@ -808,6 +813,7 @@ tutorial[2] = {
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
+		Render();
         TutorialMessage("The second card the Corp installed has created a new server.\n\nServers other than Archives, R&D and HQ are called REMOTE servers.\nThere is nothing in this remote server yet.",true);
       },
     },
@@ -826,6 +832,7 @@ tutorial[2] = {
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
+		Render();
         TutorialMessage("Cards installed in front of servers can protect them during a run.\nThese cards are called ICE.\n\nThe Corp used their last click to install ice protecting HQ.",true);
       },
     },
@@ -854,13 +861,16 @@ tutorial[2] = {
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
+		if (attackedServer.ice[approachIce].renderer.zoomed) attackedServer.ice[approachIce].renderer.ToggleZoom(); //don't cover tutorial text with zoomed card
         TutorialMessage("You will now ENCOUNTER the ice, and its SUBROUTINES will fire.\n\nIn this case, you will lose 3 credits, and then, because you will have 6 or less credits, the run will end.",true);
+		/*
 		if (!GetApproachEncounterIce().renderer.zoomed) GetApproachEncounterIce().renderer.ToggleZoom();
         TutorialReplacer = function (input) {
 		  if (GetApproachEncounterIce().renderer.zoomed) GetApproachEncounterIce().renderer.ToggleZoom();
           //return false to use normal action
           return false;
         };
+		*/
       },
     },
     {
@@ -1020,6 +1030,7 @@ tutorial[1] = {
   hideMU: true,
   hideBrainDamage: true,
   hideHandSize: true,
+  hideBadPublicity: true,
   tutorialIncrementer: 0,
   //each step has a triggering phase identifier string and a function action to take
   tutorialSteps: [
@@ -1053,6 +1064,7 @@ tutorial[1] = {
 		corp.identityCard.faceUp=true; //not sure why this is needed but it is
 		runner.rig.resources[0].credits=3;
         ChangePhase(phases.runnerStartResponse);
+		corp.clickTracker=0;
         TutorialMessage("Cards come in various colors.\n\nThese represent the FACTION and do not have any effect during the game (although cards of the the same faction are commonly similar).",true,function() {
 			TutorialMessage("During a game, both players will often gain and spend CREDITS.\n\nRight now, you (the Runner) currently have 1 credit in your CREDIT POOL (shown below) and the Corp has 5 credits in theirs.",true);
 		});
@@ -1123,6 +1135,7 @@ tutorial[0] = {
   hideMU: true,
   hideBrainDamage: true,
   hideHandSize: true,
+  hideBadPublicity: true,
   tutorialIncrementer: 0,
   //each step has a triggering phase identifier string and a function action to take
   tutorialSteps: [
@@ -1155,6 +1168,7 @@ tutorial[0] = {
 			cardBackTexturesCorp,glowTextures,strengthTextures);
 		corp.identityCard.faceUp=true; //not sure why this is needed but it is
         ChangePhase(phases.runnerStartResponse);
+		corp.clickTracker=0;
         TutorialMessage("Welcome to Netrunner!\n\nYou are the RUNNER (your cards have red backs), and your opponent is the CORP (cards with blue backs).",true);
       },
     },
@@ -1167,6 +1181,7 @@ tutorial[0] = {
 		 "Runs are attacks you make against SERVERS (groups of cards at the top of the screen).\n\nEach turn you have four CLICKS (actions) to use, shown below. The Corp currently has 0 clicks.\n\nUse your first click to make a RUN by clicking the button below."
         );
 		runner.identityCard.hideClicks = false;
+		Render();
 		TutorialCommandMessage.run = "The corp has three starting servers: ARCHIVES (discard pile), HQ (hand of cards) and R&D (deck of cards).\n\nSince Archives is empty, choose R&D or HQ.";
 		TutorialWhitelist = null; //not using whitelist
 		TutorialBlacklist = ['gain','draw',corp.archives];
@@ -1214,17 +1229,12 @@ tutorial[0] = {
       action: function () {
 		TutorialCommandMessage = {}
 		TutorialWhitelist = null; //not using whitelist
-        TutorialMessage("Usually you would put the card back afterwards, but in this case you have accessed an AGENDA.\n\nClick the button below to STEAL it.\n\nIgnore the 'When you score' text because you are stealing it, not scoring it.");
+		//if (accessingCard.renderer.zoomed) accessingCard.renderer.ToggleZoom(); //don't cover tutorial text with zoomed card
+        TutorialMessage("Usually you would put the card back afterwards, but in this case you have accessed an AGENDA.",true,function(){TutorialMessage("Click the button below to STEAL the agenda.\n\nIgnore the 'When you score' text because you are stealing it, not scoring it.")});
       },
     },
-	{
-		str: "About to Steal",
-		action: function () {
-			TutorialMessage("");
-		},
-	},
     {
-      str: "Stolen",
+      str: "Run 6.4",
       action: function () {
 		currentPhase.requireHumanInput=true;
 		TutorialCommandMessage = {}
