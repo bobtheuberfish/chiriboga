@@ -136,6 +136,7 @@ cardSet[30003] = {
         if (!CheckAccessing()) return [];
         if (!CheckTrash(accessingCard)) return []; ////not already in the trash, not disallowed
         if (PlayerHand(runner).length < 2) return [];
+		if (runner.AI && runner.AI._rootKnownToContainCopyOfCard(GetServer(accessingCard),"Urtica Cipher")) return []; //special case: don't use this if there's an urtica in server
         return [{}];
       },
       Resolve: function (params) {
@@ -184,6 +185,7 @@ cardSet[30003] = {
   ],
   AIReducesTrashCost: function(card) {
     if (this.usedThisTurn) return 0; //no reduction to trash cost
+	if (runner.AI._rootKnownToContainCopyOfCard(GetServer(card),"Urtica Cipher")) return 0; //special case: don't use this if there's an urtica in server
 	if (runner.grip.length - runner.AI.cardsWorthKeeping.length < 2) return 0; //no reduction to trash cost
 	return TrashCost(card); //reduction by its full trash cost
   },

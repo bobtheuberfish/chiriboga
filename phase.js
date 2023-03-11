@@ -1670,7 +1670,7 @@ function AddHistoryBreakIfRequired(player) {
       .first();
     if (textspanelem.html() == "...") textspanelem.html("-");
     //now the new one
-    var colouredPhaseTitle = "<span style='color:blue;'>";
+    var colouredPhaseTitle = "<span style='color:#4074FF;'>";
     var historyClass = "historyentry-corp";
     if (historyBreak.style == "small") historyClass = "historyentry-corp-small";
     if (player == runner) {

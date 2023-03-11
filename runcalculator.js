@@ -934,7 +934,17 @@ class RunCalculator {
 		  var highestTrashCost = 0;
 		  var htcCard = null;
 		  for (var i = 0; i < knownCardsInRoot.length; i++) {
-			if (typeof knownCardsInRoot[i].trashCost !== "undefined") {
+			//special case: Urtica Cipher: no need to include trash cost but account for net damage
+			if (knownCardsInRoot[i].title == "Urtica Cipher") {
+				var approachEffect = [];
+				var advancement = Counters(knownCardsInRoot[i], "advancement");
+				for (var j = 0; j < 2 + advancement; j++) {
+				  approachEffect.push("netDamage");
+				}
+				approachEffects.push(approachEffect);
+			}
+			//check trash cost
+			else if (typeof knownCardsInRoot[i].trashCost !== "undefined") {
 			  var kctc = TrashCost(knownCardsInRoot[i]);
 			  if (kctc > highestTrashCost) {
 				  highestTrashCost = kctc;
