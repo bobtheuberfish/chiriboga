@@ -3439,7 +3439,7 @@ cardSet[31041] = {
       Enumerate: function () {
         if (CheckCounters(this, "agenda", 1)) {
 			//this ability can be used pretty much any time
-			//but for usability we'll restrict it to main phase, approaching HQ, and approaching archives
+			//but for usability we'll restrict it to main phase, pre-discard phase, approaching HQ, and approaching archives
 			var usabilityUse = false;
 			var choices = ChoicesArrayCards(corp.archives.cards);
 			if (currentPhase.identifier == "Run 4.5" && approachIce < 1) {      
@@ -3462,7 +3462,7 @@ cardSet[31041] = {
 				  }
 			  }
 			}
-			if (CheckActionClicks(corp, 1)) {
+			if (CheckActionClicks(corp, 1) || currentPhase.identifier == "Corp 2.2") {
 				usabilityUse = true;
 				//**AI code
 				if (corp.AI != null) {
