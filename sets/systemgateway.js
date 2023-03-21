@@ -4135,11 +4135,31 @@ cardSet[30054] = {
   //When the Runner encounters this ice, end the run unless the Runner takes 1 tag.
   encounter: {
     Enumerate: function (card) {
+	  //this first check is corp-side
+	  //(just to activate it)
+	  //the actual decision is made by Runner
       if (card == this) {
+		  return [{}];
+	  }
+	  else return [];
+	},
+    Resolve: function (params) {
         var choices = [
           { id: 0, label: "Take 1 tag", button: "Take 1 tag" },
           { id: 1, label: "End the run", button: "End the run" },
         ];
+        function decisionCallback(params) {
+          if (params.id == 0) AddTags(1);
+          else EndTheRun();
+        }
+        DecisionPhase(
+          runner,
+          choices,
+          decisionCallback,
+          "Funhouse",
+          "Funhouse",
+          this
+        );
         //**AI code
         if (runner.AI != null) {
           var choice = choices[0]; //take the tag by default
@@ -4151,15 +4171,8 @@ cardSet[30054] = {
 				runner.AI._log("I've committed to this");  
 			}
 		  }
-          choices = [choice];
+          runner.AI.preferred = { title: "Funhouse", option: choice }; //title must match currentPhase.title for AI to fire
         }
-		return choices;
-      }
-	  else return [];
-	},
-    Resolve: function (params) {
-      if (params.id == 0) AddTags(1);
-      else EndTheRun();
     },
   },
   //Give the Runner 1 tag unless they pay 4[c]
