@@ -26,7 +26,7 @@
 		<?php
 		echo '<script src="utility.js?' . filemtime('utility.js') . '"></script>';
 		
-		$sets = ["systemgateway","systemupdate2021"];
+		$sets = ["systemgateway","systemupdate2021","midnightsun"];
 		if (isset($_GET['sets'])) {
 			$sets = explode("-",preg_replace( "/[^a-zA-Z0-9-]/", "", $_GET['sets'] )); 
 		}

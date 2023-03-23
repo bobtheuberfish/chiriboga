@@ -9,17 +9,17 @@
 		$dev = true; //set false for release
 		if ($dev) {
 			echo '<script>var runner={}; var corp={}; var cardSet=[]; var setIdentifiers = [];</script>';
-			echo '<script src="sets/systemupdate2021.js?' . filemtime('sets/systemupdate2021.js') . '"></script>';
+			echo '<script src="sets/midnightsun.js?' . filemtime('sets/midnightsun.js') . '"></script>';
 		}
 //use PHP to produce the desired css code
 //specify either 'P' for portrait or 'L' for landscape
 $CS = function ($px, $orientation) {
 	if ($orientation == 'P') {
-		$vw = 0.13;
+		$vw = 0.125;
 		$vh = 0.09;
 	} else if ($orientation == 'L') {
 		$vw = 0.067;
-		$vh = 0.105;
+		$vh = 0.092;
 	}
 	if ($px < 0) return "max(".$px."px,".($vw*$px)."vw,".($vh*$px)."vh)";
 	else return "min(".$px."px,".($vw*$px)."vw,".($vh*$px)."vh)";
@@ -194,6 +194,8 @@ echo <<<EOD
 			}
 			.caption {
 				margin-top: {$CS(8,$porl)};
+				margin-left: {$CS(8,$porl)};
+				margin-right: {$CS(8,$porl)};
 			}
 			.landscape-only {
 				display:none;
@@ -233,7 +235,7 @@ EOD;
 		</style>
 	</head>
 <?php
-	//if ($dev) echo '<body onload="document.getElementById(\'dev-info\').innerHTML = \'Development version (cards up to \' + cardSet[cardSet.length-1].title + \')&emsp;&emsp;|&emsp;&emsp;\';">';
+	if ($dev) echo '<body onload="document.getElementById(\'dev-info\').innerHTML = \'Development version (cards up to \' + cardSet[cardSet.length-1].title + \')&emsp;&emsp;|&emsp;&emsp;\';">';
 	if ($dev) echo '<body onload="document.getElementById(\'dev-info\').innerHTML = \'Development version&emsp;&emsp;|&emsp;&emsp;\';">';
 	else echo '<body>';
 	?>
@@ -252,12 +254,14 @@ EOD;
 			<div class="cell nosubtitle"><a class="runner" href="engine.php?ap=6&p=r&r=N4IglgJgpgdgLmOBPEAuEB2AbCANCAZyQLigFsBxAQ1IHcqVUBtLXVgRgCZcueBmHgBYeAVlE8AHLk4AGaXM7tpSzq1XSMG6VM46dATmmG+ck7jN9ul8wL63BAXQC+QA&c=N4IglgJgpgdgLmOBPEAuEB2DIA0IDOS+cUAtgOICGJA7pSqgNoDMGOr7AnFzgCwAMfQbwBMfAKwS+ANhl82vNtN45lqpRtXdp3DIL04MARkMmMY84YvNDNjCvuHJGZ+IC6AXyA"><img class="runner" src="images/menu_runner_1.png"><div class="caption"><span>Runner Tutorial Deck</span></div></a></div>
 			<div class="cell nosubtitle"><a class="runner" href="engine.php?p=r&r=N4IglgJgpgdgLmOBPEAuEB2AbCANCAZyQLigFsBxAQ1IHcqVUBtLXVgRgCZcueBmHgBYeAVlE8AHLk4AGaXM7tpSzq1XSMG6VM46dATmmG+ck7jN9ul8wL63h3blKnslr6Y8cPBAXQC+QA&c=N4IglgJgpgdgLmOBPEAuEB2DIA0IDOS+cUAtgOICGJA7pSqgNoDMGOr7AnFzgCwAMfQbwBMfAKwS+ANhl82vNtN45lqpRtXdp3DIL04MARkMmMY84YvNDNjCvuHJGZ5PEr3OcbO9e24-wAOVUlpYLCAXQBfIA"><img class="runner" src="images/menu_runner_2.png"><div class="caption"><span>Runner Advanced Deck</span></div></a></div>
 			<div class="cell"><a class="runner" href="decklauncher.php?sets=systemgateway&p=r&r=random"><img class="runner" src="images/menu_runner_3_sg.png"><div class="caption"><span>Runner Deckbuilding</span><span class="subtitle">(System Gateway only)</span></div></a></div>
-			<div class="cell"><a class="runner" href="decklauncher.php?p=r&r=random"><img class="runner" src="images/menu_runner_4_sg_su21.png"><div class="caption"><span>Runner Deckbuilding</span><span class="subtitle">(with System Update 2021)</span></div></a></div>
+			<div class="cell"><a class="runner" href="decklauncher.php?sets=systemgateway-systemupdate2021&p=r&r=random"><img class="runner" src="images/menu_runner_4_sg_su21.png"><div class="caption"><span>Runner Deckbuilding</span><span class="subtitle">(with System Update 2021)</span></div></a></div>
+			<div class="cell"><a class="runner" href="decklauncher.php?p=r&r=random"><img class="runner" src="images/menu_runner_5_ms.png"><div class="caption"><span>Runner Deckbuilding</span><span class="subtitle">(up to Midnight Sun)</span></div></a></div>
 		</div><div class="row-column">
 			<div class="cell nosubtitle"><a class="corp" href="engine.php?ap=6&p=c&c=N4IglgJgpgdgLmOBPEAuEB2DIA0IDOS+cUAtgOICGJA7pSqgNoDMGOr7AnFzgCwAMfQbwBMfAKwS+ANhl82vNtN45lqpRtXdp3DIL04MARkMmMY84YvNDNjCvuHJGZ+IC6AXyA&r=N4IglgJgpgdgLmOBPEAuEB2AbCANCAZyQLigFsBxAQ1IHcqVUBtLXVgRgCZcueBmHgBYeAVlE8AHLk4AGaXM7tpSzq1XSMG6VM46dATmmG+ck7jN9ul8wL63BAXQC+QA"><img class="corp" src="images/menu_corp_1.png"><div class="caption"><span>Corp Tutorial Deck</span></div></a></div>
 			<div class="cell nosubtitle"><a class="corp" href="engine.php?p=c&c=N4IglgJgpgdgLmOBPEAuEB2DIA0IDOS+cUAtgOICGJA7pSqgNoDMGOr7AnFzgCwAMfQbwBMfAKwS+ANhl82vNtN45lqpRtXdp3DIL04MARkMmMY84YvNDNjCvuHJGZ5PEr3OcbO9e24-wAOVUlpYLCAXQBfIA&r=N4IglgJgpgdgLmOBPEAuEB2AbCANCAZyQLigFsBxAQ1IHcqVUBtLXVgRgCZcueBmHgBYeAVlE8AHLk4AGaXM7tpSzq1XSMG6VM46dATmmG+ck7jN9ul8wL63h3blKnslr6Y8cPBAXQC+QA"><img class="corp" src="images/menu_corp_2.png"><div class="caption"><span>Corp Advanced Deck</span></div></a></div>
 			<div class="cell"><a class="corp" href="decklauncher.php?sets=systemgateway&p=c&c=random"><img class="corp" src="images/menu_corp_3_sg.png"><div class="caption"><span>Corp Deckbuilding</span><span class="subtitle">(System Gateway only)</span></div></a></div>
-			<div class="cell"><a class="corp" href="decklauncher.php?p=c&c=random"><img class="corp" src="images/menu_corp_4_sg_su21.png"><div class="caption"><span>Corp Deckbuilding</span><span class="subtitle">(with System Update 2021)</span></div></a></div>
+			<div class="cell"><a class="corp" href="decklauncher.php?sets=systemgateway-systemupdate2021&p=c&c=random"><img class="corp" src="images/menu_corp_4_sg_su21.png"><div class="caption"><span>Corp Deckbuilding</span><span class="subtitle">(with System Update 2021)</span></div></a></div>
+			<div class="cell"><a class="corp" href="decklauncher.php?p=c&r=random"><img class="corp" src="images/menu_corp_5_ms.png"><div class="caption"><span>Corp Deckbuilding</span><span class="subtitle">(up to Midnight Sun)</span></div></a></div>
 		</div>
 		<div class="footer">
 			<span id="dev-info"></span><span class="nobreak">Source code <a href="https://github.com/bobtheuberfish/chiriboga">available on GitHub</a></span> <span class="landscape-only">&nbsp;| &nbsp;</span><span class="portrait-only"><br></span><span class="nobreak">Hardware Acceleration is required to use this site</span>
