@@ -1050,6 +1050,9 @@ cardSet[30013] = {
   installCost: 2,
   unique: true,
   //The first time each turn you breach HQ, access 1 additional card.
+  //The odd implementation is because breachServer is called whenever determining breach candidates
+  //So we can't say the first breach of HQ is done until after that
+  firstHQBreachThisTurn: false,
   breachedHQThisTurn: false,
   runnerTurnBegin: {
     Resolve: function () {
@@ -1062,16 +1065,26 @@ cardSet[30013] = {
 	//NOTE: breachServer may be called multiple times (e.g. when determining new candidates)
     Resolve: function () {
       if (attackedServer != corp.HQ) return 0;
-      if (this.breachedHQThisTurn) return 0; //first time only
+      if (this.breachedHQThisTurn) return 0;
       return 1;
     },
   },
-  runEnds: {
-    Resolve: function () {
-	  this.breachedHQThisTurn = true; //even if inactive
+  breached: {
+    Resolve: function (server) {
+	  if (server == corp.HQ && !this.breachedHQThisTurn) this.firstHQBreachThisTurn = true; 
 	},
 	automatic:true,
-	availableWhenInactive: true,
+	availableWhenInactive: true, //even if inactive
+  },
+  runEnds: {
+    Resolve: function (server) {
+	  if (this.firstHQBreachThisTurn) {
+		  this.breachedHQThisTurn = true; 
+		  this.firstHQBreachThisTurn = false;
+	  }
+	},
+	automatic:true,
+	availableWhenInactive: true, //even if inactive
   },
   //indicate when passive bonus to accesses will apply
   //(assumes the card is or will be active)
