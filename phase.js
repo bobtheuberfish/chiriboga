@@ -1337,6 +1337,9 @@ phases.runBreachServer = {
   player: runner,
   title: "Run: Breach", //was 'Access' (i.e. access cards in server) but Nisei changed it so it's not confused with each individual access
   identifier: "Run 5.2",
+  Init: function() {
+	AutomaticTriggers("breached", attackedServer); //automatic only for now
+  },
   Enumerate: {
     access: function () {
       return ChoicesAccess();
