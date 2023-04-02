@@ -621,30 +621,6 @@ function LogError(src) {
 }
 
 /**
- * Outputs a message with subtle style to the console and ends with carriage return.
- *
- * @method LogSubtle
- * @param {String} src text to output
- */
-function LogSubtle(src) {
-  if (logSubtleDisabled) return;
-  //Log('<span class="subtle">'+src+'</span>');
-  console.log(": " + src);
-}
-
-/**
- * Outputs a debug message to the console and ends with carriage return.
- *
- * @method LogDebug
- * @param {String} src debug text to output
- */
-function LogDebug(src) {
-  if (logDebugDisabled) return;
-  //Log('<span class="debug">'+src+'</span>');
-  console.log("~ " + src);
-}
-
-/**
  * Get the title of a card. Use this instead of .title directly.<br/>If hideHidden is true, returns [hidden card] if not known to viewingPlayer.
  *
  * @method GetTitle
@@ -2388,18 +2364,9 @@ function ChoicesAbility(card, limitTo = "") {
 		if (typeof card.abilities[i].alt != 'undefined') params.alt = card.abilities[i].alt; //if buttons are required
         params.choices = choices;
         ret.push(params);
-        LogDebug('"' + card.abilities[i].text + '" is a valid option');
-      } else if (limitTo == "click" && choices.length > 0)
-        LogDebug(
-          '"' + card.abilities[i].text + '" ignored (not a click ability)'
-        );
-      else if (limitTo == "access" && choices.length > 0)
-        LogDebug(
-          '"' + card.abilities[i].text + '" ignored (not an access ability)'
-        );
-      else LogDebug('"' + card.abilities[i].text + '" is not a valid option');
+      }
     }
-  } else LogDebug("Card has no abilities");
+  }
   return ret;
 }
 
@@ -2587,7 +2554,7 @@ function OpportunityForAvoidPrevent(player, callbackName, enumerateParams, after
 }
 
 /**
- * Get a current value of a global int property, including effects.<br/>Don't call this directly, use a PropertyName function.<br/>LogDebugs the result.
+ * Get a current value of a global int property, including effects.<br/>Don't call this directly, use a PropertyName function.
  *
  * @method GetGlobalProperty
  * @param {String} propertyName name of int property to get value for
@@ -2603,7 +2570,7 @@ function GetGlobalProperty(propertyName) {
 }
 
 /**
- * Get a current value of a card int property, including effects.<br/>Don't call this directly, use a PropertyName function.<br/>LogDebugs the result.
+ * Get a current value of a card int property, including effects.<br/>Don't call this directly, use a PropertyName function.
  *
  * @method GetCardProperty
  * @param {Card} card card object to get value for
@@ -2617,7 +2584,6 @@ function GetCardProperty(card, propertyName) {
   var triggerCallbackName =
     "modify" + propertyName.charAt(0).toUpperCase() + propertyName.slice(1);
   ret += ModifyingTriggers(triggerCallbackName, card, -ret); //null means no parameter is sent, lower limit of -ret means the total will not be any lower than zero
-  LogDebug(GetTitle(card) + " has " + propertyName + " " + ret);
   return ret;
 }
 

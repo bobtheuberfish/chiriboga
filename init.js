@@ -1574,7 +1574,6 @@ function ExecuteChosen(chosenCommand) {
         runner,
         "Runner has reached " + AgendaPointsToWin() + " agenda points"
       );
-    else LogDebug("Updating phase after " + chosenCommand);
 
     var triggerList = AutomaticTriggers("automaticOnAnyChange");
 

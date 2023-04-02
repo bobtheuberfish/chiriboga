@@ -1703,7 +1703,7 @@ function AddHistoryBreakIfRequired(player) {
 }
 
 /**
- * Change the phase.<br/>Use this or IncrementPhase() which moves to default next phase. Never assign directly to currentPhase.<br/>LogDebug on success, LogError on failure.
+ * Change the phase.<br/>Use this or IncrementPhase() which moves to default next phase. Never assign directly to currentPhase.
  *
  * @method ChangePhase
  * @param {Phase} src phase to change to
@@ -1712,7 +1712,6 @@ function AddHistoryBreakIfRequired(player) {
 function ChangePhase(src, skipInit = false) {
 	
   var nextPhase = src;
-  LogDebug("Entering subphase " + nextPhase.identifier);
   var previousPhase = currentPhase;
   currentPhase = nextPhase;
 

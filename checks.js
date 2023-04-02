@@ -2,7 +2,7 @@
 //These are GAME MECHANIC checks (not internal execution checks) and take inputs that make sense in terms of the game e.g. card object, server object, integer value
 
 /**
- * Check whether an installed card can be advanced.<br/>LogDebugs the result.
+ * Check whether an installed card can be advanced.
  *
  * @method CheckAdvance
  * @param {Card} card the card to check
@@ -11,17 +11,15 @@
 function CheckAdvance(card) {
   if (card != null) {
     if (card.canBeAdvanced) {
-      LogDebug(GetTitle(card) + " can be advanced");
       return true;
     }
-    LogDebug(GetTitle(card) + " cannot be advanced");
     return false;
-  } else LogDebug("Card not found to advance");
+  }
   return false;
 }
 
 /**
- * Check whether an installed card can be rezzed.<br/>LogDebugs the result.
+ * Check whether an installed card can be rezzed.
  *
  * @method CheckRez
  * @param {Card} card the card to check for rez (permission check only, not cost check)
@@ -33,22 +31,20 @@ function CheckRez(card, validCardTypes) {
     if (CheckCardType(card, validCardTypes)) {
       if (typeof card.rezzed !== "undefined") {
         if (card.rezzed) {
-          LogDebug(GetTitle(card) + " is already rezzed");
           return false;
         }
       }
       if (typeof card.rezCost !== "undefined") {
         //only check if it has a rez cost, doesn't check whether we have the credits for it
-        LogDebug('"' + GetTitle(card) + '" can be rezzed');
         return true;
-      } else LogDebug(GetTitle(card) + " does not have a rez cost");
+      }
     }
-  } else LogDebug("Card not found to rez");
+  }
   return false;
 }
 
 /**
- * Checks whether the player is in action phase and has at least the required clicks remaining.<br/>LogDebugs the result.
+ * Checks whether the player is in action phase and has at least the required clicks remaining.
  *
  * @method CheckActionClicks
  * @param {Player} player whose action phase is required
@@ -64,20 +60,17 @@ function CheckActionClicks(player, num) {
   else if (player == runner && currentPhase.identifier == "Runner 1.3")
     actionPhase = true;
   if (!actionPhase) {
-    LogDebug("Not currently in action phase");
     return false;
   }
   //check quantity remaining
   if (player.clickTracker < num) {
-    LogDebug("Less than " + num + " clicks remaining");
     return false;
   }
-  LogDebug("At least " + num + " clicks remaining");
   return true;
 }
 
 /**
- * Checks whether the runner is accessing a card.<br/>LogDebugs the result.
+ * Checks whether the runner is accessing a card.
  *
  * @method CheckAccessing
  * @returns {Boolean} true if check passes, false if not
@@ -90,7 +83,7 @@ function CheckAccessing() {
 }
 
 /**
- * Checks whether the player has at least the required clicks remaining (does not require action phase or set checkedClick).<br/>LogDebugs the result.
+ * Checks whether the player has at least the required clicks remaining (does not require action phase or set checkedClick).
  *
  * @method CheckClicks
  * @param {Player} player to check clicks for
@@ -99,15 +92,13 @@ function CheckAccessing() {
  */
 function CheckClicks(player, num) {
   if (player.clickTracker < num) {
-    LogDebug("Less than " + num + " clicks remaining");
     return false;
   }
-  LogDebug("At least " + num + " clicks remaining");
   return true;
 }
 
 /**
- * Checks whether a card has at least the required counters.<br/>LogDebugs the result.
+ * Checks whether a card has at least the required counters.
  *
  * @method CheckCounters
  * @param {Card} card card to check
@@ -118,19 +109,13 @@ function CheckClicks(player, num) {
 function CheckCounters(card, counter, num = 1) {
   var numCounters = Counters(card, counter);
   if (numCounters < num) {
-    LogDebug(
-      "Less than " + num + " " + counter + " counters on " + GetTitle(card)
-    );
     return false;
   }
-  LogDebug(
-    "At least " + num + " " + counter + " counters on " + GetTitle(card)
-  );
   return true;
 }
 
 /**
- * Checks whether the player has at least the required credits in their pool.<br/>LogDebugs the result.
+ * Checks whether the player has at least the required credits in their pool.
  *
  * @method CheckCredits
  * @param {Player} player to check clicks for
@@ -142,15 +127,13 @@ function CheckCounters(card, counter, num = 1) {
 function CheckCredits(player, num, doing = "", card = null) {
   var availableCred = AvailableCredits(player, doing, card); //unlike Credits(player) this includes recurring credit possibilities
   if (availableCred < num) {
-    LogDebug("Less than " + num + " credits remaining");
     return false;
   }
-  LogDebug("At least " + num + " credits remaining");
   return true;
 }
 
 /**
- * Checks whether the runner has at least the required number of tags.<br/>LogDebugs the result.
+ * Checks whether the runner has at least the required number of tags.
  *
  * @method CheckTags
  * @param {int} num number of tags required
@@ -158,16 +141,13 @@ function CheckCredits(player, num, doing = "", card = null) {
  */
 function CheckTags(num) {
   if (runner.tags >= num) {
-    LogDebug("Runner has at least " + num + " tags");
     return true;
   }
-  if (num == 1) LogDebug("Runner is not tagged");
-  else LogDebug("Runner has less than " + num + " tags");
   return false;
 }
 
 /**
- * Checks whether a card has any of a list of card types.</br>LogDebugs the result.
+ * Checks whether a card has any of a list of card types.
  *
  * @method CheckCardType
  * @param {Card} card to check type for
@@ -177,7 +157,6 @@ function CheckTags(num) {
 function CheckCardType(card, valid) {
   for (var i = 0; i < valid.length; i++) {
     if (card.cardType == valid[i]) {
-      LogDebug('"' + GetTitle(card) + '" is card type "' + card.cardType + '"');
       return true;
     }
   }
@@ -188,7 +167,6 @@ function CheckCardType(card, valid) {
     else if (i < valid.length - 1) outstr += " or ";
   }
   outstr += " (" + GetTitle(card) + " is " + card.cardType + ")";
-  LogDebug(outstr);
   return false;
 }
 
@@ -226,7 +204,7 @@ function CheckSubType(card, subtype) {
 }
 
 /**
- * Check if strength of a card is sufficient to interact with the currently encountered ice.<br/>LogDebugs the result.
+ * Check if strength of a card is sufficient to interact with the currently encountered ice.
  *
  * @method CheckStrength
  * @param {Card} card card object to check
@@ -234,7 +212,6 @@ function CheckSubType(card, subtype) {
  */
 function CheckStrength(card) {
   if (attackedServer == null || approachIce < 0 || !encountering) {
-    LogDebug("Not currently encountering ice");
     return false;
   }
 
@@ -242,35 +219,30 @@ function CheckStrength(card) {
   var iceStrength = Strength(attackedServer.ice[approachIce]);
   if (card.onlyInterfaceEqualStrength) {
 	if (cardStrength > iceStrength) {
-      LogDebug('"' + GetTitle(card) + '" has too much strength');
       return false;
 	}
   }
   if (cardStrength >= iceStrength) {
-    LogDebug('"' + GetTitle(card) + '" has sufficient strength');
     return true;
   }
-  LogDebug('"' + GetTitle(card) + '" has insufficient strength');
   return false;
 }
 
 /**
- * Checks if a run is in progress.<br/>LogDebugs the result.
+ * Checks if a run is in progress.
  *
  * @method CheckRunning
  * @returns {Boolean} true if a run is in progress, false otherwise
  */
 function CheckRunning() {
   if (attackedServer != null) {
-    LogDebug("Currently running");
     return true;
   }
-  LogDebug("Not currently running");
   return false;
 }
 
 /**
- * Checks if ice is being approached but not encountered.<br/>LogDebugs the result.
+ * Checks if ice is being approached but not encountered.
  *
  * @method CheckApproach
  * @returns {Boolean} true if ice is being approached, false otherwise
@@ -282,15 +254,13 @@ function CheckApproach() {
     !encountering &&
     !movement
   ) {
-    LogDebug("Currently approaching ice");
     return true;
   }
-  LogDebug("Not currently approaching ice");
   return false;
 }
 
 /**
- * Checks if ice is being encountered.<br/>LogDebugs the result.
+ * Checks if ice is being encountered.
  *
  * @method CheckEncounter
  * @returns {Boolean} true if ice is being encountered, false otherwise
@@ -298,15 +268,13 @@ function CheckApproach() {
 function CheckEncounter() {
   //you might be tempted to check things to do with runs and approaches but don't! Encounters can be triggered outside such structures.
   if (encountering) {
-    LogDebug("Currently encountering ice");
     return true;
   }
-  LogDebug("Not currently encountering ice");
   return false;
 }
 
 /**
- * Check whether a card can be trashed (ignoring costs).<br/>LogDebugs the result.
+ * Check whether a card can be trashed (ignoring costs).
  *
  * @method CheckTrash
  * @param {Card} card card object to check
@@ -314,24 +282,20 @@ function CheckEncounter() {
  */
 function CheckTrash(card) {
   if (card == null) {
-    LogDebug("Cannot trash null card");
     return false;
   }
   if (card.cardLocation == corp.archives.cards) {
-    LogDebug("Cannot trash cards from archives");
     return false;
   }
   if (card.cardLocation == runner.heap) {
-    LogDebug("Cannot trash cards from heap");
     return false;
   }
   if (CardEffectsForbid("trash", card)) return false; //forbidden by card effects
-  LogDebug('"' + GetTitle(card) + '" can be trashed');
   return true;
 }
 
 /**
- * Checks whether a card can be installed (ignoring costs).<br/>Does not check where card is.<br/>LogDebugs the result.
+ * Checks whether a card can be installed (ignoring costs).<br/>Does not check where card is.
  *
  * @method CheckInstall
  * @param {Card} card card object to check
@@ -340,22 +304,19 @@ function CheckTrash(card) {
 function CheckInstall(card) {
   //check card exists
   if (card == null) {
-    LogDebug("Card not found to install");
     return false;
   }
 
   //make sure card is correct type
   if (card.cardType == "operation" || card.cardType == "event") {
-    LogDebug("Cannot install " + card.cardType + 's (try "play")');
     return false;
   }
 
-  LogDebug("Card can be installed");
   return true;
 }
 
 /**
- * Checks whether a card can be played (ignoring costs).<br/>Does not check where card is.<br/>LogDebugs the result.
+ * Checks whether a card can be played (ignoring costs).<br/>Does not check where card is.
  *
  * @method CheckPlay
  * @param {Card} card card object to check
@@ -364,22 +325,19 @@ function CheckInstall(card) {
 function CheckPlay(card) {
   //check card exists
   if (card == null) {
-    LogDebug("Card not found to play");
     return false;
   }
 
   //make sure card is correct type
   if (card.cardType != "operation" && card.cardType != "event") {
-    LogDebug("Cannot play " + card.cardType + ' (try "install")');
     return false;
   }
 
-  LogDebug("Card can be played");
   return true;
 }
 
 /**
- * Checks whether currently encountered ice has any unbroken subroutines.<br/>LogDebugs the result.
+ * Checks whether currently encountered ice has any unbroken subroutines.
  *
  * @method CheckUnbrokenSubroutines
  * @returns {Boolean} true if there are unbroken subroutines, false otherwise
@@ -388,16 +346,14 @@ function CheckUnbrokenSubroutines() {
   if (!CheckRunning()) return false;
   for (var i = 0; i < attackedServer.ice[approachIce].subroutines.length; i++) {
     if (!attackedServer.ice[approachIce].subroutines[i].broken) {
-      LogDebug("Not all subroutines broken");
       return true;
     }
   }
-  LogDebug("No unbroken subroutines");
   return false;
 }
 
 /**
- * Checks whether a subroutine can be broken (ignoring costs).<br/>LogDebugs the result.
+ * Checks whether a subroutine can be broken (ignoring costs).
  *
  * @method CheckBreak
  * @param {Subroutine} subroutine the subroutine to check
@@ -408,7 +364,6 @@ function CheckBreak(subroutine) {
 
   //check subroutine exists
   if (subroutine == null) {
-    LogDebug("Subroutine not found to break");
     return false;
   }
 
@@ -421,17 +376,14 @@ function CheckBreak(subroutine) {
     }
   }
   if (!srExist) {
-    LogDebug("Subroutine must be on ice being encountered");
     return false;
   }
 
   //and not already broken
   if (subroutine.broken) {
-    LogDebug("Subroutine already broken");
     return false;
   }
 
-  LogDebug("Subroutine can be broken");
   return true;
 }
 
@@ -467,7 +419,7 @@ function CheckScore(card,ignoreRequirement=false) {
 }
 
 /**
- * Checks whether a card is installed.<br/>LogDebugs the result.
+ * Checks whether a card is installed.
  *
  * @method CheckInstalled
  * @param {Card} card card object to check
@@ -497,13 +449,11 @@ function CheckInstalled(card) {
     else if (card.cardLocation == runner.rig.hardware) ret = true;
     else if (card.cardLocation == runner.rig.resources) ret = true;
   }
-  if (ret == true) LogDebug(GetTitle(card) + " is installed");
-  else LogDebug(GetTitle(card) + " is not installed");
   return ret;
 }
 
 /**
- * Checks whether a card is active.<br/>LogDebugs the result.
+ * Checks whether a card is active.
  *
  * @method CheckActive
  * @param {Card} card card object to check
@@ -512,7 +462,6 @@ function CheckInstalled(card) {
 function CheckActive(card) {
   //check card exists
   if (card == null) {
-    LogDebug("Card not found to check");
     return false;
   }
 
@@ -530,9 +479,6 @@ function CheckActive(card) {
     LogError(GetTitle(card) + " does not have .player set");
     return false;
   }
-
-  if (ret == true) LogDebug(GetTitle(card) + " is active");
-  else LogDebug(GetTitle(card) + " is not active");
   return ret;
 }
 
@@ -557,7 +503,7 @@ function CheckHasAbilities(card) {
 }
 
 /**
- * Checks whether a card callback should be called (has callback and is either active or has callbackName.availableWhenInactive).<br/>LogDebugs the result.
+ * Checks whether a card callback should be called (has callback and is either active or has callbackName.availableWhenInactive).
  *
  * @method CheckCallback
  * @param {Card} card card object to check
@@ -579,17 +525,11 @@ function CheckCallback(card, callbackName) {
 	  if ( canHaveAbilities || card[callbackName].availableWhenInactive ) ret = true;
 	}
   }
-  if (ret == true)
-    LogDebug(GetTitle(card) + " has valid " + callbackName + " available");
-  else
-    LogDebug(
-      GetTitle(card) + " does not have valid " + callbackName + " available"
-    );
   return ret;
 }
 
 /**
- * Checks whether purge is possible.<br/>LogDebugs the result.
+ * Checks whether purge is possible.
  *
  * @method CheckPurge
  * @returns {Boolean} true if purge is possible, false otherwise
@@ -602,7 +542,6 @@ function CheckPurge() {
   for (var i = 0; i < installedRunnerCards.length; i++) {
     if (typeof installedRunnerCards[i].virus !== "undefined") {
       if (installedRunnerCards[i].virus > 0) {
-        LogDebug("There are virus counters");
         return true;
       }
     }
@@ -611,12 +550,10 @@ function CheckPurge() {
   for (var i = 0; i < installedCorpCards.length; i++) {
     if (typeof installedCorpCards[i].virus !== "undefined") {
       if (installedCorpCards[i].virus > 0) {
-        LogDebug("There are virus counters");
         return true;
       }
     }
   }
-  LogDebug("There are no virus counters");
   return false;
   */
   

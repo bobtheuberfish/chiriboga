@@ -12,7 +12,6 @@ var log = []; //each validated command executed
 function Execute(cmd) {
   executingCommand = cmd;
   var originalPhase = currentPhase;
-  LogSubtle(TurnPhaseStr() + cmd);
 
   if (typeof(TutorialCommandMessage[cmd]) !== 'undefined') TutorialMessage(TutorialCommandMessage[cmd]);
 
@@ -554,7 +553,7 @@ function CardEffectsForbid(id, card) {
 }
 
 /**
- * Regenerate phaseOptions.</br>Results are LogDebug'd.
+ * Regenerate phaseOptions.
  *
  * @method EnumeratePhase
  * @returns {choice[]} list of valid options
@@ -587,7 +586,6 @@ function EnumeratePhase() {
         if (typeof currentPhase.Enumerate !== "undefined") {
           //if it has an inbuilt check
           if (typeof currentPhase.Enumerate[id] === "function") {
-            LogDebug("Enumerating " + id);
 			var usabilityFunc = id[0].toUpperCase()+id.substring(1)+'Usability';
             phaseOptions[id] = currentPhase.Enumerate[id].call(currentPhase);
 			//special processing for each option
@@ -692,7 +690,6 @@ function EnumeratePhase() {
   //render footer
   if (activePlayer.AI == null) {
     //active player is human-controlled
-    LogDebug("Available commands: " + comstr);
     $("#footer").html(footerHtml);
     $("#footer").show();
   }
