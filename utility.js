@@ -1210,7 +1210,7 @@ function AccessCardList() {
   //first, check if central server - each has special rules for how many from .cards
   if (typeof attackedServer.cards != 'undefined') {
 	  //trigger breach modifiers (number of additional cards to access)
-	  var additional = ModifyingTriggers("breachServer", null, 0); //null means no parameter is sent, lower limit of 0 means the total will not be any lower than zero
+	  var additional = ModifyingTriggers("modifyBreachAccess", null, 0); //null means no parameter is sent, lower limit of 0 means the total will not be any lower than zero
 	  if (attackedServer == corp.archives) {
 		//archives: access all cards in archives
 		num = attackedServer.cards.length;
@@ -1269,7 +1269,7 @@ function ResolveAccess() {
   var ret = accessingCard;
   //if the accessed card is (not was) in R&D then hide it until accessing is all done (this avoid frustrating blocking of cards underneath)
   if (accessingCard.cardLocation == corp.RnD.cards) accessingCard.renderer.sprite.visible = false;
-  AutomaticTriggers("cardAccessComplete", accessingCard);
+  AutomaticTriggers("automaticOnAccessComplete", accessingCard);
   if (accessingCard.renderer.zoomed) accessingCard.renderer.ToggleZoom();
   accessingCard = null;
   phases.runAccessingCard.requireHumanInput=false; //automatically fire n when it comes up
@@ -1389,7 +1389,7 @@ function MoveCardTriggers(card, locationfrom, locationto) {
       locationto == runner.stack
     ) {
 	  if (CheckInstalled(card)) {
-		  AutomaticTriggers("cardUninstalled",card);
+		  AutomaticTriggers("automaticOnUninstall",card);
 	  }
       if (
         runner.AI != null &&
@@ -2519,7 +2519,7 @@ function ChoicesAccess() {
  * @returns {String} output string
  */
 function CamelToSentence(src) {
-  var result = src.replace(/([A-Z]+)/g, " $1").replace(/([A-Z][a-z])/g, " $1");
+  var result = src.replace(/([A-Z]+)/g, " $1").replace(/([A-Z][a-z])/g, "$1");
   return result.charAt(0).toUpperCase() + result.slice(1);
 }
 
@@ -2573,16 +2573,16 @@ function TriggeredResponsePhase(player, callbackName, enumerateParams, afterOppo
  * @param {String} callbackName name of the callback property
  * @param [Object] enumerateParams to send to Enumerate functions
  * @param {function} afterOpportunity called after opportunites given for avoid/prevent
+ * @param {String} title called after opportunites given for avoid/prevent
  * @returns {Phase} the pseudophase created
  */
-function OpportunityForAvoidPrevent(player, callbackName, enumerateParams, afterOpportunity) {
-  var printableCallbackName = CamelToSentence(callbackName);
+function OpportunityForAvoidPrevent(player, callbackName, enumerateParams, afterOpportunity, title) {
   return TriggeredResponsePhase(
     player,
     callbackName,
 	enumerateParams,
     afterOpportunity,
-    "About to " + printableCallbackName
+    title
   );
 }
 

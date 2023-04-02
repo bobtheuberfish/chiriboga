@@ -12,14 +12,14 @@ cardSet[33001] = {
   deckSize: 45,
   influenceLimit: 15,
   sufferedCoreDamageThisTurn: false,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.sufferedCoreDamageThisTurn = false;
     },
     automatic: true,
     availableWhenInactive: true,
   },
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Resolve: function () {
       this.sufferedCoreDamageThisTurn = false;
     },

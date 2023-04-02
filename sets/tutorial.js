@@ -714,7 +714,7 @@ tutorial[3] = {
   ],
   Tutorial: SharedTutorialFunction,
   hedgeFundAlreadySeen:false,
-  cardAccessed: {
+  automaticOnAccess: {
     Resolve: function () {
       if ((accessingCard.cardType == 'operation')&&!this.hedgeFundAlreadySeen) {
 		  this.hedgeFundAlreadySeen=true;
@@ -723,7 +723,7 @@ tutorial[3] = {
     },
     automatic: true,
   },
-  runEnds: {
+  responseOnRunEnds: {
     Resolve: function () {
       TutorialMessage("Make runs using events and/or card abilities.");
     },

@@ -7,7 +7,7 @@ coreSet[1] = {
   link: 0,
   cardType: "identity",
   subTypes: ["G-mod"],
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (CheckCardType(card, ["program"])) {
         if (CheckSubType(card, "Virus"))
@@ -73,7 +73,7 @@ coreSet[3] = {
     };
     MakeRun(params.server);
   },
-  runEnds: {
+  responseOnRunEnds: {
     Resolve: function () {
       phases.runAccessingCard.Enumerate.trash = this.oldTrashEnumerate;
       phases.runAccessingCard.Resolve.trash = this.oldTrashResolve;
@@ -95,7 +95,7 @@ coreSet[4] = {
     MakeRun(params.server);
     GainCredits(runner, 9, "Stimhack");
   },
-  runEnds: {
+  responseOnRunEnds: {
     Resolve: function () {
       BrainDamage(1);
     },
@@ -130,7 +130,7 @@ coreSet[6] = {
   installCost: 3,
   unique: true,
   memoryUnits: 2,
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (CheckCardType(card, ["program"])) {
         if (CheckSubType(card, "Virus")) AddCounters(card, "virus", 1);
@@ -201,7 +201,7 @@ coreSet[7] = {
       },
     },
   ],
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       this.strengthBoost = 0;
     },
@@ -224,7 +224,7 @@ coreSet[8] = {
       return 0; //no modification to strength
     },
   },
-  runSuccessful: {
+  responseOnRunSuccessful: {
     Enumerate: function () {
       if (typeof attackedServer.cards !== "undefined") return [{}]; //central server
       return [];
@@ -324,7 +324,7 @@ coreSet[10] = {
   installCost: 3,
   memoryCost: 1,
   accessAdditional: 0,
-  runSuccessful: {
+  responseOnRunSuccessful: {
     Enumerate: function () {
       if (attackedServer != corp.RnD) return [];
       return [{}];
@@ -354,13 +354,13 @@ coreSet[10] = {
       DecisionPhase(runner, choices, decisionCallback, null, "Medium", this);
     },
   },
-  breachServer: {
+  modifyBreachAccess: {
     Resolve: function () {
       if (attackedServer == corp.RnD) return this.accessAdditional;
       else return 0;
     },
   },
-  runEnds: {
+  responseOnRunEnds: {
     Resolve: function () {
       this.accessAdditional = 0;
     },
@@ -424,14 +424,14 @@ coreSet[12] = {
       return 0; //no modification to strength
     },
   },
-  anyChange: {
+  automaticOnAnyChange: {
     Resolve: function () {
       if (typeof this.host === "undefined") return; //not fully installed yet
       if (this.host == null) return; //not hosted (won't be around long unless it is soon!)
       if (Strength(this.host) <= 0) Trash(this.host, false);
     },
   },
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       AddCounters(this, "virus");
     },
@@ -524,7 +524,7 @@ coreSet[13] = {
       },
     },
   ],
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       this.strengthBoost = 0;
       this.strengthReduce = 0;
@@ -591,7 +591,7 @@ coreSet[16] = {
   subTypes: ["Seedy"],
   installCost: 3,
   unique: true,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       Draw(runner, 2);
       LoseClicks(runner, 1);
@@ -683,7 +683,7 @@ coreSet[32] = {
   cardType: "resource",
   subTypes: ["Connection"],
   installCost: 1,
-  addTags: {
+  responsePreventableAddTags: {
     Enumerate: function () {
       if (intended.addTags > 0) return [{}];
       return [];
@@ -718,20 +718,20 @@ coreSet[33] = {
       return 0; //no modification to cost
     },
   },
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (this.usedThisTurn == true) return;
       if (CheckCardType(card, ["program", "hardware"]))
         this.usedThisTurn = true;
     },
   },
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.usedThisTurn = false;
     },
     automatic: true,
   },
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Resolve: function () {
       this.usedThisTurn = false;
     },
@@ -816,7 +816,7 @@ coreSet[43] = {
       return 0; //no modification to strength
     },
   },
-  runEnds: {
+  responseOnRunEnds: {
     Resolve: function (card) {
       this.strengthBoost = 0;
     },
@@ -877,19 +877,19 @@ coreSet[45] = {
   installCost: 2,
   memoryCost: 1,
   //Net Shield can prevent a single point of net damage each turn. It does not prevent all net damage from a single source. [Official FAQ]
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Resolve: function () {
       netShieldUsedThisTurn = false;
     },
     automatic: true,
   },
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       netShieldUsedThisTurn = false;
     },
     automatic: true,
   },
-  netDamage: {
+  responsePreventableNetDamage: {
     Enumerate: function () {
       if (intended.netDamage > 0) {
         if (!netShieldUsedThisTurn) return [{}];
@@ -937,7 +937,7 @@ coreSet[48] = {
   cardType: "resource",
   subTypes: ["Remote"],
   installCost: 0,
-  trash: {
+  responsePreventableTrash: {
     Enumerate: function () {
       if (intended.trash != null) {
         if (!CheckInstalled(intended.trash)) return [];
@@ -1098,7 +1098,7 @@ coreSet[51] = {
       },
     },
   ],
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       this.strengthBoost = 0;
       if (this.cardLocation == runner.rig.programs) {
@@ -1142,7 +1142,7 @@ coreSet[53] = {
   cardType: "resource",
   subTypes: ["Job"],
   installCost: 1,
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (card == this) PlaceCredits(this, 12);
     },
@@ -1174,7 +1174,7 @@ coreSet[57] = {
   rezCost: 0,
   canBeAdvanced: true,
   trashCost: 0,
-  cardAccessed: {
+  automaticOnAccess: {
     Resolve: function (card) {
       if (card == this) {
         //cannot be used if no advancement, see here: http://ancur.wikia.com/wiki/Activate_Blank_%22When_Accessed%22_Ability_Ruling
@@ -1264,7 +1264,7 @@ coreSet[61] = {
   rezCost: 8,
   strength: 6,
   subTypes: ["Barrier", "Bioroid", "AP"],
-  cardEncountered: {
+  automaticOnEncounter: {
     Resolve: function (card) {
       if (card == this) {
         if (!CheckClicks(1, runner)) return;
@@ -1283,7 +1283,7 @@ coreSet[61] = {
           if (subroutine == null) return;
           SpendClicks(runner, 1);
           Break(subroutine);
-          card.cardEncountered.Resolve.call(card, card); //recurse until skipped or impossible
+          card.automaticOnEncounter.Resolve.call(card, card); //recurse until skipped or impossible
         }
         DecisionPhase(
           runner,
@@ -1325,7 +1325,7 @@ coreSet[63] = {
   rezCost: 3,
   strength: 3,
   subTypes: ["Code Gate", "Bioroid", "AP"],
-  cardEncountered: {
+  automaticOnEncounter: {
     Resolve: function (card) {
       if (card == this) {
         if (!CheckClicks(1, runner)) return;
@@ -1344,7 +1344,7 @@ coreSet[63] = {
           if (subroutine == null) return;
           SpendClicks(runner, 1);
           Break(subroutine);
-          card.cardEncountered.Resolve.call(card, card); //recurse until skipped or impossible
+          card.automaticOnEncounter.Resolve.call(card, card); //recurse until skipped or impossible
         }
         DecisionPhase(
           runner,
@@ -1410,12 +1410,12 @@ coreSet[67] = {
   player: corp,
   cardType: "identity",
   subTypes: ["Megacorp"],
-  scored: {
+  responseOnScored: {
     Resolve: function () {
       if (CheckCardType(intended.score, ["agenda"])) NetDamage(1);
     },
   },
-  stolen: {
+  responseOnStolen: {
     Resolve: function () {
       if (CheckCardType(intended.steal, ["agenda"])) NetDamage(1);
     },
@@ -1430,7 +1430,7 @@ coreSet[68] = {
   agendaPoints: 2,
   advancementRequirement: 4,
   agenda: 0,
-  scored: {
+  responseOnScored: {
     Resolve: function () {
       if (intended.score == this) AddCounters(this, "agenda", 1);
     },
@@ -1460,7 +1460,7 @@ coreSet[69] = {
   rezCost: 0,
   canBeAdvanced: true,
   trashCost: 0,
-  cardAccessed: {
+  automaticOnAccess: {
     Resolve: function (card) {
       if (card == this) {
         //cannot be used if no advancement, see here: http://ancur.wikia.com/wiki/Activate_Blank_%22When_Accessed%22_Ability_Ruling
@@ -1510,7 +1510,7 @@ coreSet[70] = {
   subTypes: ["Ambush"],
   rezCost: 0,
   trashCost: 0,
-  cardAccessed: {
+  automaticOnAccess: {
     Resolve: function (card) {
       if (card == this) {
         //set up the function first (to call straight away or after reveal)
@@ -1564,7 +1564,7 @@ coreSet[71] = {
   cardType: "asset",
   rezCost: 0,
   trashCost: 4,
-  expose: {
+  responsePreventableExpose: {
     Enumerate: function () {
       if (!CheckInstalled(this)) return [];
       if (intended.expose != null) return [{}];
@@ -1643,7 +1643,7 @@ coreSet[72] = {
   playCost: 2,
   waitingForCondition: false,
   conditionsMet: false,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.waitingForCondition = true;
       this.conditionsMet = false;
@@ -1651,7 +1651,7 @@ coreSet[72] = {
     automatic: true, //automatic means this fires before any 'at start of turn, make a run' triggers so should be fine
     availableWhenInactive: true,
   },
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     //only runs during runner turn can trigger condition for Neural EMP
     Resolve: function () {
       this.waitingForCondition = false;
@@ -1659,7 +1659,7 @@ coreSet[72] = {
     automatic: true,
     availableWhenInactive: true,
   },
-  runEnds: {
+  responseOnRunEnds: {
     Resolve: function () {
       if (this.waitingForCondition) this.conditionsMet = true;
     },
@@ -1770,7 +1770,7 @@ coreSet[75] = {
       return 0;
     },
   },
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       if (this.chumEffectActive == true) {
         if (this != attackedServer.ice[approachIce]) {
@@ -1781,7 +1781,7 @@ coreSet[75] = {
     },
     automatic: true, //to be strictly correct this should fire between 3.1 and 3.2; this works well enough for now but could be refined if there are issues with interactions
   },
-  runEnds: {
+  responseOnRunEnds: {
     Resolve: function () {
       this.chumEffectActive = false;
     },
@@ -1889,7 +1889,7 @@ coreSet[88] = {
   strength: 4,
   subTypes: ["Sentry", "Tracer", "Observer"],
   power: 0,
-  cardEncountered: {
+  automaticOnEncounter: {
     Resolve: function (card) {
       if (card == this) {
         var choices = [
@@ -1943,7 +1943,7 @@ coreSet[89] = {
   rezCost: 1,
   strength: 3,
   subTypes: ["Sentry", "Tracer", "Observer"],
-  cardEncountered: {
+  automaticOnEncounter: {
     Resolve: function (card) {
       if (card == this) {
         var matrixCard = this;
@@ -2024,7 +2024,7 @@ coreSet[94] = {
   subTypes: ["Expansion"],
   agendaPoints: 1,
   advancementRequirement: 2,
-  scored: {
+  responseOnScored: {
     Resolve: function () {
       if (intended.score == this) {
         GainCredits(corp, 7);
@@ -2085,7 +2085,7 @@ coreSet[109] = {
   subTypes: ["Advertisement"],
   rezCost: 2,
   trashCost: 4,
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Resolve: function () {
       GainCredits(corp, 1);
     },

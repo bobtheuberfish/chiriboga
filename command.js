@@ -537,7 +537,7 @@ var phaseOptions = []; //contains all the valid/legal actions Params[] for this 
  * @returns {Boolean} true if forbidden, false if permitted
  */
 function CardEffectsForbid(id, card) {
-  var triggerName = "cannot";
+  var triggerName = "modifyCannot";
   var triggerList = ChoicesActiveTriggers(triggerName);
   //assumes all are automatic
   for (var i = 0; i < triggerList.length; i++) {

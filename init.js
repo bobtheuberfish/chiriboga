@@ -42,12 +42,12 @@ function RemoveLingeringEffect(lingeringEffect) { var l_idx = lingeringEffects.i
 var intended = {};
 intended.addTags = 0; //set when tags are to be added
 intended.badPublicity = 0; //set when bad publicity is to be added
-intended.netDamage = 0; //called when net damage is to be given/taken
-intended.meatDamage = 0; //called when meat damage is to be given/taken
-intended.trash = null; //called when a card is to be trashed
-intended.expose = null; //called when a card is to be exposed
-intended.score = null; //called when a card is to be scored
-intended.steal = null; //called when a card is to be stolen
+intended.netDamage = 0; //set when net damage is to be given/taken
+intended.meatDamage = 0; //set when meat damage is to be given/taken
+intended.trash = null; //set when a card is to be trashed
+intended.expose = null; //set when a card is to be exposed
+intended.score = null; //set when a card is to be scored
+intended.steal = null; //set when a card is to be stolen
 //for viewing only
 var viewingPile = null; //to look at all cards in a stack
 //values modifiable by effects. Don't access these directly, instead use the relevant function
@@ -1349,7 +1349,7 @@ function StartGame() {
   if (!currentPhase) IncrementPhase(); //move to first phase
   if (!skipShuffleAndDraw) {
     
-	TriggeredResponsePhase(runner, "beforeStartingHand", [], function() {
+	TriggeredResponsePhase(runner, "responseOnBeforeStartingHand", [], function() {
     for (
       var i = 0;
       i < 5;
@@ -1362,7 +1362,7 @@ function StartGame() {
 	Render();
 	//Narrate();
 	stackedLog = []; //skip narration
-	});
+	}, "Before Starting Hand");
   }
   Main();
 }
@@ -1576,7 +1576,7 @@ function ExecuteChosen(chosenCommand) {
       );
     else LogDebug("Updating phase after " + chosenCommand);
 
-    var triggerList = AutomaticTriggers("anyChange");
+    var triggerList = AutomaticTriggers("automaticOnAnyChange");
 
     Render();
   } else {

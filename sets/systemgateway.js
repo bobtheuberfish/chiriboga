@@ -12,13 +12,13 @@ cardSet[30001] = {
   deckSize: 40,
   influenceLimit: 15,
   usedThisTurn: false,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.usedThisTurn = false;
     },
     automatic: true,
   },
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Resolve: function () {
       this.usedThisTurn = false;
     },
@@ -26,14 +26,14 @@ cardSet[30001] = {
   },
   //need to store whether the card was being accessed (once it's trashed, the access immediately ends)
   wasAccessingCard: false,
-  trash: {
+  responsePreventableTrash: {
 	Resolve: function() {
 	  if (intended.trash == accessingCard) this.wasAccessingCard = true;
 	  else this.wasAccessingCard = false;
 	},
 	automatic: true,
   },
-  trashed: {
+  responseOnTrash: {
 	Enumerate: function(card) {
       if (this.wasAccessingCard && !this.usedThisTurn) return [{}];
 	  return [];
@@ -116,13 +116,13 @@ cardSet[30003] = {
   memoryUnits: 1,
   //Access > Trash 2 cards from your grip: Trash the card you are accessing. Use this ability only once per turn.
   usedThisTurn: false,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.usedThisTurn = false;
     },
     automatic: true,
   },
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Resolve: function () {
       this.usedThisTurn = false;
     },
@@ -207,12 +207,12 @@ cardSet[30004] = {
     return true;
   },
   //When you install this program and when your turn begins, place 1 virus counter on this program.
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (card == this) AddCounters(this, "virus", 1);
     },
   },
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       AddCounters(this, "virus", 1);
     },
@@ -385,7 +385,7 @@ cardSet[30005] = {
       },
     },
   ],
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       this.strengthBoost = 0;
     },
@@ -512,7 +512,7 @@ cardSet[30006] = {
       },
     },
   ],
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       this.strengthBoost = 0;
     },
@@ -557,12 +557,12 @@ cardSet[30007] = {
   installCost: 1,
   memoryCost: 1,
   //When you install this program and when your turn begins, place 1 virus counter on this program.
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (card == this) AddCounters(this, "virus", 1);
     },
   },
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       AddCounters(this, "virus", 1);
     },
@@ -619,13 +619,13 @@ cardSet[30008] = {
       return 0; //no modification to strength
     },
   },
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       this.strengthReduce = 0;
     },
     automatic: true,
   },
-  runSuccessful: {
+  responseOnRunSuccessful: {
     Resolve: function () {
       //central servers only
       if (typeof attackedServer.cards !== "undefined")
@@ -744,7 +744,7 @@ cardSet[30009] = {
   installCost: 1,
   unique: true,
   //Whenever you install a virus program, you may place 1 virus counter on it.
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (CheckCardType(card, ["program"])) {
         if (CheckSubType(card, "Virus")) AddCounters(card, "virus", 1);
@@ -793,25 +793,25 @@ cardSet[30010] = {
   subTypes: ["Cyborg"],
   usedThisTurn: false,
   cardsAccessedThisRun: 0,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.usedThisTurn = false;
     },
     automatic: true,
   },
-  runBegins: {
+  automaticOnRunBegins: {
     Resolve: function (server) {
       this.cardsAccessedThisRun = 0;
     },
     automatic: true,
   },
-  cardAccessed: {
+  automaticOnAccess: {
     Resolve: function () {
       this.cardsAccessedThisRun += 1;
     },
     automatic: true,
   },
-  runEnds: {
+  responseOnRunEnds: {
     Enumerate: function () {
       if (!this.usedThisTurn) {
         if (
@@ -855,14 +855,14 @@ cardSet[30011] = {
   //Search your stack for 1 icebreaker program and reveal it. (Shuffle your stack after searching it.)
   //If you made a successful run this turn, you may install it.
   madeSuccessfulRunThisTurn: false,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.madeSuccessfulRunThisTurn = false;
     },
     automatic: true,
     availableWhenInactive: true,
   },
-  runSuccessful: {
+  responseOnRunSuccessful: {
     Resolve: function () {
       this.madeSuccessfulRunThisTurn = true;
     },
@@ -1050,33 +1050,33 @@ cardSet[30013] = {
   installCost: 2,
   unique: true,
   //The first time each turn you breach HQ, access 1 additional card.
-  //The odd implementation is because breachServer is called whenever determining breach candidates
+  //The odd implementation is because modifyBreachAccess is called whenever determining breach candidates
   //So we can't say the first breach of HQ is done until after that
   firstHQBreachThisTurn: false,
   breachedHQThisTurn: false,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.breachedHQThisTurn = false;
     },
     automatic: true,
     availableWhenInactive: true,
   },
-  breachServer: {
-	//NOTE: breachServer may be called multiple times (e.g. when determining new candidates)
+  modifyBreachAccess: {
+	//NOTE: modifyBreachAccess may be called multiple times (e.g. when determining new candidates)
     Resolve: function () {
       if (attackedServer != corp.HQ) return 0;
       if (this.breachedHQThisTurn) return 0;
       return 1;
     },
   },
-  breached: {
+  automaticOnBreach: {
     Resolve: function (server) {
 	  if (server == corp.HQ && !this.breachedHQThisTurn) this.firstHQBreachThisTurn = true; 
 	},
 	automatic:true,
 	availableWhenInactive: true, //even if inactive
   },
-  runEnds: {
+  responseOnRunEnds: {
     Resolve: function (server) {
 	  if (this.firstHQBreachThisTurn) {
 		  this.breachedHQThisTurn = true; 
@@ -1127,7 +1127,7 @@ cardSet[30014] = {
   credits: 0,
   //Whenever you make a successful run, place 1[c] on this hardware.
   //[click]: Place 1[c] on this hardware, then take all credits from it.
-  runSuccessful: {
+  responseOnRunSuccessful: {
     Resolve: function () {
       PlaceCredits(this, 1);
     },
@@ -1180,21 +1180,21 @@ cardSet[30015] = {
   },
   //If you made a successful run this turn, this program costs 2[c] less to install.
   madeSuccessfulRunThisTurn: false,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.madeSuccessfulRunThisTurn = false;
     },
     automatic: true,
     availableWhenInactive: true,
   },
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Resolve: function () {
       this.madeSuccessfulRunThisTurn = false;
     },
     automatic: true,
     availableWhenInactive: true,
   },
-  runSuccessful: {
+  responseOnRunSuccessful: {
     Resolve: function () {
       this.madeSuccessfulRunThisTurn = true;
     },
@@ -1261,7 +1261,7 @@ cardSet[30015] = {
       },
     },
   ],
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       this.strengthBoost = 0;
     },
@@ -1315,14 +1315,14 @@ cardSet[30016] = {
   },
   //If you made a successful run this turn...
   madeSuccessfulRunThisTurn: false,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.madeSuccessfulRunThisTurn = false;
     },
     automatic: true,
     availableWhenInactive: true,
   },
-  runSuccessful: {
+  responseOnRunSuccessful: {
     Resolve: function () {
       this.madeSuccessfulRunThisTurn = true;
     },
@@ -1384,7 +1384,7 @@ cardSet[30016] = {
       },
     },
   ],
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       this.strengthBoost = 0;
     },
@@ -1441,12 +1441,12 @@ cardSet[30017] = {
     AddCounters(this, "virus", 1);
     if (CheckCounters(this, "virus", 3)) Derez(this.host);
   },
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (card == this) this.SharedResolve();
     },
   },
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.SharedResolve();
     },
@@ -1497,13 +1497,13 @@ cardSet[30018] = {
   runRnD: false,
   runArchives: false,
   //When you install this resource, load 12[c] onto it. When it is empty, trash it.
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (card == this) LoadCredits(this, 12);
     },
   },
   //[click]: Run a central server you have not run this turn. If successful, take 3[c] from this resource.
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.runHQ = false;
       this.runRnD = false;
@@ -1512,7 +1512,7 @@ cardSet[30018] = {
     automatic: true,
     availableWhenInactive: true,
   },
-  runSuccessful: {
+  responseOnRunSuccessful: {
 	Enumerate: function() {
 		if (this.runningWithThis) return [{}];
 		return [];
@@ -1523,7 +1523,7 @@ cardSet[30018] = {
     }
   },
   //Rulings: "Red Team cares about the server the Runner declared to be the attacked server at the beginning of the run."
-  runBegins: {
+  automaticOnRunBegins: {
     Resolve: function (server) {
       if (server == corp.HQ) this.runHQ = true;
       if (server == corp.RnD) this.runRnD = true;
@@ -1532,7 +1532,7 @@ cardSet[30018] = {
     automatic: true,
     availableWhenInactive: true,
   },
-  runEnds: {
+  responseOnRunEnds: {
     Resolve: function () {
       this.runningWithThis = false;
     },
@@ -1696,7 +1696,7 @@ cardSet[30019] = {
         );
     }
   },
-  scored: {
+  responseOnScored: {
     Enumerate() {
       return this.SharedEnumerate();
     },
@@ -1705,7 +1705,7 @@ cardSet[30019] = {
     },
     text: "Tāo Salonga: Swap 2 installed pieces of ice",
   },
-  stolen: {
+  responseOnStolen: {
     Enumerate() {
       return this.SharedEnumerate();
     },
@@ -1790,7 +1790,7 @@ cardSet[30022] = {
       return 0; //no modification to cost
     },
   },
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (this.installedProgramThisTurn) return;
       if (CheckCardType(card, ["program"]))
@@ -1799,14 +1799,14 @@ cardSet[30022] = {
     automatic: true,
     availableWhenInactive: true,
   },
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.installedProgramThisTurn = false;
     },
     automatic: true,
     availableWhenInactive: true,
   },
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Resolve: function () {
       this.installedProgramThisTurn = false;
     },
@@ -1898,13 +1898,13 @@ cardSet[30023] = {
     this.SharedPhase.next = currentPhase;
     ChangePhase(this.SharedPhase);
   },
-  scored: {
+  responseOnScored: {
     Resolve: function (params) {
       this.SharedResolve();
     },
     text: "Pantograph: Gain 1[c], you may install 1 card",
   },
-  stolen: {
+  responseOnStolen: {
     Resolve: function (params) {
       this.SharedResolve();
     },
@@ -1927,19 +1927,19 @@ cardSet[30024] = {
   installCost: 4,
   runningWithThis: false,
   runWasSuccessful: false,
-  runBegins: {
+  automaticOnRunBegins: {
     Resolve: function (server) {
       this.runWasSuccessful = false;
     },
     automatic: true,
   },
-  runSuccessful: {
+  responseOnRunSuccessful: {
     Resolve: function () {
       this.runWasSuccessful = true;
     },
     automatic: true,
   },
-  runUnsuccessful: {
+  responseOnRunUnsuccessful: {
     Resolve: function () {
       this.runWasSuccessful = false;
       this.runningWithThis = false;
@@ -1948,8 +1948,8 @@ cardSet[30024] = {
   },
   //If successful, access X additional cards when you breach R&D.
   //X is equal to the number of hosted virus counters.
-  breachServer: {
-	//NOTE: breachServer may be called multiple times (e.g. when determining new candidates)  
+  modifyBreachAccess: {
+	//NOTE: modifyBreachAccess may be called multiple times (e.g. when determining new candidates)  
     Resolve: function () {
       var ret = 0; //by default, no additional cards
       if (this.runningWithThis && this.runWasSuccessful && attackedServer == corp.RnD) {
@@ -1959,7 +1959,7 @@ cardSet[30024] = {
     },
   },
   //Whenever a successful run on R&D ends, you may place 1 virus counter on this program
-  runEnds: {
+  responseOnRunEnds: {
 	Enumerate: function() {
 		this.runningWithThis = false;
 		if (attackedServer == corp.RnD && this.runWasSuccessful) return [{}];
@@ -2126,7 +2126,7 @@ cardSet[30025] = {
       },
     },
   ],
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       this.strengthBoost = 0;
     },
@@ -2235,7 +2235,7 @@ cardSet[30026] = {
       },
     },
   ],
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       this.strengthBoost = 0;
     },
@@ -2281,18 +2281,18 @@ cardSet[30027] = {
   installCost: 1,
   usedThisTurn: false, //NOTE: "Use this ability only once per turn" conditions are once *per copy* per turn.
   //When you install this resource, load 9[c] onto it. When it is empty, trash it.
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (card == this) LoadCredits(this, 9);
     },
   },
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.usedThisTurn = false;
     },
     automatic: true,
   },
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Resolve: function () {
       this.usedThisTurn = false;
     },
@@ -2349,20 +2349,20 @@ cardSet[30028] = {
     MakeRun(params.server);
   },
   runWasSuccessful: false,
-  runBegins: {
+  automaticOnRunBegins: {
     Resolve: function (server) {
       this.runWasSuccessful = false;
     },
     automatic: true,
   },
-  runSuccessful: {
+  responseOnRunSuccessful: {
     Resolve: function () {
       this.runWasSuccessful = true;
       Draw(runner, 1);
     },
   },
-  breachServer: {
-	//NOTE: breachServer may be called multiple times (e.g. when determining new candidates)
+  modifyBreachAccess: {
+	//NOTE: modifyBreachAccess may be called multiple times (e.g. when determining new candidates)
     Resolve: function () {
 	  if (this.runWasSuccessful) return 1;
       return 0;
@@ -2540,13 +2540,13 @@ cardSet[30032] = {
       },
     },
   ],
-  encounterEnds: {
+  responseOnEncounterEnds: {
     Resolve: function () {
       this.strengthBoost = 0;
     },
     automatic: true,
   },
-  runEnds: {
+  responseOnRunEnds: {
     Enumerate: function () {
       if (this.conditionsMet) return [{}];
       return [];
@@ -2627,7 +2627,7 @@ cardSet[30033] = {
     },
   ],
   //When your turn begins, take 1[c] from this resource.
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     /*
 		Enumerate: function() {
 			if (!CheckCounters(this,"credits",1)) return [];
@@ -2679,7 +2679,7 @@ cardSet[30034] = {
   unique: true,
   //The first time each turn you take the basic action to draw 1 card, instead draw 2 cards.
   usedBasicActionDrawThisTurn: false,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.usedBasicActionDrawThisTurn = false;
     },
@@ -2719,7 +2719,7 @@ cardSet[30035] = {
     },
   },
   //Whenever you score an agenda, you may add 1 card from Archives to HQ
-  scored: {
+  responseOnScored: {
     Enumerate: function () {
       var ret = ChoicesArrayCards(corp.archives.cards);
 	  //**AI code
@@ -2752,14 +2752,14 @@ cardSet[30036] = {
   advancementRequirement: 3,
   limitPerDeck: 1,
   //When you score this agenda, gain [click][click][click].
-  scored: {
+  responseOnScored: {
     Enumerate: function () {
       if (intended.score == this) return [{}];
       return [];
     },
     Resolve: function (params) {
       GainClicks(corp, 3);
-      this.cannot.Resolve = function (str, card) {
+      this.modifyCannot.Resolve = function (str, card) {
         if (str == "score") return true; //cannot score
         return false; //nothing else forbidden
       };
@@ -2768,15 +2768,15 @@ cardSet[30036] = {
     text: "Gain [click][click][click]",
   },
   //You cannot score agendas for the remainder of the turn.
-  cannot: {
+  modifyCannot: {
     Resolve: function (str, card) {
       return false;
     }, //nothing forbidden
     availableWhenInactive: true,
   },
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function (params) {
-      this.cannot.Resolve = function (str, card) {
+      this.modifyCannot.Resolve = function (str, card) {
         return false;
       }; //nothing forbidden
     },
@@ -2796,13 +2796,13 @@ cardSet[30037] = {
   rezCost: 2,
   trashCost: 2,
   //When you rez this asset, load 9[c] onto it.
-  cardRezzed: {
+  automaticOnRez: {
     Resolve: function (card) {
       if (card == this) LoadCredits(this, 9);
     },
   },
   //When your turn begins, take 3[c] from this asset.
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
 	Enumerate: function() {
 		if (!CheckCounters(this,"credits",3)) return []; //won't happen with less than 3 because it doesn't say 'take *up to* ...'
 		return [{}];
@@ -2938,7 +2938,7 @@ cardSet[30038] = {
     {
       text: "The Runner cannot steal or trash Corp cards for the remainder of this run.",
       Resolve: function () {
-        this.cannot.Resolve = function (str, card) {
+        this.modifyCannot.Resolve = function (str, card) {
           if (str == "steal") return true; //cannot steal
           if (str == "trash") {
             //runner cannot trash corp cards but other combinations are fine
@@ -2988,15 +2988,15 @@ cardSet[30038] = {
   ],
   activeForOpponent: true,
   //The runner cannot steal or trash Corp cards for the remainder of this run.
-  cannot: {
+  modifyCannot: {
     Resolve: function (str, card) {
       return false;
     }, //nothing forbidden by default
     availableWhenInactive: true,
   },
-  runEnds: {
+  responseOnRunEnds: {
     Resolve: function (params) {
-      this.cannot.Resolve = function (str, card) {
+      this.modifyCannot.Resolve = function (str, card) {
         return false;
       }; //nothing forbidden again
     },
@@ -3215,14 +3215,14 @@ cardSet[30040] = {
   cardType: "operation",
   playCost: 1,
   cardsInstalledThisTurn: [],
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Resolve: function () {
       this.cardsInstalledThisTurn = [];
     },
     automatic: true,
     availableWhenInactive: true,
   },
-  cardInstalled: {
+  automaticOnInstall: {
     Resolve: function (card) {
       if (!this.cardsInstalledThisTurn.includes(card))
         this.cardsInstalledThisTurn.push(card);
@@ -3344,7 +3344,7 @@ cardSet[30042] = {
 	if (corp.AI._potentialDamageOnBreach(attackedServer) > runner.grip.length) return false;
     return true;
   },
-  approachServer: {
+  responseOnApproachServer: {
     Enumerate: function () {
       if (attackedServer == GetServer(this)) return [{}];
       return [];
@@ -3418,7 +3418,7 @@ cardSet[30043] = {
   influenceLimit: 15,
   subTypes: ["Megacorp"],
   //When your discard phase ends, if there is a facedown card in Archives, gain 1[c].
-  corpDiscardEnds: {
+  responseOnCorpDiscardEnds: {
     Enumerate: function () {
       for (var i = 0; i < corp.archives.cards.length; i++) {
         if (!IsFaceUp(corp.archives.cards[i])) return [{}];
@@ -3529,7 +3529,7 @@ cardSet[30044] = {
         corp.AI.preferred = { title: "Longevity Serum", option: choice }; //title must match currentPhase.title for AI to fire
     }
   },
-  scored: {
+  responseOnScored: {
     Enumerate: function () {
       if (intended.score == this) return [{}];
       return [];
@@ -3556,7 +3556,7 @@ cardSet[30045] = {
   trashCost: 2,
   advancement: 0,
   //When the Runner accesses this asset while it is installed, do 2 net damage plus 1 net damage for each hosted advancement counter.
-  accessed: {
+  responseOnAccess: {
     Enumerate: function () {
       if (accessingCard == this && CheckInstalled(this)) return [{}];
       return [];
@@ -3733,7 +3733,7 @@ cardSet[30049] = {
   Resolve: function (params) {
     NetDamage(this.printedAgendaPointsThisTurn);
   },
-  scored: {
+  responseOnScored: {
     Resolve: function () {
       if (intended.score !== null)
         this.printedAgendaPointsThisTurn += intended.score.agendaPoints; //note printed points, no modifiers
@@ -3741,14 +3741,14 @@ cardSet[30049] = {
     automatic: true,
     availableWhenInactive: true,
   },
-  runnerDiscardEnds: {
+  responseOnRunnerDiscardEnds: {
     Resolve: function () {
       this.printedAgendaPointsThisTurn = 0;
     },
     automatic: true,
     availableWhenInactive: true,
   },
-  corpDiscardEnds: {
+  responseOnCorpDiscardEnds: {
     Resolve: function () {
       this.printedAgendaPointsThisTurn = 0;
     },
@@ -3795,7 +3795,7 @@ cardSet[30050] = {
     //and they would be safer in Archives e.g. no runner clicks left or spin doctor is in hand (with a click remaining) or play
     return true;
   },
-  approachServer: {
+  responseOnApproachServer: {
     Enumerate: function () {
       if (attackedServer == GetServer(this)) {
         if (CheckCredits(corp, 2, "", this)) {
@@ -3871,19 +3871,19 @@ cardSet[30051] = {
   influenceLimit: 15,
   subTypes: ["Megacorp"],
   usedThisTurn: false,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function () {
       this.usedThisTurn = false;
     },
     automatic: true,
   },
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Resolve: function () {
       this.usedThisTurn = false;
     },
     automatic: true,
   },
-  tagsTaken: {
+  responseOnTakeTags: {
     Enumerate: function () {
       var choices = [];
       if (!this.usedThisTurn) {
@@ -3910,7 +3910,7 @@ cardSet[30052] = {
   agendaPoints: 2,
   advancementRequirement: 3,
   limitPerDeck: 1,
-  scored: {
+  responseOnScored: {
     Enumerate: function () {
       if (intended.score == this) return [{}];
       return [];
@@ -3919,7 +3919,7 @@ cardSet[30052] = {
       AddTags(1);
     },
   },
-  stolen: {
+  responseOnStolen: {
     Enumerate: function () {
       if (intended.steal == this) return [{}];
       return [];
@@ -3942,7 +3942,7 @@ cardSet[30053] = {
   unique: true,
   trashCost: 2,
   //When you rez this asset, draw 2 cards.
-  rez: {
+  responseOnRez: {
     Enumerate: function (card) {
       if (card == this) return [{}];
 	  return [];
@@ -4146,7 +4146,7 @@ cardSet[30054] = {
   rezCost: 5,
   strength: 4,
   //When the Runner encounters this ice, end the run unless the Runner takes 1 tag.
-  encounter: {
+  responseOnEncounter: {
     Enumerate: function (card) {
 	  //this first check is corp-side
 	  //(just to activate it)
@@ -4233,7 +4233,7 @@ cardSet[30055] = {
   rezCost: 2,
   strength: 1,
   //When you rez this ice during a run against this server, give the Runner 1 tag
-  rez: {
+  responseOnRez: {
     Enumerate: function (card) {
       if (card == this) {
         if (attackedServer !== null) {
@@ -4303,14 +4303,14 @@ cardSet[30057] = {
   playCost: 4,
   //Play only if the Runner made a successful run during their last turn.
   successfulRunLastTurn: false,
-  runnerTurnBegin: {
+  responseOnRunnerTurnBegins: {
     Resolve: function (params) {
       this.successfulRunLastTurn = false;
     },
     automatic: true,
     availableWhenInactive: true,
   },
-  runSuccessful: {
+  responseOnRunSuccessful: {
     Resolve: function (params) {
       this.successfulRunLastTurn = true;
     },
@@ -4373,7 +4373,7 @@ cardSet[30058] = {
   AIIsScoringUpgrade: true,
   runnerStoleAgendasThisRun: false,
   serverThisWasInstalledIn: null,
-  runBegins: {
+  automaticOnRunBegins: {
     Resolve: function (server) {
       //track agendas stolen every run in case attacked server changes mid-run
       this.runnerStoleAgendasThisRun = false;
@@ -4383,7 +4383,7 @@ cardSet[30058] = {
     automatic: true,
     availableWhenInactive: true,
   },
-  stolen: {
+  responseOnStolen: {
     Resolve: function (params) {
       this.runnerStoleAgendasThisRun = true;
     },
@@ -4391,17 +4391,17 @@ cardSet[30058] = {
     availableWhenInactive: true,
   },
   //Persistent (If the runner trashes this card while accessing it, this ability still applies for the remainder of the run.)
-  cardTrashed: {
+  automaticOnTrash: {
     Resolve: function (card) {
       if (card == this && this.rezzed && card == accessingCard) {
-        this.runEnds.availableWhenInactive = true;
+        this.responseOnRunEnds.availableWhenInactive = true;
       }
     },
     automatic: true,
     availableWhenInactive: true,
   },
   //Whenever a run on this server ends, if the runner stole any agendas during that run, give the Runner 2 tags.
-  runEnds: {
+  responseOnRunEnds: {
     Resolve: function (params) {
       var runEndedOnThisServer = false;
       if (attackedServer == GetServer(this)) runEndedOnThisServer = true;
@@ -4412,7 +4412,7 @@ cardSet[30058] = {
       if (runEndedOnThisServer) {
         if (this.runnerStoleAgendasThisRun) AddTags(2);
       }
-      this.runEnds.availableWhenInactive = false; //Persistence ends after the run ends
+      this.responseOnRunEnds.availableWhenInactive = false; //Persistence ends after the run ends
     },
   },
   AIWouldTrigger: function () {
@@ -4450,7 +4450,7 @@ cardSet[30059] = {
   influenceLimit: 15,
   subTypes: ["Megacorp"],
   //Whenever you advance a card, gain 2(c) if it had no advancement counters
-  cardAdvanced: {
+  automaticOnAdvance: {
     Resolve: function (card) {
       if (card.advancement == 1) GainCredits(corp, 2); //if it has 1 now then it had none before
     },
@@ -4468,7 +4468,7 @@ cardSet[30060] = {
   advancementRequirement: 3,
   limitPerDeck: 1,
   //When you score this agenda, you may trash 1 installed resource.
-  scored: {
+  responseOnScored: {
     Enumerate: function () {
       if (intended.score == this) {
         if (
@@ -4533,7 +4533,7 @@ cardSet[30061] = {
 	  //this might not be the best check to use but it might be ok
 	  return (corp.AI._serverToProtect() != GetServer(this));
   },
-  corpTurnBegin: {
+  responseOnCorpTurnBegins: {
     Enumerate: function () {
       if (CheckCounters(this, "advancement", 1)) return [{}];
       return [];
@@ -4819,14 +4819,14 @@ cardSet[30066] = {
     return false;
   },
   scoringFromServer: null,
-  score: {
+  responsePreventableScore: {
     Resolve: function () {
       scoringFromServer = GetServer(intended.score);
     },
     automatic: true,
   },
   //Whenever you score an agenda from this server, you may search R&D for 1 non-agenda card and reveal it. (Shuffle R&D after searching it.) Add that card to HQ.
-  scored: {
+  responseOnScored: {
     Enumerate: function () {
       if (scoringFromServer == GetServer(this)) {
         var choices = ChoicesArrayCards(corp.RnD.cards, function (card) {
@@ -4892,7 +4892,7 @@ cardSet[30067] = {
   subTypes: ["Expansion"],
   agendaPoints: 2,
   advancementRequirement: 4,
-  scored: {
+  responseOnScored: {
     Resolve: function () {
       if (intended.score == this) GainCredits(corp, 7);
     },
@@ -4911,7 +4911,7 @@ cardSet[30068] = {
   agendaPoints: 2,
   advancementRequirement: 4,
   //When you score this agenda, if the Runner is tagged, do 4 meat damage; otherwise, give the Runner 1 tag.
-  scored: {
+  responseOnScored: {
     Enumerate: function () {
       if (intended.score == this) return [{}];
       return [];
@@ -5008,7 +5008,7 @@ cardSet[30069] = {
       corp.AI.preferred = { title: "Send a Message", option: choice }; //title must match currentPhase.title for AI to fire
     }
   },
-  scored: {
+  responseOnScored: {
     //you may rez 1 installed piece of ice, ignoring all costs
     Enumerate: function () {
       return this.SharedEnumerate(intended.score);
@@ -5018,7 +5018,7 @@ cardSet[30069] = {
     },
     text: "You may rez 1 installed piece of ice, ignoring all costs",
   },
-  stolen: {
+  responseOnStolen: {
     //you may rez 1 installed piece of ice, ignoring all costs
     Enumerate: function () {
       return this.SharedEnumerate(intended.steal);
@@ -5041,7 +5041,7 @@ cardSet[30070] = {
   agendaPoints: 1,
   advancementRequirement: 3,
   //When you score this agenda, you may draw 2 cards.
-  scored: {
+  responseOnScored: {
     Enumerate: function () {
       if (intended.score == this) {
 		  if (corp.RnD.cards.length > 1) return [{}];
@@ -5081,7 +5081,7 @@ cardSet[30071] = {
   rezCost: 2,
   trashCost: 3,
   //When you rez this asset, load 15[c] onto it. When it is empty, trash it.
-  cardRezzed: {
+  automaticOnRez: {
     Resolve: function (card) {
       if (card == this) LoadCredits(this, 15);
     },

@@ -1906,8 +1906,8 @@ class CorpAI {
 			if (!copyOfInsideJob.encounteredIceThisRun) {
 				var indexInServer = server.ice.indexOf(card);
 				if (indexInServer == 0 || !server.ice[indexInServer-1].rezzed && corp.creditPool < RezCost(card) + RezCost(server.ice[indexInServer-1])) {
-					if (typeof card.cardRezzed == 'undefined' 
-					  && typeof card.rez == 'undefined') {
+					if (typeof card.automaticOnRez == 'undefined' 
+					  && typeof card.responseOnRez == 'undefined') {
 					  //if this is first and only ice that would be encountered during an inside job,
 					  //  only rez it if there is some other benefit
 					  rezIce = false;

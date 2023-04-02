@@ -113,10 +113,10 @@ phaseTemplates.standardResponse = {
       Log("Encountering " + GetTitle(attackedServer.ice[approachIce], true));
       encountering = true;
 	  //first the automatic triggers
-      AutomaticTriggers("cardEncountered", attackedServer.ice[approachIce]);
+      AutomaticTriggers("automaticOnEncounter", attackedServer.ice[approachIce]);
 	  //then the Enumerate ones
 	  //currently giving whoever's turn it is priority...not sure this is always going to be right
-	  TriggeredResponsePhase(playerTurn, "encounter", [attackedServer.ice[approachIce]]);
+	  TriggeredResponsePhase(playerTurn, "responseOnEncounter", [attackedServer.ice[approachIce]], function () {}, "Encounter");
     } else if (currentPhase.identifier == "Run 4.3") {
       //Run: Movement (Nisei 2021 4.3)
       movement = true;
@@ -408,7 +408,7 @@ phaseTemplates.globalTriggers = {
 	  //in this case a result of 0 means no prevention (i.e. not modified)
 	  if (modifySuccess == 0) {
 		  //fire any pre-success triggers
-		  AutomaticTriggers("ifWouldDeclareSuccess");
+		  AutomaticTriggers("automaticOnWouldDeclareSuccess");
 	  }
 	  //check modify again in case the pre-success changed it
 	  var modifySuccess = ModifyingTriggers("modifyDeclareSuccess", null, 0); //null means no parameter is sent, lower limit of 0 means the total will not be any lower than zero
@@ -417,7 +417,7 @@ phaseTemplates.globalTriggers = {
 		  //now declare successful
 		  Log("Run successful");
 		  //and fire the pre-phase succesful automatics
-		  AutomaticTriggers("declaredSuccessful", attackedServer);
+		  AutomaticTriggers("automaticOnRunSuccessful", attackedServer);
 	  }
 	  else currentPhase.buildTriggerList = false;
       //store a little extra info to help AIs with decisionmaking
@@ -462,14 +462,14 @@ phaseTemplates.globalTriggers = {
         ).length < 1
       ) {
       	  //special case: instead of breaching (Runner only)
-          if (currentPhase.triggerCallbackName == "runSuccessful" && currentPhase.player == runner) {
-          	var iobChoices = ChoicesActiveTriggers("insteadOfBreaching", runner);
+          if (currentPhase.triggerCallbackName == "responseOnRunSuccessful" && currentPhase.player == runner) {
+          	var iobChoices = ChoicesActiveTriggers("specialOnInsteadOfBreaching", runner);
 			//that gives a list of cards but we still need to use Enumerate to remove impossibles and force required
             var iobRequired = false;			
 			for (var i=iobChoices.length-1; i>-1; i--) {
 				var thisCardChoices = [{}]; //assume valid nonrequired choice if no Enumerate
-				if (typeof iobChoices[i].card.insteadOfBreaching.Enumerate == 'function') {
-					thisCardChoices = iobChoices[i].card.insteadOfBreaching.Enumerate.call(iobChoices[i].card);
+				if (typeof iobChoices[i].card.specialOnInsteadOfBreaching.Enumerate == 'function') {
+					thisCardChoices = iobChoices[i].card.specialOnInsteadOfBreaching.Enumerate.call(iobChoices[i].card);
 				}
 				//if not valid, remove from list
 				if (thisCardChoices.length < 1) {
@@ -524,12 +524,12 @@ phaseTemplates.globalTriggers = {
 		var card = params.card;
 		var instruction = GetTitle(card);
         var choices = [{}]; //assume valid by default
-        if (typeof card.insteadOfBreaching.Enumerate === "function")
-          choices = card.insteadOfBreaching.Enumerate.call(card);
+        if (typeof card.specialOnInsteadOfBreaching.Enumerate === "function")
+          choices = card.specialOnInsteadOfBreaching.Enumerate.call(card);
         DecisionPhase(
           card.player,
           choices,
-          card.insteadOfBreaching.Resolve,
+          card.specialOnInsteadOfBreaching.Resolve,
           instruction,
           instruction,
           card
@@ -731,7 +731,7 @@ phases.corpTurnBegin = CreatePhaseFromTemplate(
   "Corp 1.2",
   null
 );
-phases.corpTurnBegin.triggerCallbackName = "corpTurnBegin";
+phases.corpTurnBegin.triggerCallbackName = "responseOnCorpTurnBegins";
 
 //End of Draw Phase
 phases.corpEndDraw = {
@@ -1007,7 +1007,7 @@ phases.corpEndOfTurn = CreatePhaseFromTemplate(
   "Corp 3.3",
   null
 );
-phases.corpEndOfTurn.triggerCallbackName = "corpDiscardEnds";
+phases.corpEndOfTurn.triggerCallbackName = "responseOnCorpDiscardEnds";
 
 //First response part of Runner's Action Phase (analagous to start of Corp's draw phase)
 phases.runnerStartResponse = CreatePhaseFromTemplate(
@@ -1030,7 +1030,7 @@ phases.runnerTurnBegin = CreatePhaseFromTemplate(
   "Runner 1.2",
   null
 );
-phases.runnerTurnBegin.triggerCallbackName = "runnerTurnBegin";
+phases.runnerTurnBegin.triggerCallbackName = "responseOnRunnerTurnBegins";
 
 //Take action
 phases.runnerActionMain = {
@@ -1272,7 +1272,7 @@ phases.runEncounterEnd = CreatePhaseFromTemplate(
   "Run EncounterEnd",
   null
 );
-phases.runEncounterEnd.triggerCallbackName = "encounterEnds";
+phases.runEncounterEnd.triggerCallbackName = "responseOnEncounterEnds";
 
 //Run: Runner passes ice and movement phase begins (Nisei 2021 4.1)
 phases.runPassesIce = CreatePhaseFromTemplate(
@@ -1282,7 +1282,7 @@ phases.runPassesIce = CreatePhaseFromTemplate(
   "Run 4.1",
   null
 );
-phases.runPassesIce.triggerCallbackName = "passesIce";
+phases.runPassesIce.triggerCallbackName = "responseOnPassesIce";
 
 //Run: paid ability window and decide whether to continue the run (Nisei 2021 4.2 and 4.3) this is part of the Movement Phase
 phases.runDecideContinue = CreatePhaseFromTemplate(
@@ -1318,7 +1318,7 @@ phases.runApproachServer = CreatePhaseFromTemplate(
   "Run 4.6.2",
   null
 );
-phases.runApproachServer.triggerCallbackName = "approachServer";
+phases.runApproachServer.triggerCallbackName = "responseOnApproachServer";
 phases.runApproachServer.historyBreak = { title: "Run: Server", style: "run" };
 
 //Run: run successful (Nisei 2021 5.1)
@@ -1329,7 +1329,7 @@ phases.runSuccessful = CreatePhaseFromTemplate(
   "Run 5.1",
   null
 );
-phases.runSuccessful.triggerCallbackName = "runSuccessful";
+phases.runSuccessful.triggerCallbackName = "responseOnRunSuccessful";
 phases.runSuccessful.text.n = "Breach";
 
 //Run: runner breaches server to access cards (Nisei 2021 5.2)
@@ -1338,7 +1338,7 @@ phases.runBreachServer = {
   title: "Run: Breach", //was 'Access' (i.e. access cards in server) but Nisei changed it so it's not confused with each individual access
   identifier: "Run 5.2",
   Init: function() {
-	AutomaticTriggers("breached", attackedServer); //automatic only for now
+	AutomaticTriggers("automaticOnBreach", attackedServer); //automatic only for now
   },
   Enumerate: {
     access: function () {
@@ -1377,14 +1377,14 @@ phases.runAccessingCard = {
     } else SetHistoryThumbnail("Corp_back.png", "Access");
     accessingCard.renderer.ToggleZoom();
 
-    AutomaticTriggers("cardAccessed", accessingCard); //special case in CheckCallback allows for this to work even when card not active
+    AutomaticTriggers("automaticOnAccess", accessingCard); //special case in CheckCallback allows for this to work even when card not active
     this.chosenString = "chosen";
     //since archived cards are already face up we can skip the flip-and-look-on-access step
     if (attackedServer == corp.archives) this.requireHumanInput = false;
     else this.requireHumanInput = true;
 	
 	//and the non-automatic triggers
-    TriggeredResponsePhase(playerTurn, "accessed", [], function () {});
+    TriggeredResponsePhase(playerTurn, "responseOnAccess", [], function () {}, "Accessed");
   },
   Enumerate: {
     trash: function () {
@@ -1496,7 +1496,7 @@ phases.runUnsuccessful = CreatePhaseFromTemplate(
   "Run 6.3",
   null
 );
-phases.runUnsuccessful.triggerCallbackName = "runUnsuccessful";
+phases.runUnsuccessful.triggerCallbackName = "responseOnRunUnsuccessful";
 
 //Run: run ends (Nisei 2021 6.4) aka run is complete. TODO runner should lose bad pub credits at 6.2, before run is declared unsuccsessful
 phases.runEnds = CreatePhaseFromTemplate(
@@ -1506,7 +1506,7 @@ phases.runEnds = CreatePhaseFromTemplate(
   "Run 6.4",
   null
 );
-phases.runEnds.triggerCallbackName = "runEnds";
+phases.runEnds.triggerCallbackName = "responseOnRunEnds";
 phases.runEnds.Resolve.n = function () {
   GlobalTriggersPhaseCommonResolveN(false, function () {
     //the false means move to next phase after resolving
@@ -1574,7 +1574,7 @@ phases.runnerEndOfTurn = CreatePhaseFromTemplate(
   "Runner 2.3",
   null
 );
-phases.runnerEndOfTurn.triggerCallbackName = "runnerDiscardEnds";
+phases.runnerEndOfTurn.triggerCallbackName = "responseOnRunnerDiscardEnds";
 
 //Now that the phases are defined we can assign their default next phases
 //Comment beside refers to the original phase object not the next
