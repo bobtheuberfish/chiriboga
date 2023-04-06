@@ -3101,6 +3101,9 @@ function DeckBuild(
 	    31003, 31004, 31005, 31006, 31007, 31008, 31009, 31010, 31011, 31012, 31015, 31016, 31017, 31018, 31019, 31020, 31021, 31022, 31023, 31024, 
 		31027, 31028, 31029, 31030, 31031, 31032, 31033, 31034, 31035, 31036, 31037, 31038, 31039,
 	  ]);
+	  if (setIdentifiers.includes('ms')) otherCards = otherCards.concat([
+	    33002,
+	  ]);
 	  influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded

@@ -1956,6 +1956,7 @@ console.log(this.preferred);
         }
 
 		//extra potential from passive card abilities
+		var basePotential = this.serverList[i].potential;
 		var activeCards = ActiveCards(runner);
 		
 		//check if there is an effect that would prevent breach, in which case normal potential rules don't apply
@@ -1976,7 +1977,15 @@ console.log(this.preferred);
 		  for (var j=0; j<runner.grip.length; j++) {
 			  if (CheckSubType(runner.grip[j], "Run")) {
 				  var extraPotentialFromThisRunEvent = 0;
-				  if (typeof runner.grip[j].AIRunEventExtraPotential == 'function' && (runner.grip[j].AIBreachNotRequired || !breachPrevented)) extraPotentialFromThisRunEvent = runner.grip[j].AIRunEventExtraPotential.call(runner.grip[j],this.serverList[i].server,this.serverList[i].potential);
+				  if (typeof runner.grip[j].AIRunEventExtraPotential == 'function' && (runner.grip[j].AIBreachNotRequired || !breachPrevented)) {
+					  extraPotentialFromThisRunEvent = runner.grip[j].AIRunEventExtraPotential.call(runner.grip[j],this.serverList[i].server,this.serverList[i].potential);
+					  //if breach is prevented, ignore potential from card accesses
+					  if (typeof runner.grip[j].AIPreventBreach == 'function') {
+						if (runner.grip[j].AIPreventBreach.call(runner.grip[j],this.serverList[i].server)) {
+							extraPotentialFromThisRunEvent -= basePotential;
+						}
+					  }
+				  }
 				  if ( extraPotentialFromThisRunEvent > runEventOrAbilityBestExtraPotential ) {
 					  if ( FullCheckPlay(runner.grip[j]) ) {
 						  runEventOrAbilityBestExtraPotential = extraPotentialFromThisRunEvent;

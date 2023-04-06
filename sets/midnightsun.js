@@ -73,6 +73,61 @@ cardSet[33001] = {
     }
   },
 };
+
+cardSet[33002] = {
+  title: 'Chastushka',
+  imageFile: "33002.png",
+  elo: 1682,
+  player: runner,
+  faction: "Anarch",
+  influence: 4,
+  subTypes: ["Run","Sabotage"],
+  cardType: "event",
+  playCost: 3,
+  //Run HQ. If successful, instead of breaching HQ, sabotage 4.
+  runWasSuccessful: false,
+  Resolve: function (params) {
+	this.runWasSuccessful = false;
+    MakeRun(corp.HQ);
+  },
+  automaticOnRunSuccessful: {
+    Resolve: function (server) {
+      this.runWasSuccessful = true;
+    }
+  },
+  specialOnInsteadOfBreaching: {
+	Enumerate: function() {
+      if (this.runWasSuccessful) return [{required:true}];
+      return [];
+	},
+    Resolve: function (params) {
+	  this.runWasSuccessful=false;
+	  Sabotage(4)
+    },
+  },
+  AIBreachReplacementValue: 2, //priority 2 (medium)
+  //don't define AIWouldPlay for run events, instead use AIRunEventExtraPotential(server,potential) and return float (0 to not play)
+  AIRunEventExtraPotential: function(server,potential) {
+	  //HQ only
+	  if (server == corp.HQ) { 
+		  //require successful run
+		  if (runner.AI._rootKnownToContainCopyOfCard(server, "Crisium Grid")) return 0;
+		  //use only if there are no unrezzed ice/root
+		  var cardsThisServer = server.ice.concat(server.root);
+		  for (var i=0; i<cardsThisServer.length; i++) {
+		    if (!cardsThisServer[i].rezzed) return 0; //might be a waste (don't play)
+		  }
+		  return 1.2; //arbitrary
+	  }
+	  return 0; //no benefit (don't play)
+  },
+  AIBreachNotRequired:true,
+  AIPreventBreach: function(server) {
+	  if (server == corp.HQ) return true; //cannot breach
+	  return false; //allow breach
+  },
+};
+
 /*
 cardSet[33003] = {
   title: "Running Hot",
