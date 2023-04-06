@@ -883,7 +883,7 @@ phases.corpActionMain = {
     play: function (params) {
       Play(
         params.card,
-        function () {
+        function (finishResolve) {
           SetHistoryThumbnail(params.card.imageFile, "Play");
 		  if (CheckSubType(params.card, "Double")) SpendClicks(corp, 2);
           else SpendClicks(corp, 1);
@@ -893,7 +893,8 @@ phases.corpActionMain = {
             "playing",
             params.card,
             function () {
-              IncrementPhase(); //set new phase first in case card play changes phase
+			  IncrementPhase(); //set new phase first in case card play changes phase
+              finishResolve();
             },
             this
           );
@@ -1111,7 +1112,7 @@ phases.runnerActionMain = {
     play: function (params) {
       Play(
         params.card,
-        function () {
+        function (finishResolve) {
           SetHistoryThumbnail(params.card.imageFile, "Play");
 		  if (CheckSubType(params.card, "Double")) SpendClicks(runner, 2);
           else SpendClicks(runner, 1);
@@ -1121,7 +1122,17 @@ phases.runnerActionMain = {
             "playing",
             params.card,
             function () {
-              IncrementPhase(); //set new phase first in case card play changes phase
+			  if (params.card.additionalPlayCostSufferDamage) {
+				//this damage is a cost, so it cannot be prevented
+				Damage(params.card.additionalPlayCostSufferDamage.damageType, params.card.additionalPlayCostSufferDamage.damage, false, function() {
+					IncrementPhase(); //set new phase first in case card play changes phase
+					finishResolve();
+				}, this);
+			  }
+              else {
+				  IncrementPhase(); //set new phase first in case card play changes phase
+				  finishResolve();
+			  }
             },
             this
           );

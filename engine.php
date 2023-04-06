@@ -82,7 +82,7 @@
 				</div>
 				<p>Chiriboga implements the game <a href="https://nullsignal.games/about/netrunner/">Android: Netrunner</a> with an AI opponent. Source is <a href="https://github.com/bobtheuberfish/chiriboga">available on GitHub</a>.</p>
 				<p>Includes all cards in Null Signal Games' <a href="https://nullsignal.games/products/system-gateway/">System Gateway</a> and <a href="https://nullsignal.games/products/system-update-2021/">System Update 2021</a> sets.<br/>
-				Card front art is the property of Null Signal Games.<br/>
+				Card art is the property of Null Signal Games.<br/>
 				Includes <a href="https://nullsignal.games/about/nisei-visual-assets/">game symbols permitted for use by Null Signal Games</a> under CC BY-ND 4.0.<br/>
 				Chiriboga is not endorsed by Null Signal Games.</p>
 				<p class="acknowledgements">Special thanks to testers, including: <em>BadEpsilon, bowlsley, D-Smith, eniteris, Kwaice, Mentlegen, olompumpa, R41B, saff, Saintis, Ysengrin</em>.</p>

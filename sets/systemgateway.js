@@ -3562,7 +3562,8 @@ cardSet[30045] = {
       return [];
     },
     Resolve: function () {
-	  Damage("net", 2 + this.advancement);
+	  //damage can be prevented
+	  Damage("net", 2 + this.advancement, true);
     },
   },
   RezUsability: function () {
@@ -3589,7 +3590,8 @@ cardSet[30046] = {
     {
       text: "Do 1 net damage. If you trash a card with a printed play or install cost that is an odd number, end the run.",
       Resolve: function () {
-        Damage("net", 1, function (cardsTrashed) {
+		//damage can be prevented
+        Damage("net", 1, true, function (cardsTrashed) {
           if (cardsTrashed.length > 0) {
             printedCost = 0;
             if (typeof cardsTrashed[0].installCost !== "undefined")
@@ -3659,7 +3661,8 @@ cardSet[30047] = {
     {
       text: "Do 2 net damage. The Runner may jack out.",
       Resolve: function () {
-        Damage("net", 2, function (cardsTrashed) {
+		//damage can be prevented
+        Damage("net", 2, true, function (cardsTrashed) {
           var choices = BinaryDecision(
             runner,
             "Jack out",
@@ -3677,7 +3680,8 @@ cardSet[30047] = {
     {
       text: "Do 2 net damage.",
       Resolve: function () {
-        Damage("net", 2);
+		//damage can be prevented
+        Damage("net", 2, true);
       },
       visual: { y: 87, h: 16 },
     },
@@ -3731,7 +3735,8 @@ cardSet[30049] = {
     else return [];
   },
   Resolve: function (params) {
-    Damage("net", this.printedAgendaPointsThisTurn);
+	//damage can be prevented
+    Damage("net", this.printedAgendaPointsThisTurn, true);
   },
   responseOnScored: {
     Resolve: function () {
@@ -4551,7 +4556,8 @@ cardSet[30061] = {
             this,
             false,
             function () {
-              Damage("meat", damageToDo);
+			  //damage can be prevented
+              Damage("meat", damageToDo, true);
             },
             this
           );
@@ -4917,7 +4923,8 @@ cardSet[30068] = {
       return [];
     },
     Resolve: function (params) {
-      if (CheckTags(1)) Damage("meat", 4);
+	  //damage can be prevented
+      if (CheckTags(1)) Damage("meat", 4, true);
       else AddTags(1);
     },
     text: "Do 4 meat damage or give the Runner 1 tag",
@@ -5180,7 +5187,8 @@ cardSet[30073] = {
     {
       text: "Do 1 net damage.",
       Resolve: function () {
-        Damage("net", 1);
+		//damage can be prevented
+        Damage("net", 1, true);
       },
       visual: { y: 57, h: 16 },
     },

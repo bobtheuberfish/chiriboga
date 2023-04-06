@@ -128,21 +128,33 @@ cardSet[33002] = {
   },
 };
 
-/*
 cardSet[33003] = {
   title: "Running Hot",
   imageFile: "33003.png",
-  //elo: ,
+  elo: 1579,
   player: runner,
   faction: "Anarch",
   influence: 3,
   cardType: "event",
   playCost: 1,
+  additionalPlayCostSufferDamage: { damageType: "core", damage: 1 },
   Resolve: function (params) {
-    //TODO the core damage should be an additional cost, not an effect (this matters in case there is an 'ignoring all costs' way to play it)
-	Damage("core", 1, function(){
-		GainClicks(runner, 3);
-	}, this);
+	GainClicks(runner, 3);
   },
+  AIWouldPlay: function() {
+	//never intentionally flatline
+	if (runner.grip.length < 1) return false;
+	//if corp looks like they are about to win we'll waive the rest of the requirements and be reckless
+	if (AgendaPointsToWin() - AgendaPoints(corp) < 3) return true;
+	//require a relatively full hand
+    if (runner.AI._currentOverDraw() < 0) return false;
+	//require no cardsworthkeeping (don't want to lose them)
+	if (runner.AI.cardsWorthKeeping.length > 0) return false;
+	//require at least one server to have a cached potential of more than 1.5 (this is roughly in line with Overclock)
+	var hps = runner.AI._highestPotentialServer();
+	if (!hps) return false;
+	if (runner.AI._getCachedPotential(hps) < 1.5) return false;
+	return true;
+  },
+  AIPlayWhenCan: 1, //priority 1 (low)
 };
-*/

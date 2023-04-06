@@ -526,7 +526,7 @@ function Install(
  *
  * @method Play
  * @param {Card} card the card to play
- * @param {function} [onPlayResolve] fires if the play is not cancelled (i.e. right BEFORE the card begins to resolve)
+ * @param {function(finishResolve)} [onPlayResolve] fires if the play is not cancelled (i.e. right BEFORE the card begins to resolve) and must call finishResolve when done
  * @param {Object} [context] for onPlayResolve
  * @returns {Phase} the phase object created and changed to
  */
@@ -559,16 +559,19 @@ function Play(card, onPlayResolve, context) {
 		  playCostReplaced = true;
 		}
 	}
+	var finishResolve = function() {
+		//finish handling X
+		if (playCostReplaced) {
+			card.playCost = 'X';
+		}
+		if (runner.AI != null) runner.AI.LoseInfoAboutHQCards(card);
+		Log('Played "' + GetTitle(card, true) + '"');
+		AutomaticTriggers("automaticOnPlay", [card]);
+		card.Resolve.call(card, params);
+	};
     //card will be played, callback fires
-    if (typeof onPlayResolve === "function") onPlayResolve.call(context);
-	//finish handling X
-	if (playCostReplaced) {
-		card.playCost = 'X';
-	}
-    if (runner.AI != null) runner.AI.LoseInfoAboutHQCards(card);
-    Log('Played "' + GetTitle(card, true) + '"');
-	AutomaticTriggers("automaticOnPlay", [card]);
-    card.Resolve.call(card, params);
+    if (typeof onPlayResolve === "function") onPlayResolve.call(context, finishResolve);
+	else finishResolve();
   };
   var command = "continue";
   if (typeof card.command !== "undefined") command = card.command;
@@ -688,10 +691,11 @@ function Discard(card) {
  * @method Damage
  * @param {String} damageType type of net damage to take
  * @param {int} num number of net damage to take
+ * @param {Boolean} canBePrevented true if can be prevented, false if not (e.g. is a cost)
  * @param {function(cardsTrashed)} [afterTrashing] called after trashing is complete (even if no cards are trashed), cards will be an array
  * @param {Object} [context] for afterTrashing
  */
-function Damage(damageType, num, afterTrashing, context) {
+function Damage(damageType, num, canBePrevented, afterTrashing, context) {
   intended.damageType = damageType;
   intended.damage = num;
   var cardsTrashed = [];
@@ -721,10 +725,17 @@ function Damage(damageType, num, afterTrashing, context) {
     cardsTrashed.push(cardToTrash);
     Trash(cardToTrash, true, trashCallback);
   };
-  OpportunityForAvoidPrevent(runner, "responsePreventableDamage", [], function () {
+  var applyDamage = function() {
     Log("Runner takes " + intended.damage + " " + intended.damageType + " damage");
 	trashCallback();
-  }, "About to " + intended.damageType.charAt(0).toUpperCase() + intended.damageType.slice(1) + " Damage");
+  }
+  if (canBePrevented) {
+    OpportunityForAvoidPrevent(runner, "responsePreventableDamage", [], function () {
+	  applyDamage();
+    }, "About to " + intended.damageType.charAt(0).toUpperCase() + intended.damageType.slice(1) + " Damage");
+  } else {
+	applyDamage();
+  }
 }
 
 /**

@@ -97,7 +97,8 @@ coreSet[4] = {
   },
   responseOnRunEnds: {
     Resolve: function () {
-      Damage("core", 1);
+	  //cannot be prevented
+      Damage("core", 1, false);
     },
     automatic: true,
   },
@@ -1300,7 +1301,8 @@ coreSet[61] = {
     {
       text: "Do 1 core damage.",
       Resolve: function (params) {
-        Damage("core", 1);
+		//damage can be prevented
+        Damage("core", 1, true);
       },
     },
     {
@@ -1361,7 +1363,8 @@ coreSet[63] = {
     {
       text: "Do 1 core damage.",
       Resolve: function (params) {
-        Damage("core", 1);
+		//damage can be prevented
+        Damage("core", 1, true);
       },
     },
     {
@@ -1412,12 +1415,14 @@ coreSet[67] = {
   subTypes: ["Megacorp"],
   responseOnScored: {
     Resolve: function () {
-      if (CheckCardType(intended.score, ["agenda"])) Damage("net", 1);
+	  //damage can be prevented
+      if (CheckCardType(intended.score, ["agenda"])) Damage("net", 1, true);
     },
   },
   responseOnStolen: {
     Resolve: function () {
-      if (CheckCardType(intended.steal, ["agenda"])) Damage("net", 1);
+	  //damage can be prevented
+      if (CheckCardType(intended.steal, ["agenda"])) Damage("net", 1, true);
     },
   },
 };
@@ -1484,7 +1489,8 @@ coreSet[69] = {
               "",
               this,
               function () {
-                Damage("net", 2 * this.advancement);
+				//damage can be prevented
+                Damage("net", 2 * this.advancement, true);
               },
               this
             );
@@ -1535,6 +1541,7 @@ coreSet[70] = {
                 function () {
                   Damage("net", 
                     3,
+					true, //damage can be prevented
                     function (cardsTrashed) {
                       AddTags(1);
                     },
@@ -1671,7 +1678,8 @@ coreSet[72] = {
     return [];
   },
   Resolve: function () {
-    Damage("net", 1);
+	//damage can be prevented
+    Damage("net", 1, true);
   },
 };
 coreSet[73] = {
@@ -1775,7 +1783,8 @@ coreSet[75] = {
       if (this.chumEffectActive == true) {
         if (this != attackedServer.ice[approachIce]) {
           this.chumEffectActive = false;
-          if (CheckUnbrokenSubroutines()) Damage("net", 3);
+		  //damage can be prevented
+          if (CheckUnbrokenSubroutines()) Damage("net", 3, true);
         }
       }
     },
@@ -1800,7 +1809,8 @@ coreSet[76] = {
     {
       text: "Do 1 net damage. Trash Data Mine.",
       Resolve: function () {
-        Damage("net", 1, function (cardsTrashed) {
+		//damage can be prevented
+        Damage("net", 1, true, function (cardsTrashed) {
           Trash(attackedServer.ice[approachIce], true);
         });
       },
@@ -1819,7 +1829,8 @@ coreSet[77] = {
     {
       text: "Do 3 net damage.",
       Resolve: function () {
-        Damage("net", 3);
+		//damage can be prevented
+        Damage("net", 3, true);
       },
     },
   ],
@@ -1836,7 +1847,8 @@ coreSet[78] = {
     {
       text: "Do 2 net damage.",
       Resolve: function () {
-        Damage("net", 2);
+		//damage can be prevented
+        Damage("net", 2, true);
       },
     },
     {
@@ -2051,7 +2063,8 @@ coreSet[107] = {
       },
       Resolve: function (params) {
         SpendClicks(corp, 1);
-        Damage("meat", 1);
+		//damage can be prevented
+        Damage("meat", 1, true);
       },
     },
   ],

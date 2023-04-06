@@ -4241,12 +4241,14 @@ cardSet[31050] = {
   //Whenever an agenda is scored or stolen, do 1 net damage.
   responseOnScored: {
     Resolve: function () {
-      Damage("net", 1);
+		//damage can be prevented
+      Damage("net", 1, true);
     },
   },
   responseOnStolen: {
     Resolve: function () {
-      Damage("net", 1);
+	  //damage can be prevented
+      Damage("net", 1, true);
     },
   },
 };
@@ -4313,7 +4315,8 @@ cardSet[31051] = {
       Resolve: function (params) {
 		this.usedThisRun = true;
 		RemoveCounters(this, "agenda", 1);
-		Damage("net", 1);
+		//damage can be prevented
+		Damage("net", 1, true);
       },
     },
   ],
@@ -4403,7 +4406,8 @@ cardSet[31053] = {
       Resolve: function (params) {
         SpendClicks(corp, 1);
         Trash(this, false); //false means it cannot be prevented (because it's a cost)
-        Damage("net", 3);
+		//damage can be prevented
+        Damage("net", 3, true);
       },
     },
   ],
@@ -4455,7 +4459,8 @@ cardSet[31054] = {
 				  this,
 				  function () {
 					AddTags(1, function() {
-					  Damage("net", 3, function() {}, this);
+					  //damage can be prevented
+					  Damage("net", 3, true, function() {}, this);
 					}, this);
 				  },
 				  this
@@ -4576,7 +4581,8 @@ cardSet[31056] = {
     {
       text: "Do 1 net damage.",
       Resolve: function () {
-        Damage("net", 1);
+		//damage can be prevented
+        Damage("net", 1, true);
       },
       visual: { y: 104, h: 16 },
     },
@@ -4833,7 +4839,8 @@ cardSet[31059] = {
       return []; //no valid options to use this ability
     },
     Resolve: function (params) {
-	  Damage("net", 1);
+	  //damage can be prevented
+	  Damage("net", 1, true);
     },
   },  
   RezUsability: function () {
@@ -6100,7 +6107,8 @@ cardSet[31078] = {
   },
   Resolve: function (params) {
 	Trace(5, function(successful) {
-		if (successful) Damage("meat", this.printedAgendaPointsLastTurn);
+		//damage can be prevented
+		if (successful) Damage("meat", this.printedAgendaPointsLastTurn, true);
 	}, this);
 	//Trace AI
 	//for a not-tournament-legal analysis, see Slapdash's spreadsheet here:
