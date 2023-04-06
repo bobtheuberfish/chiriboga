@@ -4125,7 +4125,7 @@ cardSet[31049] = {
 	const desired_effects = [
 		{ effectStr:"netDamage", numerical:runner.grip.length<1?2.0:1.0 },
 		{ effectStr:"meatDamage", numerical:runner.grip.length<1?2.0:1.0 },
-		{ effectStr:"brainDamage", numerical:2.0 },
+		{ effectStr:"coreDamage", numerical:2.0 },
 		{ effectStr:"tag", numerical:1.5 },
 		{ effectStr:"misc_serious", numerical:2.5 },
 	];
@@ -4241,12 +4241,12 @@ cardSet[31050] = {
   //Whenever an agenda is scored or stolen, do 1 net damage.
   responseOnScored: {
     Resolve: function () {
-      NetDamage(1);
+      Damage("net", 1);
     },
   },
   responseOnStolen: {
     Resolve: function () {
-      NetDamage(1);
+      Damage("net", 1);
     },
   },
 };
@@ -4313,7 +4313,7 @@ cardSet[31051] = {
       Resolve: function (params) {
 		this.usedThisRun = true;
 		RemoveCounters(this, "agenda", 1);
-		NetDamage(1);
+		Damage("net", 1);
       },
     },
   ],
@@ -4403,7 +4403,7 @@ cardSet[31053] = {
       Resolve: function (params) {
         SpendClicks(corp, 1);
         Trash(this, false); //false means it cannot be prevented (because it's a cost)
-        NetDamage(3);
+        Damage("net", 3);
       },
     },
   ],
@@ -4455,7 +4455,7 @@ cardSet[31054] = {
 				  this,
 				  function () {
 					AddTags(1, function() {
-					  NetDamage(3, function() {}, this);
+					  Damage("net", 3, function() {}, this);
 					}, this);
 				  },
 				  this
@@ -4576,7 +4576,7 @@ cardSet[31056] = {
     {
       text: "Do 1 net damage.",
       Resolve: function () {
-        NetDamage(1);
+        Damage("net", 1);
       },
       visual: { y: 104, h: 16 },
     },
@@ -4622,7 +4622,7 @@ cardSet[31057] = {
 		//if there are more than five choices, remove cards until it is small enough
 		if (choices.length > 5) {
 			//just sharing discard logic for now (reveal the 5 cards most likely to be discarded)
-			choices = corp.AI._reducedDiscardList(choices,5).slice(0,5);
+			choices = corp.AI._reducedDiscardList(choices,5,5).slice(0,5); //the 5,5 is min,max i.e. exactly 5 cards
 		}
 		var theFive = [];
 		choices.forEach(function(item) {
@@ -4833,7 +4833,7 @@ cardSet[31059] = {
       return []; //no valid options to use this ability
     },
     Resolve: function (params) {
-	  NetDamage(1);
+	  Damage("net", 1);
     },
   },  
   RezUsability: function () {
@@ -6100,7 +6100,7 @@ cardSet[31078] = {
   },
   Resolve: function (params) {
 	Trace(5, function(successful) {
-		if (successful) MeatDamage(this.printedAgendaPointsLastTurn);
+		if (successful) Damage("meat", this.printedAgendaPointsLastTurn);
 	}, this);
 	//Trace AI
 	//for a not-tournament-legal analysis, see Slapdash's spreadsheet here:

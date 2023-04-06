@@ -676,7 +676,7 @@ class RunCalculator {
     var result = 0;
     if (totalEffect.netDamage) result += totalEffect.netDamage;
     if (totalEffect.meatDamage) result += totalEffect.meatDamage;
-    if (totalEffect.brainDamage) result += totalEffect.brainDamage;
+    if (totalEffect.coreDamage) result += totalEffect.coreDamage;
     return result;
   }
 
@@ -748,7 +748,7 @@ class RunCalculator {
           var totalDamage = 0;
           if (totalEffect.netDamage) totalDamage += totalEffect.netDamage;
           if (totalEffect.meatDamage) totalDamage += totalEffect.meatDamage;
-          if (totalEffect.brainDamage) totalDamage += totalEffect.brainDamage;
+          if (totalEffect.coreDamage) totalDamage += totalEffect.coreDamage;
 		  //update damage limit based on clicks spent (unless it is set to Infinity or already mid-run)
 		  if (clicksLeft < 1 && damageLimit != Infinity && !attackedServer) damageLimit = runner.grip.length - MaxHandSize(runner); //try to keep a full hand at end of turn	
 		  if (damageLimit < 0) damageLimit = 0;

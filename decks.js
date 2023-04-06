@@ -56,66 +56,8 @@
 /*
  .abilities[] //for operations and events the .Enumerate, .Resolve and .text are properties of the card itself not in abilities array
  .subroutines[] //unlike the others here, these do not use Enumerate or params (for decisionmaking, implement a pseudophase) and have .visual with y (centre) and h (height)
- .responseOnCorpTurnBegins
- .responseOnRunnerTurnBegins
- .responseOnBeforeStartingHand //called before drawing starting hand (currently treats all as automatic)
- .automaticOnRunBegins //called with input (server) (currently treats all as automatic)
- .responseOnEncounter //called when a card is encountered (Enumerate takes the encountered card as an input, use automaticOnEncounter instead if you need automatic)
- .responseOnEncounterEnds //note encountering will now be false but approachIce available to use
- .responseOnPassesIce //called when movement begins (approachIce still refers to the ice passed)
- .responseOnApproachServer //called when approaching the server (before runner decides whether to continue the run)
- .modifyDeclareSuccess //called before automaticOnWouldDeclareSuccess (return 1 to prevent, 0 to allow normal success declaration)
- .automaticOnWouldDeclareSuccess //called before declaring successful run (currently treats all as automatic, and not called if run is not able to declared successful)
- .automaticOnRunSuccessful //called with input (server) before .responseOnRunSuccessful (and unlike responseOnRunSuccessful, treats all as automatic)
- .responseOnRunSuccessful //called before breaching the server
- .specialOnInsteadOfBreaching //called after responseOnRunSuccessful, will replace breaching server (return choices with required:true to prevent Breach option appearing)
- .modifyBreachAccess //called before accessing cards, return an int modifier e.g. -1, 0, 1 to access more or less cards (currently treats all as automatic)
- .automaticOnBreach //called with input (server) before accessing cards (currently treats all as automatic)
- .responseOnRunUnsuccessful
- .responseOnRunEnds (note this is the phase after responseOnRunSuccessful/responseOnRunUnsuccessful i.e. not equivalent to triggering in both)
- .responseOnCorpDiscardEnds
- .responseOnRunnerDiscardEnds
- .responseOnAccess //called when a card is accessed (accessingCard is the card being accessed, use automaticOnAccess instead if you need automatic)
- .responseOnStolen //called after a card is stolen (intended.steal will still be available to use)
- .responseOnScored //called after a card is scored (intended.score will still be available to use)
- .responseOnInstall //called when a card is installed (Enumerate takes the installed card as an input, use automaticOnInstall instead if you need automatic)
- .responseOnRez //called when a card is rezzed (Enumerate takes the rezzed card as an input, use automaticOnRez instead if you need automatic)
- .responseOnCardsDrawn //called cards are drawn (Enumerate takes the drawn cards as an input)
- .responseOnCreateServer //called after a new remote server is created (Enumerate takes the server as an input)
- .responsePreventableAddTags //called when tags are to be added
- .responseOnTakeTags //called after tags are taken (or given), intended.addTags has the number
- .responsePreventableNetDamage //called when net damage is to be given/taken
- .responsePreventableMeatDamage //called when meat damage is to be given/taken
- .responsePreventableTrash //called when a card is to be trashed, providing opportunity to prevent it (change intended.trash to null to prevent it)
- .responseOnWouldTrash //called when trash has not been prevented but before it is trashed (Enumerate takes the trashed card as an input)
- .responseOnTrash //called when trash has been trashed (Enumerate takes the trashed card as an input, use automaticOnTrash instead if you need automatic)
- .responsePreventableExpose //called when a card is to be exposed
- .responsePreventableSteal //called when a card is to be stolen
- .responsePreventableScore //called when a card is to be scored
- .responseOnPurge //called with input (number of virus counters removed) when virus counters are purged
- .automaticOnAnyChange //called after any change but before render, essentially adds this to the main loop (currently treats all as automatic)
- .modifyMaxHandSize //called with input (player) when getting maximum hand size, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
- .modifyStrength //called with input (card) when getting strength, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
- .modifyRezCost //called with input (card) when getting rez cost, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
- .modifyInstallCost //called with input (card) when getting install cost, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
- .modifyTrashCost //called with input (card) when getting install cost, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
- .modifyAdvancementRequirement //called with input (card) when getting advancement requirement, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
- .modifyBasicActionRunnerDraw //called with input (num) when runner about to draw as a basic action, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
- .modifyBasicActionCorpDraw //called with input (num) when corp about to draw as a basic action, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
- .modifyAgendaPointsRequiredToWin //called with no inputs when checking agenda points to win, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
- .modifyHasAbilities //called with input (card) when checking subtypes, any false will override any true (currently treats all as automatic)
- .modifySubTypes //called with input (card) when checking subtypes, return { add:[], remove:[] } where each array is optional and contains the relevant subtype strings
- .modifyDraw //called with input (player) when checking cards to draw, return an int modifier e.g. -1, 0, 1 (currently treats all as automatic)
- .automaticOnInstall //called with input (card) after a card is installed (currently treats all as automatic)
- .automaticOnUninstall //called with input (card) when a card becomes uninstalled (currently treats all as automatic)
- .automaticOnRez //called with input (card) after a card is rezzed (currently treats all as automatic)
- .automaticOnAccess //called with input (card) when a card is accessed (currently treats all as automatic) even if card not active (special case in CheckCallback)
- .automaticOnAccessComplete //called with input (card) when a card access complete (currently treats all as automatic) note accessingCard will be null
- .automaticOnEncounter //called with input (card) when a card is encountered (currently treats all as automatic)
- .automaticOnTrash //called with input (card) when a card is trashed (currently treats all as automatic)
- .automaticOnAdvance //called with input (card) when a card is advanced (currently treats all as automatic)
- .automaticOnPlay //called with input (card) after a card is played (currently treats all as automatic)
- .modifyCannot //called with input (string, card) where the string is a phase option (e.g. "score"), if true is returned, Check<String> will return false (all automatic)
+ 
+ For more callbacks, see trigger_standardising ods
 */
 
 /**

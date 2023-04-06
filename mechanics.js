@@ -13,7 +13,7 @@ function MakeRun(server) {
   attackedServer = server;
   Log("Run initiated attacking " + server.serverName);
   GainCredits(runner, corp.badPublicity, "bad publicity"); //(Nisei 2021 1.2)
-  AutomaticTriggers("automaticOnRunBegins", server); //(Nisei 2021 1.3) but only automatics at the moment
+  AutomaticTriggers("automaticOnRunBegins", [server]); //(Nisei 2021 1.3) but only automatics at the moment
   approachIce = attackedServer.ice.length - 1;
   if (attackedServer.ice.length > 0) {
 	  //(Nisei 2021 1.4.1 sends to 2.1)
@@ -48,7 +48,7 @@ function Advance(card) {
   if (typeof card.advancement === "undefined") card.advancement = 0;
   card.advancement++;
   Log("Card advanced");
-  AutomaticTriggers("automaticOnAdvance", card);
+  AutomaticTriggers("automaticOnAdvance", [card]);
 }
 
 /**
@@ -145,7 +145,7 @@ function Rez(card, ignoreAllCosts=false, onRezResolve=null, context=null, allowC
   //call the resolve callback
   if (onRezResolve) onRezResolve.call(context);
   //first the automatic triggers
-  AutomaticTriggers("automaticOnRez", card);
+  AutomaticTriggers("automaticOnRez", [card]);
   //then the Enumerate ones
   //currently giving whoever's turn it is priority...not sure this is always going to be right
   TriggeredResponsePhase(playerTurn, "responseOnRez", [card], function() {
@@ -222,7 +222,7 @@ function Trash(card, canBePrevented, afterTrashing, context) {
 		Log(GetTitle(card, true) + " trashed");
 
 		//first the automatic triggers
-		AutomaticTriggers("automaticOnTrash", card);
+		AutomaticTriggers("automaticOnTrash", [card]);
 		//then the Enumerate ones
 		//currently giving whoever's turn it is priority...not sure this is always going to be right
 		TriggeredResponsePhase(playerTurn, "responseOnTrash", [card], function() {
@@ -480,7 +480,7 @@ function Install(
 				}
 				//install done, card becomes active
 				//first the automatic triggers
-				AutomaticTriggers("automaticOnInstall", installingCard);
+				AutomaticTriggers("automaticOnInstall", [installingCard]);
 				//then the Enumerate ones
 				//currently giving whoever's turn it is priority...not sure this is always going to be right
 				TriggeredResponsePhase(playerTurn, "responseOnInstall", [installingCard], function() {
@@ -567,7 +567,7 @@ function Play(card, onPlayResolve, context) {
 	}
     if (runner.AI != null) runner.AI.LoseInfoAboutHQCards(card);
     Log('Played "' + GetTitle(card, true) + '"');
-	AutomaticTriggers("automaticOnPlay", card);
+	AutomaticTriggers("automaticOnPlay", [card]);
     card.Resolve.call(card, params);
   };
   var command = "continue";
@@ -683,90 +683,48 @@ function Discard(card) {
 }
 
 /**
- * Runner takes net damage (runner randomly trashes cards from grip).<br/>Stops on flatline.<br/>Logs the result.
+ * Runner takes damage (runner randomly trashes cards from grip).<br/>Stops on flatline.<br/>Logs the result.
  *
- * @method NetDamage
+ * @method Damage
+ * @param {String} damageType type of net damage to take
  * @param {int} num number of net damage to take
  * @param {function(cardsTrashed)} [afterTrashing] called after trashing is complete (even if no cards are trashed), cards will be an array
  * @param {Object} [context] for afterTrashing
  */
-function NetDamage(num, afterTrashing, context) {
-  intended.netDamage = num;
+function Damage(damageType, num, afterTrashing, context) {
+  intended.damageType = damageType;
+  intended.damage = num;
   var cardsTrashed = [];
   var trashCallback = function () {
-    if (intended.netDamage < 1) {
-      if (typeof afterTrashing === "function")
-        afterTrashing.call(context, cardsTrashed);
+    if (intended.damage < 1) {
+	  var damageTaken = cardsTrashed.length;
+	  //trashing done, fire 'damage taken' triggers, if any
+	  //first the automatic triggers
+	  AutomaticTriggers("automaticOnTakeDamage", [damageTaken, intended.damageType]);
+	  //then the Enumerate ones
+	  //currently giving whoever's turn it is priority...not sure this is always going to be right
+      TriggeredResponsePhase(playerTurn, "responseOnTakeDamage", [damageTaken, intended.damageType], function() {
+		  if (typeof afterTrashing === "function")
+			afterTrashing.call(context, cardsTrashed);
+	  }, "Damage Taken");	  
       return;
     }
     if (runner.grip.length == 0) {
       PlayerWin(corp, "Runner flatlined");
       return;
     }
-    intended.netDamage--;
+	if (intended.damageType == "core") {
+		runner.coreDamage++;
+	}
+    intended.damage--;
     var cardToTrash = runner.grip[RandomRange(0, runner.grip.length - 1)];
     cardsTrashed.push(cardToTrash);
     Trash(cardToTrash, true, trashCallback);
   };
-  OpportunityForAvoidPrevent(runner, "responsePreventableNetDamage", [], function () {
-    Log("Runner takes " + intended.netDamage + " net damage");
-    trashCallback();
-  }, "About to Net Damage");
-}
-
-/**
- * Runner takes meat damage (runner randomly trashes cards from grip).<br/>Stops on flatline.<br/>Logs the result.
- *
- * @method MeatDamage
- * @param {int} num number of meat damage to take
- * @param {function} [afterTrashing] called after trashing is complete (even if no cards are trashed)
- * @param {Object} [context] for afterTrashing
- */
-function MeatDamage(num, afterTrashing, context) {
-  intended.meatDamage = num;
-  var trashCallback = function () {
-    if (intended.meatDamage < 1) {
-      if (typeof afterTrashing === "function") afterTrashing.call(context);
-      return;
-    }
-    if (runner.grip.length == 0) {
-      PlayerWin(corp, "Runner flatlined");
-      return;
-    }
-    intended.meatDamage--;
-    Trash(
-      runner.grip[RandomRange(0, runner.grip.length - 1)],
-      true,
-      trashCallback
-    );
-  };
-  OpportunityForAvoidPrevent(runner, "responsePreventableMeatDamage", [], function () {
-    Log("Runner takes " + intended.meatDamage + " meat damage");
-    trashCallback();
-  }, "About to Meat Damage");
-}
-
-/**
- * Runner takes brain damage (runner randomly trashes cards from grip, and gains a brain damage token which decreases grip max size).<br/>Stops on flatline.<br/>Logs the result.
- *
- * @method BrainDamage
- * @param {int} num number of brain damage to take
- * @returns {int} actual brain damage taken
- */
-function BrainDamage(num) {
-  Log("Runner takes " + num + " brain damage");
-  var numTaken = 0;
-  for (var i = 0; i < num; i++) {
-    if (runner.grip.length == 0) {
-      PlayerWin(corp, "Runner flatlined");
-      return numTaken;
-    } else {
-      Trash(runner.grip[RandomRange(0, runner.grip.length - 1)], true);
-      numTaken++;
-    }
-  }
-  runner.brainDamage++;
-  return numTaken;
+  OpportunityForAvoidPrevent(runner, "responsePreventableDamage", [], function () {
+    Log("Runner takes " + intended.damage + " " + intended.damageType + " damage");
+	trashCallback();
+  }, "About to " + intended.damageType.charAt(0).toUpperCase() + intended.damageType.slice(1) + " Damage");
 }
 
 /**
@@ -1352,6 +1310,92 @@ function Steal() {
       intended.steal = null;
     }, "Stolen");
   }, "About to Steal");
+}
+
+/**
+ * Sabotage num cards.<br/>Provides corp choice for cards to trash from HQ, if any.<br/>Logs each trash.
+ *
+ * @method Sabotage
+ * @param {int} num number of cards to sabotage (will be limited by total cards in HQ and R&D)
+ */
+function Sabotage(num) {
+  //sabotage is max limited to the number of cards in HQ + R&D
+  if (corp.HQ.cards.length + corp.RnD.cards.length < num) {
+	num = corp.HQ.cards.length + corp.RnD.cards.length;
+  }
+  //do nothing if for some reason zero is specified for sabotage
+  if (num < 1) {
+    Log("No cards sabotaged");
+    return;
+  }
+  //if there aren't many cards in R&D then a minimum selection may be required from HQ
+  var minHQ = 0;
+  if (num > corp.RnD.cards.length) {
+	minHQ = num - corp.RnD.cards.length;
+  }
+  //if there aren't many cards in HQ then there is a maximum selection
+  var maxHQ = num;
+  if (num > corp.HQ.cards.length) {
+	maxHQ = corp.HQ.cards.length;
+  }
+  //the Corp chooses which cards to trash from HQ, the remaining are trashed from top of R&D
+  var choices = ChoicesHandCards(corp);
+  if (corp.HQ.cards.length + corp.RnD.cards.length == num) {
+    //if all cards in HQ and R&D need to be trashed then there is no real choice
+	var onlyChoice = { cards:[] };
+	for (var i=0; i<corp.HQ.cards.length; i++) {
+		onlyChoice.cards.push(corp.HQ.cards[i]);
+	}
+	choices = [onlyChoice];
+  } else {
+    //but normally the corp can choose from minHQ to maxHQ
+    choices.push({
+      id: choices.length,
+      label: "Continue",
+	  //only show the button if at least min have been chosen
+	  multiSelectDynamicButtonEnabler: function(numSelected) {
+		return (numSelected >= minHQ);
+	  },
+	  multiSelectDynamicButtonText: function(numSelected) {
+		return "Trash "+(num-numSelected)+" from R&D";
+	  },
+      button: "Trash remaining from R&D",
+	  minSabotageFromHQ: minHQ
+    });
+	//set up the multi-select
+    for (var i = 0; i < choices.length; i++) {
+	  choices[i].cards = Array(maxHQ).fill(null);
+    }
+  }
+  function decisionCallback(params) {
+	//all cards are trashed simultaneously (for now we will assume the trashes are unpreventable and don't trigger any response)
+	var trashedFromHQ = 0;
+	for (var i=0; i<params.cards.length; i++) {
+		if (params.cards[i]) {
+			trashedFromHQ++;
+		}
+	}
+	Log("Sabotaged "+trashedFromHQ+" from HQ and "+(num-trashedFromHQ)+" from R&D");
+	for (var i=0; i<params.cards.length; i++) {
+		if (params.cards[i]) {
+			Trash(params.cards[i], false);
+		}
+	}
+    for (var i=trashedFromHQ; i<num; i++) {
+	  Trash(corp.RnD.cards[corp.RnD.cards.length-1], false);
+    }
+	//note that cards trashed this way enter Archives facedown
+  }
+  var title = "Sabotage "+num;
+  DecisionPhase(
+    corp,
+    choices,
+    decisionCallback,
+    title,
+    title,
+    this,
+	"sabotage" //so the Corp AI will know what to do
+  );
 }
 
 /**

@@ -113,7 +113,7 @@ phaseTemplates.standardResponse = {
       Log("Encountering " + GetTitle(attackedServer.ice[approachIce], true));
       encountering = true;
 	  //first the automatic triggers
-      AutomaticTriggers("automaticOnEncounter", attackedServer.ice[approachIce]);
+      AutomaticTriggers("automaticOnEncounter", [attackedServer.ice[approachIce]]);
 	  //then the Enumerate ones
 	  //currently giving whoever's turn it is priority...not sure this is always going to be right
 	  TriggeredResponsePhase(playerTurn, "responseOnEncounter", [attackedServer.ice[approachIce]], function () {}, "Encounter");
@@ -408,7 +408,7 @@ phaseTemplates.globalTriggers = {
 	  //in this case a result of 0 means no prevention (i.e. not modified)
 	  if (modifySuccess == 0) {
 		  //fire any pre-success triggers
-		  AutomaticTriggers("automaticOnWouldDeclareSuccess");
+		  AutomaticTriggers("automaticOnWouldDeclareSuccess", []);
 	  }
 	  //check modify again in case the pre-success changed it
 	  var modifySuccess = ModifyingTriggers("modifyDeclareSuccess", null, 0); //null means no parameter is sent, lower limit of 0 means the total will not be any lower than zero
@@ -417,7 +417,7 @@ phaseTemplates.globalTriggers = {
 		  //now declare successful
 		  Log("Run successful");
 		  //and fire the pre-phase succesful automatics
-		  AutomaticTriggers("automaticOnRunSuccessful", attackedServer);
+		  AutomaticTriggers("automaticOnRunSuccessful", [attackedServer]);
 	  }
 	  else currentPhase.buildTriggerList = false;
       //store a little extra info to help AIs with decisionmaking
@@ -1338,7 +1338,7 @@ phases.runBreachServer = {
   title: "Run: Breach", //was 'Access' (i.e. access cards in server) but Nisei changed it so it's not confused with each individual access
   identifier: "Run 5.2",
   Init: function() {
-	AutomaticTriggers("automaticOnBreach", attackedServer); //automatic only for now
+	AutomaticTriggers("automaticOnBreach", [attackedServer]); //automatic only for now
   },
   Enumerate: {
     access: function () {
@@ -1377,7 +1377,7 @@ phases.runAccessingCard = {
     } else SetHistoryThumbnail("Corp_back.png", "Access");
     accessingCard.renderer.ToggleZoom();
 
-    AutomaticTriggers("automaticOnAccess", accessingCard); //special case in CheckCallback allows for this to work even when card not active
+    AutomaticTriggers("automaticOnAccess", [accessingCard]); //special case in CheckCallback allows for this to work even when card not active
     this.chosenString = "chosen";
     //since archived cards are already face up we can skip the flip-and-look-on-access step
     if (attackedServer == corp.archives) this.requireHumanInput = false;

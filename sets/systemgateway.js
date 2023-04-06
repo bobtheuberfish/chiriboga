@@ -3562,7 +3562,7 @@ cardSet[30045] = {
       return [];
     },
     Resolve: function () {
-	  NetDamage(2 + this.advancement);
+	  Damage("net", 2 + this.advancement);
     },
   },
   RezUsability: function () {
@@ -3589,7 +3589,7 @@ cardSet[30046] = {
     {
       text: "Do 1 net damage. If you trash a card with a printed play or install cost that is an odd number, end the run.",
       Resolve: function () {
-        NetDamage(1, function (cardsTrashed) {
+        Damage("net", 1, function (cardsTrashed) {
           if (cardsTrashed.length > 0) {
             printedCost = 0;
             if (typeof cardsTrashed[0].installCost !== "undefined")
@@ -3659,7 +3659,7 @@ cardSet[30047] = {
     {
       text: "Do 2 net damage. The Runner may jack out.",
       Resolve: function () {
-        NetDamage(2, function (cardsTrashed) {
+        Damage("net", 2, function (cardsTrashed) {
           var choices = BinaryDecision(
             runner,
             "Jack out",
@@ -3677,7 +3677,7 @@ cardSet[30047] = {
     {
       text: "Do 2 net damage.",
       Resolve: function () {
-        NetDamage(2);
+        Damage("net", 2);
       },
       visual: { y: 87, h: 16 },
     },
@@ -3731,7 +3731,7 @@ cardSet[30049] = {
     else return [];
   },
   Resolve: function (params) {
-    NetDamage(this.printedAgendaPointsThisTurn);
+    Damage("net", this.printedAgendaPointsThisTurn);
   },
   responseOnScored: {
     Resolve: function () {
@@ -4551,7 +4551,7 @@ cardSet[30061] = {
             this,
             false,
             function () {
-              MeatDamage(damageToDo);
+              Damage("meat", damageToDo);
             },
             this
           );
@@ -4917,7 +4917,7 @@ cardSet[30068] = {
       return [];
     },
     Resolve: function (params) {
-      if (CheckTags(1)) MeatDamage(4);
+      if (CheckTags(1)) Damage("meat", 4);
       else AddTags(1);
     },
     text: "Do 4 meat damage or give the Runner 1 tag",
@@ -5180,7 +5180,7 @@ cardSet[30073] = {
     {
       text: "Do 1 net damage.",
       Resolve: function () {
-        NetDamage(1);
+        Damage("net", 1);
       },
       visual: { y: 57, h: 16 },
     },

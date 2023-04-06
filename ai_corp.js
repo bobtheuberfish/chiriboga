@@ -299,8 +299,10 @@ class CorpAI {
   //this modifies the input array
   _reducedDiscardList(
     optionList,
-    minCount = 1 //reduces optionList (only include ones we are ok to discard) but keeps list size at or above minCount
+    minCount = 1, //reduces optionList (only include ones we are ok to discard) but keeps list size at or above minCount
+	maxCount //and at or below maxCount
   ) {
+	if (typeof maxCount == "undefined") maxCount = minCount;
     //don't discard agendas
     for (
       var i = 0;
@@ -316,7 +318,7 @@ class CorpAI {
       }
     }
     //other than that, use common what's-the-best-card-to-keep code to remove cards from discard list
-	while (optionList.length > minCount) optionList.splice(optionList.indexOf(this._bestNonAgendaTutorOption(optionList)), 1); //the 1 means remove 1 card
+	while (optionList.length > maxCount) optionList.splice(optionList.indexOf(this._bestNonAgendaTutorOption(optionList)), 1); //the 1 means remove 1 card
 	//the worst-cards-to-keep are left now, return them
     return optionList;
   }
@@ -335,7 +337,7 @@ class CorpAI {
 			if (optionList[i].card.cardType == 'agenda') optionList = [optionList[i]];
 		}
 	}
-	if (optionList.length > 1) optionList = this._reducedDiscardList(optionList, 1);
+	if (optionList.length > 1) optionList = this._reducedDiscardList(optionList, 1, 1); //values here are min and max number of cards to choose (i.e. exactly 1)
 	this._log(logStart+" is "+optionList[0].card.title);
 	return optionList;
   }
@@ -344,10 +346,26 @@ class CorpAI {
     this._log("considering discard options...");
 	//importantly, this modifies the input array to length 1
 	//so that the choice of index 0 is the best option (ideally the only one left)
-    optionList = this._reducedDiscardList(optionList);
+    optionList = this._reducedDiscardList(optionList, 1, 1); //values here are min and max number of cards to choose (i.e. exactly 1)
     return 0; //just arbitrary for now
   }
   
+  _bestSabotageOption(optionList) {
+	//importantly, this modifies the input array to length 1 (recreates the desired option)
+	var minSabotageFromHQ = optionList[optionList.length-1].minSabotageFromHQ;
+    this._log("considering sabotage options, need to trash at least "+minSabotageFromHQ+" from HQ");
+	var selectCards = optionList[optionList.length-1].cards;
+	//make a faux option list for discard helper to use
+	var fauxOptionList = ChoicesHandCards(corp);
+    fauxOptionList = this._reducedDiscardList(fauxOptionList, minSabotageFromHQ, selectCards.length); //min is minSabotageFromHQ, max is selectCards.length
+	//convert back to multi-select
+	for (var i=0; i<fauxOptionList.length; i++) {
+		selectCards[i]=fauxOptionList[i].card;
+	}
+	optionList.splice(0, optionList.length - 1); //remove all but the last element
+    return 0; //there is only one option
+  }
+
   _bestForfeitOption(optionList) {
 	this._log("considering forfeit options...");
 	var ret = 0;
@@ -3255,6 +3273,8 @@ class CorpAI {
 	  }
       else if (executingCommand == "discard")
         ret = this._bestDiscardOption(optionList);
+      else if (executingCommand == "sabotage")
+        ret = this._bestSabotageOption(optionList);
       else if (executingCommand == "advance")
         ret = this._bestAdvanceOption(optionList);
 	  else if (executingCommand == "forfeit")

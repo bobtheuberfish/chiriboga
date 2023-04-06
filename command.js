@@ -328,6 +328,7 @@ function ResolveClick(input) {
               }
               //if it hasn't fired, update all the other multi-selectors of the same length
               for (var k = 0; k < validOptions.length; k++) {
+				var numSelected = 0;
                 if (typeof validOptions[k].cards !== "undefined") {
                   if (
                     validOptions[k].cards.length == validOptions[i].cards.length
@@ -335,9 +336,20 @@ function ResolveClick(input) {
                     //deep copy otherwise we end up with a shared array
                     for (var l = 0; l < validOptions[k].cards.length; l++) {
                       validOptions[k].cards[l] = validOptions[i].cards[l];
+					  //numSelected is non-nulls in .cards
+					  if (validOptions[k].cards[l]) numSelected++;
                     }
                   }
                 }
+				//update dynamic buttons
+				if (typeof validOptions[k].multiSelectDynamicButtonText == "function") {
+					$('#resolvechoice-'+k).html(validOptions[k].multiSelectDynamicButtonText(numSelected));
+				}
+				//set visibility based on enabler
+				if (typeof validOptions[k].multiSelectDynamicButtonEnabler == "function") {
+					if (validOptions[k].multiSelectDynamicButtonEnabler(numSelected)) $('#resolvechoice-'+k).show();
+					else $('#resolvechoice-'+k).hide();
+				}
               }
             }
             //single card non-server choice could fire
@@ -821,10 +833,21 @@ function MakeChoice() {
   var buttonExists = false;
   footerHtml = "";
   for (var i = 0; i < validOptions.length; i++) {
+	var styleStr = '';
+	//determine dynamic button names
+	if (typeof validOptions[i].multiSelectDynamicButtonText == "function") {
+		//start with none selected
+		validOptions[i].button = validOptions[i].multiSelectDynamicButtonText(0);
+	}
+	if (typeof validOptions[i].multiSelectDynamicButtonEnabler == "function") {
+		//set initial enabled state to hidden, if required
+		if (!validOptions[i].multiSelectDynamicButtonEnabler(0)) styleStr = 'style="display:none;" ';
+	}
+	//render buttons
     if (typeof validOptions[i].button !== "undefined") {
       buttonExists = true;
       footerHtml +=
-        '<button class="button" onclick="ResolveChoice(' +
+        '<button class="button" '+styleStr+'id="resolvechoice-'+i+'" onclick="ResolveChoice(' +
         i +
         ');">' +
         Iconify(validOptions[i].button, true) +

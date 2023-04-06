@@ -362,7 +362,7 @@ function ReproductionCode(full=false) {
   }
   if (corp.badPublicity > 0) ret += "corp.badPublicity = "+corp.badPublicity+";\n";
   if (runner.tags > 0) ret += "runner.tags = "+runner.tags+";\n";
-  if (runner.brainDamage > 0) ret += "runner.brainDamage = "+runner.brainDamage+";\n";
+  if (runner.coreDamage > 0) ret += "runner.coreDamage = "+runner.coreDamage+";\n";
   if (full) {
 	  if (playerTurn == corp) ret += "playerTurn = corp;\n";
 	  else ret += "playerTurn = runner;\n";
@@ -498,6 +498,7 @@ function Narrate() {
 	//replace words that don't sound right
 	src = src.replaceAll('rezzed','rezd');
 	src = src.replaceAll('Whitespace','white space');
+	src = src.replaceAll('Esâ Afontov','essa ahfontuf');
 	//replace unspeakable characters with unaccented letters
 	src = src.normalize('NFD');
 	//now speak
@@ -1031,7 +1032,7 @@ function ActivePlayerHand() {
  */
 function MaxHandSize(player) {
   var ret = player.maxHandSize;
-  if (player == runner) ret -= runner.brainDamage;
+  if (player == runner) ret -= runner.coreDamage;
   ret += ModifyingTriggers("modifyMaxHandSize", player, -ret); //lower limit of -ret means the total will not be any lower than zero
   return ret;
 }
@@ -1245,7 +1246,7 @@ function ResolveAccess() {
   var ret = accessingCard;
   //if the accessed card is (not was) in R&D then hide it until accessing is all done (this avoid frustrating blocking of cards underneath)
   if (accessingCard.cardLocation == corp.RnD.cards) accessingCard.renderer.sprite.visible = false;
-  AutomaticTriggers("automaticOnAccessComplete", accessingCard);
+  AutomaticTriggers("automaticOnAccessComplete", [accessingCard]);
   if (accessingCard.renderer.zoomed) accessingCard.renderer.ToggleZoom();
   accessingCard = null;
   phases.runAccessingCard.requireHumanInput=false; //automatically fire n when it comes up
@@ -1365,7 +1366,7 @@ function MoveCardTriggers(card, locationfrom, locationto) {
       locationto == runner.stack
     ) {
 	  if (CheckInstalled(card)) {
-		  AutomaticTriggers("automaticOnUninstall",card);
+		  AutomaticTriggers("automaticOnUninstall",[card]);
 	  }
       if (
         runner.AI != null &&
@@ -2014,18 +2015,18 @@ function ChoicesActiveTriggers(callbackName, player = null) {
  * Fire active triggers with the given callback name (assumes all are automatic).<br/>Returns the triggers fired.<br/>Nothing is logged.
  * @method AutomaticTriggers
  * @param {String} callbackName name of the callback property
- * @param {Object} [parameter] parameter to pass to Resolve
+ * @param [Object] parameters to pass to Resolve
  * @returns {Params[]} array of {card,label} where card[callbackName] is defined
  */
-function AutomaticTriggers(callbackName, parameter = null) {
+function AutomaticTriggers(callbackName, parameters = []) {
   //store current phase to ensure that the automatics are only doing what they're allowed
   var startingPhase = currentPhase;
   //any relevant triggers (assume automatic for now, if you want player choice use TriggeredResponsePhase)
   var triggerList = ChoicesActiveTriggers(callbackName);
   for (var i = 0; i < triggerList.length; i++) {
-    triggerList[i].card[callbackName].Resolve.call(
+    triggerList[i].card[callbackName].Resolve.apply(
       triggerList[i].card,
-      parameter
+      parameters
     );
 	//if phase has changed then the trigger shouldn't have been automatic
 	if (currentPhase != startingPhase) {

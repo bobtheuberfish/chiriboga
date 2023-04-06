@@ -42,8 +42,8 @@ function RemoveLingeringEffect(lingeringEffect) { var l_idx = lingeringEffects.i
 var intended = {};
 intended.addTags = 0; //set when tags are to be added
 intended.badPublicity = 0; //set when bad publicity is to be added
-intended.netDamage = 0; //set when net damage is to be given/taken
-intended.meatDamage = 0; //set when meat damage is to be given/taken
+intended.damageType = ""; //set when damage is to be given/taken ("net", "meat" or "core")
+intended.damage = 0; //set when damage is to be given/taken
 intended.trash = null; //set when a card is to be trashed
 intended.expose = null; //set when a card is to be exposed
 intended.score = null; //set when a card is to be scored
@@ -164,7 +164,7 @@ function Init() {
   runner.maxHandSize = 5; //this is the base, use MaxHandSize(player) to get actual
   runner._renderOnlyHandSize = runner.maxHandSize; //don't use this for anything
   runner.tags = 0;
-  runner.brainDamage = 0;
+  runner.coreDamage = 0;
   runner.resolvingCards = []; //cards move to a special 'resolving' area until resolved
   runner.installingCards = []; //card(s) being installed (they stay in place rather than moving during render)
 
@@ -1005,7 +1005,7 @@ function Render() {
   var hideClicks = runner.identityCard.hideClicks;
   var hideTags = runner.identityCard.hideTags;
   var hideMU = runner.identityCard.hideMU;
-  var hideBrainDamage = runner.identityCard.hideBrainDamage;
+  var hideCoreDamage = runner.identityCard.hideCoreDamage;
   var hideHandSize = runner.identityCard.hideHandSize;
   var hideBadPublicity = runner.identityCard.hideBadPublicity;
   
@@ -1015,8 +1015,8 @@ function Render() {
   //e is element, rw is width when viewing as runner, cw is that but as corp, h is height, s is whether to show it
   counterPositionings.push({ e: countersUI.credits.corp, rw: 40, cw: 40, h: 40, s: !hideCredits });
   counterPositionings.push({ e: countersUI.click.corp, rw: 74, cw: 74, h: 40, s: !hideClicks });
-  counterPositionings.push({ e: countersUI.bad_publicity.corp, rw: 93, cw: 85, h: 38, s: (!hideBadPublicity && globalProperties.agendaPointsToWin == 7) });
   counterPositionings.push({ e: countersUI.hand_size.corp, rw: 90, cw: 90, h: 40, s: !hideHandSize });
+  counterPositionings.push({ e: countersUI.bad_publicity.corp, rw: 100, cw: 95, h: 38, s: (!hideBadPublicity && globalProperties.agendaPointsToWin == 7 && corp.badPublicity > 0) });
   var counterUIWOffset = 0;
   for (var i=0; i<counterPositionings.length; i++) {
 	  if (!counterPositionings[i].s) {
@@ -1038,12 +1038,12 @@ function Render() {
   guiWOffset = originalGuiWOffset;
   counterPositionings = [];
   //e is element, rw is width when viewing as runner, cw is that but as corp, h is height, s is whether to show it
-  counterPositionings.push({ e: countersUI.credits.runner, rw: 40, cw: 40, h: 40, s: !hideCredits });
-  counterPositionings.push({ e: countersUI.click.runner, rw: 70, cw: 70, h: 40, s: !hideClicks });
-  counterPositionings.push({ e: countersUI.tag.runner, rw: 85, cw: 85, h: 39, s: (!hideTags && globalProperties.agendaPointsToWin == 7) }); //hide for tutorial deck
-  counterPositionings.push({ e: countersUI.mu.runner, rw: 82, cw: 100, h: 38, s: !hideMU });
-  //counterPositionings.push({ e: countersUI.brain_damage.runner, rw: 207, cw: 207, h: 38, s: !hideBrainDamage });
-  counterPositionings.push({ e: countersUI.hand_size.runner, rw: 93, cw: 85, h: 38, s: !hideHandSize });
+  counterPositionings.push({ e: countersUI.credits.runner, rw: 32, cw: 40, h: 40, s: !hideCredits });
+  counterPositionings.push({ e: countersUI.click.runner, rw: 65, cw: 68, h: 40, s: !hideClicks });
+  counterPositionings.push({ e: countersUI.hand_size.runner, rw: 80, cw: 78, h: 38, s: !hideHandSize });
+  counterPositionings.push({ e: countersUI.mu.runner, rw: 78, cw: 95, h: 38, s: !hideMU });
+  counterPositionings.push({ e: countersUI.tag.runner, rw: 90, cw: 86, h: 39, s: (!hideTags && globalProperties.agendaPointsToWin == 7 && runner.tags > 0) }); //hide for tutorial deck or if zero
+  counterPositionings.push({ e: countersUI.core_damage.runner, rw: 85, cw: 90, h: 39, s: (!hideCoreDamage && runner.coreDamage > 0) });
   counterUIWOffset = 0;
   for (var i=0; i<counterPositionings.length; i++) {
 	  if (!counterPositionings[i].s) {
@@ -1202,7 +1202,7 @@ var countersUI = {
   virus: {},
   power: {},
   agenda: {},
-  brain_damage: {},
+  core_damage: {},
   bad_publicity: {},
   hand_size: {},
 };
@@ -1229,8 +1229,8 @@ function Setup() {
   countersUI.agenda.texture = cardRenderer.LoadTexture(
     "images/generic_purple.png"
   );
-  countersUI.brain_damage.texture = cardRenderer.LoadTexture(
-    "images/brain_damage.png"
+  countersUI.core_damage.texture = cardRenderer.LoadTexture(
+    "images/core_damage.png"
   );
   countersUI.hand_size.texture = cardRenderer.LoadTexture(
     "images/hand_size.png"
@@ -1302,15 +1302,13 @@ function Setup() {
     0.5,
     false
   );
-  /*
-  countersUI.brain_damage.runner = cardRenderer.CreateCounter(
-    countersUI.brain_damage.texture,
+  countersUI.core_damage.runner = cardRenderer.CreateCounter(
+    countersUI.core_damage.texture,
     runner,
-    "brainDamage",
+    "coreDamage",
     0.5,
     false
   );
-  */
 
   LoadDecks();
   corp.identityCard.faceUp = true;
@@ -1575,7 +1573,7 @@ function ExecuteChosen(chosenCommand) {
         "Runner has reached " + AgendaPointsToWin() + " agenda points"
       );
 
-    var triggerList = AutomaticTriggers("automaticOnAnyChange");
+    var triggerList = AutomaticTriggers("automaticOnAnyChange", []);
 
     Render();
   } else {
