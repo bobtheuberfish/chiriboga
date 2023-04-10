@@ -190,57 +190,88 @@ function Forfeit(card) {
 }
 
 /**
- * Trash a card.<br/>Makes no checks or payments.<br/>Logs the result.
+ * Trash a card or cards.<br/>Makes no checks or payments.<br/>Logs the result.
  *
  * @method Trash
- * @param {Card} card the card to trash
+ * @param {Card or Card[]} cards the card or cards to trash
  * @param {Boolean} canBePrevented true if can be prevented, false if not (e.g. is a cost)
- * @param {function} [afterTrashing] called after trashing is complete
+ * @param {function(cardsTrashed)} [afterTrashing] called after trashing is complete with parameter cardsTrashed
  * @param {Object} [context] for afterTrashing
+ * @param {Object} [fromDamage] to fire damage callbacks
  */
-function Trash(card, canBePrevented, afterTrashing, context) {
+function Trash(cards, canBePrevented, afterTrashing, context, fromDamage) {
+  //if a single card is passed, make it an array with one element so that the function can run as normal
+  if (!Array.isArray(cards)) {
+	cards = [cards];
+  }
+  if (cards.length < 1) {
+	  Log("No cards trashed");
+	  return;
+  }
   if (canBePrevented) {
-    intended.trash = card;
-    OpportunityForAvoidPrevent(intended.trash.player, "responsePreventableTrash", [], function () {
-      if (intended.trash == null) return;
+    intended.trash = cards;
+	//currently giving whoever's turn it is priority...not sure this is always going to be right
+    OpportunityForAvoidPrevent(playerTurn, "responsePreventableTrash", [], function () {
       Trash(intended.trash, false, afterTrashing, context);
     }, "About to Trash");
-  } else {
-	var finaliseTrash = function() {
-		card.host = null;
-		if (runner.AI != null && card.cardLocation == corp.HQ.cards)
-		  runner.AI.LoseInfoAboutHQCards(card);
-		//if the currently encountered ice is trashed, it's no longer being encountered
-		if (GetApproachEncounterIce() == card) {
-		  encountering = false;
-		  subroutine = -1;
-		}
-		
-		//now move it
-		MoveCard(card, PlayerTrashPile(card.player));
-		if (card.player == runner) card.faceUp = true;
-		Log(GetTitle(card, true) + " trashed");
-
-		//first the automatic triggers
-		AutomaticTriggers("automaticOnTrash", [card]);
-		//then the Enumerate ones
-		//currently giving whoever's turn it is priority...not sure this is always going to be right
-		TriggeredResponsePhase(playerTurn, "responseOnTrash", [card], function() {
-			//current implementation assumes no non-automatic triggers will fire from trashing hosted cards
-			//to do it properly you would need to chain each trash as afterTrashing of the card before it
-			if (typeof card.hostedCards !== "undefined") {
-			  while (card.hostedCards.length > 0) Trash(card.hostedCards[0], false);
-			}
-			if (typeof afterTrashing === "function") {
-			  afterTrashing.call(context);
-			}
-		}, "Trashed");
-	};
-	//special case: if card has a 'would trash' trigger (a decision needs to be made)
-	//note this will totally break if the card is trashed by an automatic trigger
-	if (card.responseOnWouldTrash) TriggeredResponsePhase(playerTurn, "responseOnWouldTrash", [card], finaliseTrash, "Would Trash");
-	else finaliseTrash();
+	return;
   }
+  //prevention opportunity has passed, from here all trashes are unpreventable
+  //add any hosted cards to also be trashed (this acts recursively as necessary)
+  for (var i=0; i<cards.length; i++) {
+	if (typeof cards[i].hostedCards != 'undefined') {
+		for (var j=0; j<cards[i].hostedCards.length; j++) {
+			if (!cards.includes(cards[i].hostedCards[j])) {
+				cards.push(cards[i].hostedCards[j]);
+			}
+		}
+	}
+  }
+  //"would trash" triggers:
+  //first the automatic triggers
+  AutomaticTriggers("automaticOnWouldTrash", [cards]);
+  //then the Enumerate ones
+  //currently giving whoever's turn it is priority...not sure this is always going to be right
+  TriggeredResponsePhase(playerTurn, "responseOnWouldTrash", [cards], function() {
+	//loop through all the cards (move cards, lose information about HQ cards, cancel encounters if relevant, set host to null, and log message)
+	//BUT fire the on trashed trigger just once, when all this is one (i.e. for all cards at once)
+	for (var i=0; i<cards.length; i++) {
+	  var card = cards[i];
+	  card.host = null;
+	  if (runner.AI != null && card.cardLocation == corp.HQ.cards)
+	    runner.AI.LoseInfoAboutHQCards(card);
+	  //if the currently encountered ice is trashed, it's no longer being encountered
+	  if (GetApproachEncounterIce() == card) {
+	    encountering = false;
+	    subroutine = -1;
+	  }
+	  //now move it
+	  MoveCard(card, PlayerTrashPile(card.player));
+	  if (card.player == runner) card.faceUp = true;
+	  Log(GetTitle(card, true) + " trashed");
+	}
+	//first the automatic triggers
+	AutomaticTriggers("automaticOnTrash", [cards]);
+    if (fromDamage) {
+	  AutomaticTriggers("automaticOnTakeDamage", [fromDamage.damage, fromDamage.damageType]);
+    }
+	//then the Enumerate ones
+	//currently giving whoever's turn it is priority...not sure this is always going to be right
+	//note this may be a combined phase, if the trashing is from damage
+	var pseudoPhaseTitle = "Trashed";
+	var secondCallbackName="";
+	var secondEnumerateParams=[];
+	if (fromDamage) {
+	  pseudoPhaseTitle = "Trashed/Damage";
+	  secondCallbackName="responseOnTakeDamage";
+	  secondEnumerateParams=[fromDamage.damage, fromDamage.damageType];		
+	}
+	TriggeredResponsePhase(playerTurn, "responseOnTrash", [cards], function() {
+	  if (typeof afterTrashing === "function") {
+		afterTrashing.call(context, cards);
+	  }
+	}, pseudoPhaseTitle, null, secondCallbackName, secondEnumerateParams);
+  }, "Would Trash");
 }
 
 /**
@@ -252,7 +283,7 @@ function Trash(card, canBePrevented, afterTrashing, context) {
 function TrashAccessedCard(canBePrevented) {
   if (PlayerCanLook(corp, accessingCard)) accessingCard.faceUp = true;
   SetHistoryThumbnail(accessingCard.imageFile, "Trash");
-  Trash(accessingCard, canBePrevented, function () {
+  Trash(accessingCard, canBePrevented, function (cardsTrashed) {
     ResolveAccess();
   });
 }
@@ -387,7 +418,7 @@ function Install(
 		  trash: function (params) {
 			var storedServer = GetServerByArray(installDestination); //as above, see below
 			var serverIndex = corp.remoteServers.indexOf(storedServer); //to make sure servers aren't destroyed here (see below)
-			Trash(params.card, false, function() {
+			Trash(params.card, false, function(cardsTrashed) {
 				//if this move destroyed a remote server, it shouldn't have (see CR1.5 8.5.9)
 				if (installingCard.player == corp && serverIndex > -1) {
 				  if (GetServerByArray(installDestination) == null)
@@ -549,7 +580,8 @@ function Play(card, onPlayResolve, context) {
     Render();
   };
   var resolveCallback = function (params) {
-	//hand X cost
+	//handle X cost
+	//this is done by temporarily defining the printed play cost
 	var playCostReplaced = false;
 	if (card.playCost === 'X') {
 		if (typeof params.playCost == 'undefined') {
@@ -698,36 +730,29 @@ function Discard(card) {
 function Damage(damageType, num, canBePrevented, afterTrashing, context) {
   intended.damageType = damageType;
   intended.damage = num;
-  var cardsTrashed = [];
-  var trashCallback = function () {
-    if (intended.damage < 1) {
-	  var damageTaken = cardsTrashed.length;
-	  //trashing done, fire 'damage taken' triggers, if any
-	  //first the automatic triggers
-	  AutomaticTriggers("automaticOnTakeDamage", [damageTaken, intended.damageType]);
-	  //then the Enumerate ones
-	  //currently giving whoever's turn it is priority...not sure this is always going to be right
-      TriggeredResponsePhase(playerTurn, "responseOnTakeDamage", [damageTaken, intended.damageType], function() {
-		  if (typeof afterTrashing === "function")
-			afterTrashing.call(context, cardsTrashed);
-	  }, "Damage Taken");	  
-      return;
-    }
-    if (runner.grip.length == 0) {
-      PlayerWin(corp, "Runner flatlined");
-      return;
-    }
+  var applyDamage = function() {
+	//opportunity for prevention has passed, intended.damage will now be done
+    Log("Runner takes " + intended.damage + " " + intended.damageType + " damage");
 	if (intended.damageType == "core") {
 		runner.coreDamage++;
 	}
-    intended.damage--;
-    var cardToTrash = runner.grip[RandomRange(0, runner.grip.length - 1)];
-    cardsTrashed.push(cardToTrash);
-    Trash(cardToTrash, true, trashCallback);
-  };
-  var applyDamage = function() {
-    Log("Runner takes " + intended.damage + " " + intended.damageType + " damage");
-	trashCallback();
+	//if damage is greater than grip length, flatline
+    if (intended.damage > runner.grip.length) {
+	  //move all the cards from grip to heap for the visual effect
+	  while (runner.grip.length > 0) {
+		  MoveCard(runner.grip[0], runner.heap);
+	  }
+	  Render();
+      PlayerWin(corp, "Runner flatlined");
+      return;
+    }
+	//else select intended.damage random cards from grip
+	var copyOfGrip = runner.grip.concat([]);
+	Shuffle(copyOfGrip);
+	var cardsToTrash = copyOfGrip.slice(0, intended.damage); 
+	//trash all cards simultaneously (note this trashing cannot be prevented since that opportunity has passed)
+	//notice we combine takedamage triggers with trashed by sending damage info
+	Trash(cardsToTrash, false, afterTrashing, context, { damage:intended.damage, damageType:intended.damageType });
   }
   if (canBePrevented) {
     OpportunityForAvoidPrevent(runner, "responsePreventableDamage", [], function () {

@@ -14,7 +14,7 @@ cheat[0] = {
         Trash(
           params.card,
           true,
-          function () {
+          function (cardsTrashed) {
             //true means can be prevented
             RemoveFromGame(this); //card is removed from game after resolving
           },

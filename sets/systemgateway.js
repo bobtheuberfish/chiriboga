@@ -26,15 +26,14 @@ cardSet[30001] = {
   },
   //need to store whether the card was being accessed (once it's trashed, the access immediately ends)
   wasAccessingCard: false,
-  responsePreventableTrash: {
-	Resolve: function() {
-	  if (intended.trash == accessingCard) this.wasAccessingCard = true;
+  automaticOnWouldTrash: {
+	Resolve: function(cards) {
+	  if (cards.includes(accessingCard)) this.wasAccessingCard = true;
 	  else this.wasAccessingCard = false;
 	},
-	automatic: true,
   },
   responseOnTrash: {
-	Enumerate: function(card) {
+	Enumerate: function(cards) {
       if (this.wasAccessingCard && !this.usedThisTurn) return [{}];
 	  return [];
 	},
@@ -137,49 +136,37 @@ cardSet[30003] = {
         if (!CheckTrash(accessingCard)) return []; ////not already in the trash, not disallowed
         if (PlayerHand(runner).length < 2) return [];
 		if (runner.AI && runner.AI._rootKnownToContainCopyOfCard(GetServer(accessingCard),"Urtica Cipher")) return []; //special case: don't use this if there's an urtica in server
-        return [{}];
+		var choices = ChoicesArrayCards(runner.grip);
+		//**AI code (in this case, implemented by setting and returning the preferred option)
+	    if (runner.AI != null) {
+			//use choices as a faux optionList to be use for Runner AI discard logic
+			//don't forget to extract the .card from results
+			var dcidx = runner.AI._indexOfBestDiscardOption(choices);
+			var firstDiscard = choices[dcidx];
+			choices.splice(dcidx,1); //remove 1 card at index dcidx
+			dcidx = runner.AI._indexOfBestDiscardOption(choices);
+			var secondDiscard = choices[dcidx];
+			choices = [{ cards:[firstDiscard.card, secondDiscard.card] }];
+		} else {
+			//not AI? set up for human choice (multi-choice)
+			for (var i = 0; i < choices.length; i++) {
+			  choices[i].cards = [null, null];
+			} //set up a multiple-select for two cards
+		}
+        return choices;
       },
       Resolve: function (params) {
-        this.usedThisTurn = true;
-        var choices = ChoicesArrayCards(runner.grip);
-        DecisionPhase(
-          runner,
-          choices,
-          function (params) {
-            Trash(
-              params.card,
-              false,
-              function () {
-                //false means it can't be prevented
-                choices = ChoicesArrayCards(runner.grip);
-                DecisionPhase(
-                  runner,
-                  choices,
-                  function (params) {
-                    Trash(
-                      params.card,
-                      false,
-                      function () {
-                        //false means it can't be prevented
-                        TrashAccessedCard(true); //true means it can be prevented (it is not a cost)
-                      },
-                      this
-                    );
-                  },
-                  null,
-                  "Discard",
-                  this,
-                  "trash"
-                ); //"Discard" was "Carnivore" but current implementation uses "Discard" as a hint to show an instruction
-              },
-              this
-            );
-          },
-          null,
-          "Discard",
-          this,
-          "trash"
-        ); //"Discard" was "Carnivore" but current implementation uses "Discard" as a hint to show an instruction
+		var cardsToDiscard = [];
+		for (var i=0; i<2; i++) {
+			if (params.cards[i]) cardsToDiscard.push(params.cards[i]);
+		}
+		if (cardsToDiscard.length > 1) {
+			this.usedThisTurn = true;
+			//false here because it's a cost so cannot be prevented
+			Trash(cardsToDiscard, false, function(cardsTrashed) {
+			  TrashAccessedCard(true); //true means it can be prevented (it is not a cost)
+			}, this);
+		}
       },
     },
   ],
@@ -4352,7 +4339,7 @@ cardSet[30057] = {
   },
   AIWouldPlay: function() {
 	//don't bother unless can use it, also don't bother if the Runner has tags already (it's probably better to use the tags than add more)
-	var ptp = corp.AI._potentialTagPunishment(runner.tags+1,corp.clickTracker-1,corp.creditPool-this.playCost) && corp.AI._clicksLeft() > 1 && runner.tags < 2;
+	var ptp = corp.AI._potentialTagPunishment(runner.tags+1,corp.clickTracker-1,corp.creditPool-PlayCost(this)) && corp.AI._clicksLeft() > 1 && runner.tags < 2;
 	if (ptp) return true;
 	return false;
   },
@@ -4396,9 +4383,9 @@ cardSet[30058] = {
     availableWhenInactive: true,
   },
   //Persistent (If the runner trashes this card while accessing it, this ability still applies for the remainder of the run.)
-  automaticOnTrash: {
-    Resolve: function (card) {
-      if (card == this && this.rezzed && card == accessingCard) {
+  automaticOnWouldTrash: {
+    Resolve: function (cards) {
+      if (cards.includes(this) && this.rezzed && this == accessingCard) {
         this.responseOnRunEnds.availableWhenInactive = true;
       }
     },
@@ -4555,7 +4542,7 @@ cardSet[30061] = {
           Trash(
             this,
             false,
-            function () {
+            function (cardsTrashed) {
 			  //damage can be prevented
               Damage("meat", damageToDo, true);
             },

@@ -158,3 +158,125 @@ cardSet[33003] = {
   },
   AIPlayWhenCan: 1, //priority 1 (low)
 };
+
+cardSet[33004] = {
+  title: "Steelskin Scarring",
+  imageFile: "33004.png",
+  elo: 1779,
+  player: runner,
+  faction: "Anarch",
+  influence: 2,
+  cardType: "event",
+  playCost: 1,
+  //Draw 3 cards.
+  Resolve: function (params) {
+    Draw(runner, 3);
+  },
+  //When this event is trashed from your grip or stack, you may draw 2 cards.
+  //need to store where the card was before it is trashed
+  trashedFromLocation: null,
+  automaticOnWouldTrash: {
+	Resolve: function(cards) {
+	  if (cards.includes(this)) this.trashedFromLocation = this.cardLocation;
+	},
+    availableWhenInactive: true
+  },
+  responseOnTrash: {
+	Enumerate: function(cards) {
+	  if (cards.includes(this)) {
+	    if (this.trashedFromLocation == runner.grip || this.trashedFromLocation == runner.stack) {
+		  var drawChoice = { id:0, label:"Draw 2 cards", button:"Draw 2 cards" };
+		  var continueChoice = { id:1, label:"Continue", button:"Continue" };
+		  //**AI code (in this case, implemented by setting and returning the preferred option)
+		  if (runner.AI != null) return [drawChoice]; //always use
+		  return [drawChoice, continueChoice];
+	    }
+	  }
+	  return [];
+	},
+	Resolve: function(params) {
+	  if (params.id == 0) Draw(runner, 2);
+	},
+    availableWhenInactive: true	
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+      //keep if need card draw
+      if (runner.grip.length < 3) return true;
+	  return false;
+  },
+  AIWouldPlay: function() {
+	//prevent wild overdraw (and try to take into account the one this will burn)
+    if (runner.AI._currentOverDraw() + 1 < runner.AI._maxOverDraw()) return true;
+	return false;
+  },
+  AIPlayToDraw: 2, //priority 2 (moderate; it's great for drawing but also good for keeping)
+  DuplicateUsability: function() {
+	return true; //always autoselect duplicates
+  },
+};
+
+cardSet[33005] = {
+  title: "Ghosttongue",
+  imageFile: "33005.png",
+  elo: 1708,
+  player: runner,
+  faction: "Anarch",
+  influence: 3,
+  cardType: "hardware",
+  subTypes: ["Cybernetic"],
+  installCost: 2,
+  unique: true,
+  //When you install this hardware, suffer 1 core damage.
+  responseOnInstall: {
+	Enumerate: function(card) {
+      if (card == this) return [{}];
+	  return [];
+	},		
+    Resolve: function (params) {
+	  //damage can be prevented
+      Damage("core", 1, true);
+    },
+  },  
+  //The play cost of each event is lowered by 1 credit.
+  modifyPlayCost: {
+    Resolve: function (card) {
+      if (CheckCardType(card, ["event"])) return -1; //1 less to play 
+      return 0; //no modification to cost
+    },
+    automatic: true,
+  },
+  AILimitPerDeck: 2,
+  AIEconomyInstall: function() {
+	  //never intentionally flatline
+	  if (runner.grip.length < 1) return 0; //don't install
+	  //make sure there are enough clicks to draw back up in case we want to
+	  var clickAfterPlaying = runner.clickTracker - 1;
+	  var handSizeAfterPlaying = MaxHandSize(runner) - 1;
+	  var cardsInHandAfterPlaying = runner.grip.length - 2;
+	  var cardsToDrawToFullHandAfter = handSizeAfterPlaying - cardsInHandAfterPlaying;
+	  if (clickAfterPlaying < cardsToDrawToFullHandAfter) return 0; //don't install 
+	  //more event cards means more value
+	  //priority is between 0 (don't install right now) and 3 (probably the best option)
+	  //in this case we'll limit to 2 (moderate) because it doesn't provide burst econ
+	  var eventCardsInGripWithPlayCost = 0;
+	  for (var i=0; i<runner.grip.length; i++) {
+		if (CheckCardType(runner.grip[i], ["event"])) {
+			if (PlayCost(runner.grip[i]) > 0) eventCardsInGripWithPlayCost++;
+		}
+	  }
+	  return Math.min(eventCardsInGripWithPlayCost,2);
+  },
+  /*
+  //could install before run but...the core damage...
+  //(this code is from Prepaid VoicePAD)
+  //unlike Prepaid VoicePAD we don't need AIRunEventDiscount because run calculations will use PlayCost not printed cost
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
+	  //only if the run will be initiated with an event card
+	  if (useRunEvent) {
+		  //extra costs of install have already been considered, so yes install it
+		  return 1; //yes
+	  }
+	  return 0; //no
+  },
+  */
+};

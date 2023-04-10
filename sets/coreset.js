@@ -67,7 +67,7 @@ coreSet[3] = {
     phases.runAccessingCard.Resolve.trash = function () {
       if (PlayerCanLook(corp, accessingCard)) accessingCard.faceUp = true;
       var originalLocation = accessingCard.cardLocation;
-      Trash(accessingCard, true, function () {
+      Trash(accessingCard, true, function (cardsTrashed) {
         ResolveAccess(originalLocation);
       });
     };
@@ -940,26 +940,33 @@ coreSet[48] = {
   installCost: 0,
   responsePreventableTrash: {
     Enumerate: function () {
-      if (intended.trash != null) {
-        if (!CheckInstalled(intended.trash)) return [];
-        if (!CheckCardType(intended.trash, ["program", "hardware"])) return [];
-        return [{}];
-      }
+	  //check for installed program or hardware in trash list
+      for (var i=0; i<intended.trash.length; i++) {
+		if (CheckInstalled(intended.trash[i])) {
+          if (CheckCardType(intended.trash[i], ["program", "hardware"])) {
+            return [{}];
+		  }
+		}
+	  }
+	  //no installed program or hardware, can't trigger this
       return [];
     },
     Resolve: function () {
       var choices = [];
-      choices.push({
-        id: 0,
-        label:
-          "Trash: Prevent an installed program or an installed piece of hardware from being trashed",
-      });
-      choices.push({ id: 1, label: "Continue" });
+	  var i=0;
+	  for (i=0; i<intended.trash.length; i++) {
+        choices.push({
+          id: 0,
+		  card: intended.trash[i],
+          label: "Trash: Prevent "+intended.trash[i].title+" from being trashed",
+        });
+	  }
+      choices.push({ id: i, card:null, label: "Continue" });
       function decisionCallback(params) {
-        if (params.id == 0) {
-          intended.trash = null;
+        if (params.card) {
+		  intended.trash.splice(intended.trash.indexOf(params.card));
           Trash(this, false);
-          Log("Trash prevented");
+          Log(params.card.title+" prevented from being trashed");
         }
       }
       DecisionPhase(

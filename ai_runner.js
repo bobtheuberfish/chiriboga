@@ -1072,12 +1072,11 @@ class RunnerAI {
 	//if a run event is being used, a click is needed to play it, and a card slot (reduce max damage by 1)	
 	this.rc.runEvent = runEventCardToUse;
     if (runEventCardToUse) {
-		//playCost probably should be PlayCost (here and everywhere) but it is not implemented yet
 		if (typeof runEventCardToUse.AIRunEventExtraCredits != 'undefined') {
 			extraCredits += runEventCardToUse.AIRunEventExtraCredits;
 		}
 		//for now we assume pool credit is used to play the card, minus the discount
-		var playCost = runEventCardToUse.playCost - runEventDiscount;
+		var playCost = PlayCost(runEventCardToUse) - runEventDiscount;
 		if (playCost < 0) playCost = 0;
 		poolCreditOffset -= playCost;
 		//take into account one less card in grip
@@ -1174,6 +1173,48 @@ class RunnerAI {
 		}
 	}
     return ret;		
+  }
+  
+  //get index of best discard option (each element should contain .card)
+  //does not modify optionList
+  _indexOfBestDiscardOption(optionList) {
+	  //check for duplicate uniques (i.e. a copy is installed or another in hand) first
+      for (var i = 0; i < optionList.length; i++) {
+		if (optionList[i].card.unique) {
+			if ( this._copyOfCardExistsIn(optionList[i].card.title, runner.grip, [optionList[i].card]) 
+				|| this._uniqueCopyAlreadyInstalled(optionList[i].card) ) {
+					this._log("I don't need more of these");
+					return i;
+			}
+		}
+  	  }
+	  var alreadyHaveRunnerCards = InstalledCards(runner).concat(runner.grip);
+	  //check for duplicate non-worthkeeping
+      for (var i = 0; i < optionList.length; i++) {
+        if (!this.cardsWorthKeeping.includes(optionList[i].card)) {
+			if ( this._copyOfCardExistsIn(optionList[i].card.title, alreadyHaveRunnerCards, [optionList[i].card]) ) {
+			  this._log("I don't need another one of these");
+			  return i;
+			}
+        }
+      }
+	  //check for non-worthkeeping
+      for (var i = 0; i < optionList.length; i++) {
+        if (!this.cardsWorthKeeping.includes(optionList[i].card)) {
+		  this._log("I didn't really need this anyway");
+		  return i;
+        }
+      }
+	  //check for duplicate worthkeeping
+      for (var i = 0; i < optionList.length; i++) {
+		if ( this._copyOfCardExistsIn(optionList[i].card.title, alreadyHaveRunnerCards, [optionList[i].card]) ) {
+		  this._log("I guess I could go without an extra one of these");
+		  return i;
+		}
+      }
+	  //just discard the oldest card
+	  this._log("I guess something has to go");
+      return 0;	  
   }
  
   //NEVER do this outside of _internalChoiceDetermination
@@ -1396,43 +1437,7 @@ console.log(this.preferred);
 	}
 
     if (executingCommand == "discard") {
-	  //check for duplicate uniques (i.e. a copy is installed or another in hand) first
-      for (var i = 0; i < optionList.length; i++) {
-		if (optionList[i].card.unique) {
-			if ( this._copyOfCardExistsIn(optionList[i].card.title, runner.grip, [optionList[i].card]) 
-				|| this._uniqueCopyAlreadyInstalled(optionList[i].card) ) {
-					this._log("I don't need more of these");
-					return i;
-			}
-		}
-  	  }
-	  var alreadyHaveRunnerCards = InstalledCards(runner).concat(runner.grip);
-	  //check for duplicate non-worthkeeping
-      for (var i = 0; i < optionList.length; i++) {
-        if (!this.cardsWorthKeeping.includes(optionList[i].card)) {
-			if ( this._copyOfCardExistsIn(optionList[i].card.title, alreadyHaveRunnerCards, [optionList[i].card]) ) {
-			  this._log("I don't need another one of these");
-			  return i;
-			}
-        }
-      }
-	  //check for non-worthkeeping
-      for (var i = 0; i < optionList.length; i++) {
-        if (!this.cardsWorthKeeping.includes(optionList[i].card)) {
-		  this._log("I didn't really need this anyway");
-		  return i;
-        }
-      }
-	  //check for duplicate worthkeeping
-      for (var i = 0; i < optionList.length; i++) {
-		if ( this._copyOfCardExistsIn(optionList[i].card.title, alreadyHaveRunnerCards, [optionList[i].card]) ) {
-		  this._log("I guess I could go without an extra one of these");
-		  return i;
-		}
-      }
-	  //just discard the oldest card
-	  this._log("I guess something has to go");
-      return 0;
+	  return this._indexOfBestDiscardOption(optionList);
     }
 
 	if (runner.tags > 0) {
@@ -2092,8 +2097,7 @@ console.log(this.preferred);
 							  var preferredInstallChoice = 0;
 							  if (typeof this.tutorableIcebreakers[j].AIPreferredInstallChoice == 'function') preferredInstallChoice = this.tutorableIcebreakers[j].AIPreferredInstallChoice(choices);
 							  if (preferredInstallChoice > -1) {
-								//should probably use PlayCost here but it isn't implemented yet
-								uniqueAffordableBreakers.push({ card:this.tutorableIcebreakers[j], tutor:this.cardsWorthKeeping[k], host:choices[preferredInstallChoice].host, cost:this.cardsWorthKeeping[k].playCost });
+								uniqueAffordableBreakers.push({ card:this.tutorableIcebreakers[j], tutor:this.cardsWorthKeeping[k], host:choices[preferredInstallChoice].host, cost:PlayCost(this.cardsWorthKeeping[k]) });
 							  }
 							}
 						  }
@@ -2360,8 +2364,7 @@ console.log(this.preferred);
 					if (pbrPriority > brHighestPriority) {
 					  //_wastefulToPlay also checks AIPreferredPlayChoice, if any
 					  if (!this._wastefulToPlay(pbrCard, pbrChoices)) {
-						  //should probably use PlayCost here but it isn't implemented yet
-						  if (runCreditCost < AvailableCredits(runner) - pbrCard.playCost) {
+						  if (runCreditCost < AvailableCredits(runner) - PlayCost(pbrCard)) {
 							cardToPlay = pbrCard;
 							brHighestPriority = pbrPriority;
 							pbrBestChoices = pbrChoices;
@@ -2638,7 +2641,7 @@ console.log(this.preferred);
 	  //at this point if there is a priority econ card within click-for-credit reach, work towards that
 	  if (priorityEcon && optionList.includes("gain")) {
 		var credDiff = 0;
-		if (CheckCardType(priorityEcon, ["event"])) credDiff = priorityEcon.playCost - AvailableCredits(runner,"playing",priorityEcon);
+		if (CheckCardType(priorityEcon, ["event"])) credDiff = PlayCost(priorityEcon) - AvailableCredits(runner,"playing",priorityEcon);
 		else credDiff = InstallCost(priorityEcon) - AvailableCredits(runner,"installing",priorityEcon);
 		if (credDiff > 0 && credDiff < runner.clickTracker) return optionList.indexOf("gain");
 	  }

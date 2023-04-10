@@ -481,7 +481,8 @@ var CardRenderer = {
           this.targetCost = this.printedCost;
           if (typeof this.card.rezCost !== "undefined")
             this.targetCost = RezCost(this.card);
-          //else if (typeof(this.card.playCost) !== 'undefined') this.targetCost = PlayCost(this.card); //nothing modifies this at the moment
+          else if (typeof this.card.playCost !== 'undefined')
+			this.targetCost = PlayCost(this.card);
           else if (typeof this.card.installCost !== "undefined")
             this.targetCost = InstallCost(this.card);
           //add incrementers to animate increase/decrease

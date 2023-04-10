@@ -292,11 +292,8 @@ phaseTemplates.discardStart = {
     },
   },
 };
-//subutility for GlobalTriggersPhaseCommonResolveN
-function BuildGlobalTriggerList() {
-  currentPhase.triggerList = [];
-  if (!currentPhase.buildTriggerList) return;
-  var triggerName = currentPhase.triggerCallbackName;
+//helper function for BuildGlobalTriggerList
+function AddTriggersToTriggerList(triggerName) {
   var initialList = ChoicesActiveTriggers(triggerName, activePlayer);
   //immediately activate automatic ones and remove from list
   for (var i = 0; i < initialList.length; i++) {
@@ -331,6 +328,13 @@ function BuildGlobalTriggerList() {
     }
   }
 }
+//subutility for GlobalTriggersPhaseCommonResolveN
+function BuildGlobalTriggerList() {
+  currentPhase.triggerList = [];
+  if (!currentPhase.buildTriggerList) return;  
+  AddTriggersToTriggerList(currentPhase.triggerCallbackName);
+  AddTriggersToTriggerList(currentPhase.triggerSecondCallbackName);
+}
 //phase utility for phaseTemplates.globalTriggers
 function GlobalTriggersPhaseCommonResolveN(
   skipInit,
@@ -364,6 +368,8 @@ phaseTemplates.globalTriggers = {
   triggerList: [],
   triggerEnumerateParams: [],
   triggerCallbackName: "NOT SET",
+  triggerSecondEnumerateParams: [],
+  triggerSecondCallbackName: "NOT SET",
   buildTriggerList: true,
   Init: function () {
 	currentPhase.buildTriggerList = true;
@@ -450,7 +456,9 @@ phaseTemplates.globalTriggers = {
       return ValidateTriggerList(
         currentPhase.triggerList,
         currentPhase.triggerCallbackName,
-		currentPhase.triggerEnumerateParams
+		currentPhase.triggerEnumerateParams,
+	    currentPhase.triggerSecondCallbackName,
+	    currentPhase.triggerSecondEnumerateParams
       );
     },
     n: function () {
@@ -458,7 +466,9 @@ phaseTemplates.globalTriggers = {
         ValidateTriggerList(
           currentPhase.triggerList,
           currentPhase.triggerCallbackName,
-		  currentPhase.triggerEnumerateParams
+		  currentPhase.triggerEnumerateParams,
+	      currentPhase.triggerSecondCallbackName,		  
+	      currentPhase.triggerSecondEnumerateParams
         ).length < 1
       ) {
       	  //special case: instead of breaching (Runner only)
@@ -495,15 +505,26 @@ phaseTemplates.globalTriggers = {
   Resolve: {
     trigger: function (params) {
       var card = params.card;
-      var triggerCallback = card[currentPhase.triggerCallbackName];
+	  var callbackName = currentPhase.triggerCallbackName;
+	  //override name if defined by params
+	  if (typeof params.callbackName != 'undefined') {
+		callbackName = params.callbackName;
+	  }
+      var triggerCallback = card[callbackName];
       currentPhase.triggerList.splice(params.id, 1); //remove from triggers list (only trigger once)
       var instruction = GetTitle(card, true);
       if (typeof triggerCallback.text !== "undefined")
         instruction = triggerCallback.text;
       else instruction = GetTitle(card, true);
       var choices = [{}]; //assume valid by default
-      if (typeof triggerCallback.Enumerate === "function")
-        choices = triggerCallback.Enumerate.apply(card,currentPhase.triggerEnumerateParams);
+      if (typeof triggerCallback.Enumerate === "function") {
+		var enumerateParams = currentPhase.triggerEnumerateParams;
+		//override enumerate params if defined
+		if (typeof params.enumerateParams != 'undefined') {
+			enumerateParams = params.enumerateParams;
+		}
+        choices = triggerCallback.Enumerate.apply(card,enumerateParams);
+	  }
       var decisionPhase = DecisionPhase(
         card.player,
         choices,
@@ -889,7 +910,7 @@ phases.corpActionMain = {
           else SpendClicks(corp, 1);
           SpendCredits(
             corp,
-            params.card.playCost,
+            PlayCost(params.card),
             "playing",
             params.card,
             function () {
@@ -1118,13 +1139,13 @@ phases.runnerActionMain = {
           else SpendClicks(runner, 1);
           SpendCredits(
             runner,
-            params.card.playCost,
+            PlayCost(params.card),
             "playing",
             params.card,
             function () {
 			  if (params.card.additionalPlayCostSufferDamage) {
 				//this damage is a cost, so it cannot be prevented
-				Damage(params.card.additionalPlayCostSufferDamage.damageType, params.card.additionalPlayCostSufferDamage.damage, false, function() {
+				Damage(params.card.additionalPlayCostSufferDamage.damageType, params.card.additionalPlayCostSufferDamage.damage, false, function(cardsTrashed) {
 					IncrementPhase(); //set new phase first in case card play changes phase
 					finishResolve();
 				}, this);
@@ -1744,7 +1765,13 @@ function ChangePhase(src, skipInit = false) {
   else $("#rewind-select").prop("disabled",false);
 
   activePlayer = currentPhase.player;
-  $("#header").html("<h2>" + TurnPhaseStr() + "</h2>");
+  var headerstyle = "";
+  var tpstr = TurnPhaseStr();
+  if (tpstr.length > 30) {
+	//the threshold is arbitrary but basically 'lots of text'
+	headerstyle = '  style="font-size:110%;"';
+  }
+  $("#header").html('<h2' + headerstyle + '>' + tpstr + '</h2>');
   if (skipInit !== true) {
     /*
 		var previous = "";

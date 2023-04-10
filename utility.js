@@ -1822,12 +1822,24 @@ function InstallCost(
   } else return GetCardProperty(installingCard, "installCost");
 }
 
+/**
+ * Gets the play cost of a card.<br/>Nothing is logged.
+ *
+ * @method PlayCost
+ * @param {Card} card to check play cost for
+ * @returns {int} play cost (credits)
+ */
+function PlayCost(
+  card
+) {
+	return GetCardProperty(card, "playCost");
+}
 
 /**
  * Gets the trash cost of a card.<br/>Nothing is logged.
  *
  * @method TrashCost
- * @param {Card} card to check install cost for
+ * @param {Card} card to check trash cost for
  * @returns {int} trash cost (credits)
  */
 function TrashCost(
@@ -1923,15 +1935,20 @@ function AdvancementRequirement(card) {
  * @method ValidateTriggerList
  * @param {Params[]} triggerList array of {card,label} where card[callbackName] is defined
  * @param {String} callbackName name of the callback property
- * @param [Object] enumerateParams to send to Enumerate functions
+ * @param [Object[]] enumerateParams to send to Enumerate functions
+ * @param {String} [secondCallbackName] name of a second callback property
+ * @param [Object[]] [secondEnumerateParams] to send to second Enumerate functions
  * @returns {Params[]} array of {card,label} where card[callbackName] is defined
  */
-function ValidateTriggerList(triggerList, callbackName, enumerateParams) {
+function ValidateTriggerList(triggerList, callbackName, enumerateParams, secondCallbackName="", secondEnumerateParams=[]) {
   var ret = [];
   for (var i = 0; i < triggerList.length; i++) {
 	//re-check whether callback works e.g. has card become inactive?
+	var callbackPushed = false;
 	if (CheckCallback(triggerList[i].card, callbackName)) {
 		triggerList[i].id = i;
+		triggerList[i].callbackName = callbackName;
+		triggerList[i].enumerateParams = enumerateParams;
 		var choices = [{}]; //assume valid by default
 		if (typeof triggerList[i].card[callbackName].Enumerate === "function")
 		  choices = triggerList[i].card[callbackName].Enumerate.apply(
@@ -1939,7 +1956,28 @@ function ValidateTriggerList(triggerList, callbackName, enumerateParams) {
 			enumerateParams
 		  );
 		triggerList[i].choices = choices;
-		if (choices.length > 0) ret.push(triggerList[i]);
+		if (choices.length > 0) {
+			ret.push(triggerList[i]);
+			callbackPushed=true;
+		}
+	}
+	//check second callback, if relevant
+	if (!callbackPushed && secondCallbackName != "") {
+		if (CheckCallback(triggerList[i].card, secondCallbackName)) {
+			triggerList[i].id = i;
+			triggerList[i].callbackName = secondCallbackName;
+			triggerList[i].enumerateParams = secondEnumerateParams;
+			var choices = [{}]; //assume valid by default
+			if (typeof triggerList[i].card[secondCallbackName].Enumerate === "function")
+			  choices = triggerList[i].card[secondCallbackName].Enumerate.apply(
+				triggerList[i].card,
+				secondEnumerateParams
+			  );
+			triggerList[i].choices = choices;
+			if (choices.length > 0) {
+				ret.push(triggerList[i]);
+			}
+		}
 	}
   }
   return ret;
@@ -2385,7 +2423,7 @@ function FullCheckPlay(card,requireActionPhase=true) {
   if (CheckSubType(card, "Double")) clicksRequired = 2;
   if ((!requireActionPhase && CheckClicks(card.player, clicksRequired)) || CheckActionClicks(card.player, clicksRequired)) {
     if (CheckPlay(card)) {
-	  var playCost = card.playCost;
+	  var playCost = PlayCost(card);
 	  if (playCost === 'X') playCost = 0; //do X-specific checks in your card's Enumerate implementation
       if (CheckCredits(card.player, playCost, "playing", card)) {
         if (typeof card.Enumerate !== "undefined") {
@@ -2501,15 +2539,20 @@ function CamelToSentence(src) {
  * @param {function} afterOpportunity called after pseudophase completes
  * @param {String} [title] given to the pseudophase, defaults to CamelToSentence(callbackName)
  * @param {Object} [historyBreak] given to the pseudophase
+ * @param {String} [secondCallbackName] name of a second simultaneous trigger property
+ * @param [Object] [secondEnumerateParams] to send to Enumerate functions for the second property
  * @returns {Phase} the pseudophase created
  */
-function TriggeredResponsePhase(player, callbackName, enumerateParams, afterOpportunity, title, historyBreak=null) {
+function TriggeredResponsePhase(player, callbackName, enumerateParams, afterOpportunity, title, historyBreak=null, secondCallbackName="", secondEnumerateParams=[]) {
   //skip this whole thing if it would trigger nothing
-  if (ChoicesActiveTriggers(callbackName).length < 1) {
+  var wouldTriggerNothing = true;
+  if (ChoicesActiveTriggers(callbackName).length > 0) wouldTriggerNothing = false;
+  else if (secondCallbackName != "" && ChoicesActiveTriggers(secondCallbackName).length > 0) wouldTriggerNothing = false;
+  if (wouldTriggerNothing) {
 	  if (typeof afterOpportunity == 'function') afterOpportunity();
 	  return;
   }
-  //implement pseudophase
+  //implement pseudophase (note by default the second callback is not used in title generation)
   var printableCallbackName = CamelToSentence(callbackName);
   if (typeof title !== "undefined") printableCallbackName = title;
   var responsePhase = CreatePhaseFromTemplate(
@@ -2522,6 +2565,8 @@ function TriggeredResponsePhase(player, callbackName, enumerateParams, afterOppo
   if (typeof enumerateParams == 'undefined') enumerateParams = [];
   responsePhase.triggerEnumerateParams = enumerateParams;
   responsePhase.triggerCallbackName = callbackName;
+  responsePhase.triggerSecondEnumerateParams = secondEnumerateParams;
+  responsePhase.triggerSecondCallbackName = secondCallbackName;
   responsePhase.Resolve.n = function () {
     GlobalTriggersPhaseCommonResolveN(true, afterOpportunity); //when done, this will return to original phase (true skips init) and then fire afterOpportunity
   };
@@ -3055,6 +3100,7 @@ function DeckBuild(
 	  var creditEconomyCards = []; //only includes cards that would fairly certainly provide credits (including recurring credits)
 	  if (setIdentifiers.includes('sg')) creditEconomyCards = creditEconomyCards.concat([30007, 30018, 30020, 30027, 30029, 30030, 30033]);
 	  if (setIdentifiers.includes('su21')) creditEconomyCards = creditEconomyCards.concat([31010, 31011, 31015, 31024, 31034, 31035, 31037, 31038]);
+	  if (setIdentifiers.includes('ms')) creditEconomyCards = creditEconomyCards.concat([33005]);
 	  var influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
@@ -3075,6 +3121,7 @@ function DeckBuild(
 	  var drawEconomyCards = [];
 	  if (setIdentifiers.includes('sg')) drawEconomyCards = drawEconomyCards.concat([30002,30011,30021,30034]);
 	  if (setIdentifiers.includes('su21')) drawEconomyCards = drawEconomyCards.concat([31004,31027,31028,31036,31039]);
+	  if (setIdentifiers.includes('ms')) drawEconomyCards = drawEconomyCards.concat([33004]);
 	  var influenceUsed = CountInfluence(
 		identityCard,
 		cardsAdded
@@ -3102,7 +3149,7 @@ function DeckBuild(
 		31027, 31028, 31029, 31030, 31031, 31032, 31033, 31034, 31035, 31036, 31037, 31038, 31039,
 	  ]);
 	  if (setIdentifiers.includes('ms')) otherCards = otherCards.concat([
-	    33002, 33003,
+	    33002, 33003, 33004, 33005,
 	  ]);
 	  influenceUsed = CountInfluence(
 		identityCard,

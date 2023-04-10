@@ -877,11 +877,11 @@ cardSet[31014] = {
 			  for (var i=0; i<ctcf.length-1; i++) {
 				  var costA = 0;
 				  if (typeof ctcf[i].installCost != 'undefined') costA = InstallCost(ctcf[i]);
-				  else if (typeof ctcf[i].playCost != 'undefined') costA = ctcf[i].playCost; //should probably use PlayCost but not implemented yet
+				  else if (typeof ctcf[i].playCost != 'undefined') costA = PlayCost(ctcf[i]);
 				  for (var j=i+1; j<ctcf.length; j++) {
 					  var costB = 0;
 					  if (typeof ctcf[j].installCost != 'undefined') costB = InstallCost(ctcf[j]);
-					  else if (typeof ctcf[j].playCost != 'undefined') costB = ctcf[j].playCost; //should probably use PlayCost but not implemented yet
+					  else if (typeof ctcf[j].playCost != 'undefined') costB = PlayCost(ctcf[j]);
 					  if (costA == costB) return [{ cards: [ ctcf[i], ctcf[j]] }];
 				  }
 			  }
@@ -2982,7 +2982,7 @@ cardSet[31035] = {
 			  Trash(
 				params.card,
 				false, //cannot be prevented (I mean, I guess you could but you wouldn't gain 3 credits so...)
-				function () {
+				function (cardsTrashed) {
 				  GainCredits(runner,3);
 				},
 				this
@@ -3250,7 +3250,7 @@ cardSet[31038] = {
 	  var eventCardsInGripWithPlayCost = 0;
 	  for (var i=0; i<runner.grip.length; i++) {
 		if (CheckCardType(runner.grip[i], ["event"])) {
-			if (runner.grip[i].playCost > 0) eventCardsInGripWithPlayCost++;
+			if (PlayCost(runner.grip[i]) > 0) eventCardsInGripWithPlayCost++;
 		}
 	  }
 	  return Math.min(eventCardsInGripWithPlayCost,2);
@@ -3532,17 +3532,23 @@ cardSet[31042] = {
   redirectTrash:false,
   responseOnWouldTrash: {
 	//don't prevent the trash, just save whether we want to activate this
-	Enumerate: function(card) {
-		//UFAQ: The interrupt ability on Marilyn Campaign is not active while the source card is unrezzed.
-		//We'll interpret that as a requirement that this card be both installed and rezzed. We'll also check for any other deactivation.
-		if (card != this || !CheckInstalled(this) || !this.rezzed || !CheckActive(this)) return [];
-		var choices = [
-		  { id:0, label:"Shuffle Marilyn Campaign into R&D", button:"Shuffle into R&D"},
-		  { id:1, label:"Add Marilyn Campaign to Archives", button:"Add to Archives"},
-		];
-		//**AI code
-		if (corp.AI != null) return [choices[0]];
-		return choices;
+	Enumerate: function(cards) {
+		//only trigger this if this card is in cards to be trashed, is installed, etc
+		for (var i=0; i<cards.length; i++) {
+			//UFAQ: The interrupt ability on Marilyn Campaign is not active while the source card is unrezzed.
+			//We'll interpret that as a requirement that this card be both installed and rezzed. We'll also check for any other deactivation.
+			if (cards[i] == this) {
+				if (!CheckInstalled(this) || !this.rezzed || !CheckActive(this)) return [];
+				var choices = [
+				  { id:0, label:"Shuffle Marilyn Campaign into R&D", button:"Shuffle into R&D"},
+				  { id:1, label:"Add Marilyn Campaign to Archives", button:"Add to Archives"},
+				];
+				//**AI code
+				if (corp.AI != null) return [choices[0]];
+				return choices;
+			}
+		}
+		return [];
 	},
 	Resolve: function(params) {
 		if (params.id == 0) this.redirectTrash = true;
@@ -3551,8 +3557,8 @@ cardSet[31042] = {
   },
   //after trash, move to R&D if required
   automaticOnTrash: {
-    Resolve: function (card) {
-      if (card == this && this.redirectTrash) {
+    Resolve: function (cards) {
+      if (cards.includes(this) && this.redirectTrash) {
 		MoveCard(this,corp.RnD.cards);
 		Shuffle(corp.RnD.cards);
 		this.redirectTrash=false;
@@ -4077,7 +4083,7 @@ cardSet[31049] = {
 		}
         var decisionCallback = function (paramsB) {
 			SpendCredits(corp, X);
-			Trash(this, false, function(){ //false means it cannot be prevented (because it's a cost)
+			Trash(this, false, function(cardsTrashed){ //false means it cannot be prevented (because it's a cost)
 				Log(GetTitle(paramsB.card)+" gets +"+X+" strength for the remainder of the turn");
 				AddLingeringEffect({
 				  chosenCard: paramsB.card,
@@ -4241,7 +4247,7 @@ cardSet[31050] = {
   //Whenever an agenda is scored or stolen, do 1 net damage.
   responseOnScored: {
     Resolve: function () {
-		//damage can be prevented
+	  //damage can be prevented
       Damage("net", 1, true);
     },
   },
@@ -4460,7 +4466,7 @@ cardSet[31054] = {
 				  function () {
 					AddTags(1, function() {
 					  //damage can be prevented
-					  Damage("net", 3, true, function() {}, this);
+					  Damage("net", 3, true, function(cardsTrashed) {}, this);
 					}, this);
 				  },
 				  this
@@ -5396,7 +5402,7 @@ cardSet[31068] = {
   faction: "NBN",
   influence: 3,
   cardType: "operation",
-  playCost: 'X', //implemented by params.playCost
+  playCost: 'X', //choosing X is implemented by params.playCost
   //X must be equal to or less than the number of tags the Runner has.
   //Place X advancement counters on 1 installed card you can advance.
   AIPlayedWithCost: 0, //used by the corp AI
@@ -6127,7 +6133,7 @@ cardSet[31078] = {
 			var opDamage = corp.AI._potentialOperationDamageThisTurn(damageOps);
 			var opCost = 0;
 			for (var i=0; i<damageOps.length; i++) {
-				opCost += damageOps[i].playCost;
+				opCost += PlayCost(damageOps[i]);
 			}
 			//don't use up credits planned for other damage ops
 			if (maxIncrease > availableCorpCred - opCost) {
