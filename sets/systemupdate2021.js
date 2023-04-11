@@ -1454,8 +1454,10 @@ cardSet[31021] = {
 		return [{}];
 	  },
 	  Resolve: function(params) {
-		  Trash(this, false); //false means it cannot be prevented (because it's a cost)
-		  Bypass();
+		  //false means trash cannot be prevented (because it's a cost)
+		  Trash(this, false, function(cardsTrashed) {
+		    Bypass();
+		  },this);
 	  },
 	},
   ],
@@ -3293,9 +3295,10 @@ cardSet[31039] = {
   responseOnRunnerTurnBegins: {
     Resolve: function () {
 		RemoveCounters(this, "power", 1);
-	    //The "when it is empty" check should probably be in automaticOnAnyChange but they're automatic-only for now
-	    if (!CheckCounters(this, "power", 1)) Trash(this);
-		Draw(runner, 2);
+		Draw(runner, 2, function() {
+			//The "when it is empty" check should probably be in automaticOnAnyChange but they're automatic-only for now
+			if (!CheckCounters(this, "power", 1)) Trash(this);
+		},this);
     },
   },
   /*
@@ -4411,9 +4414,11 @@ cardSet[31053] = {
       },
       Resolve: function (params) {
         SpendClicks(corp, 1);
-        Trash(this, false); //false means it cannot be prevented (because it's a cost)
-		//damage can be prevented
-        Damage("net", 3, true);
+		//false means trash cannot be prevented (because it's a cost)
+        Trash(this, false, function(cardsTrashed) {
+		  //damage can be prevented
+          Damage("net", 3, true);
+		}, this);
       },
     },
   ],
@@ -5219,8 +5224,10 @@ cardSet[31064] = {
       Resolve: function (params) {
         SpendClicks(corp, 1);
 		var creditsToLose = 4*Counters(this,"advancement");
-        Trash(this, false); //false means it cannot be prevented (because it's a cost)
-        LoseCredits(runner,creditsToLose);
+		//false means trash cannot be prevented (because it's a cost)
+        Trash(this, false, function(cardsTrashed) {
+		  LoseCredits(runner,creditsToLose);
+		}, this);
       },
     },
   ],

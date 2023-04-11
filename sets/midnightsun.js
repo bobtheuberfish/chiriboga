@@ -248,7 +248,7 @@ cardSet[33005] = {
   AILimitPerDeck: 2,
   AIEconomyInstall: function() {
 	  //never intentionally flatline
-	  if (runner.grip.length < 1) return 0; //don't install
+	  if (runner.grip.length < 2) return 0; //don't install
 	  //make sure there are enough clicks to draw back up in case we want to
 	  var clickAfterPlaying = runner.clickTracker - 1;
 	  var handSizeAfterPlaying = MaxHandSize(runner) - 1;
@@ -279,4 +279,160 @@ cardSet[33005] = {
 	  return 0; //no
   },
   */
+};
+
+cardSet[33006] = {
+  title: "Marrow",
+  imageFile: "33006.png",
+  elo: 1566,
+  player: runner,
+  faction: "Anarch",
+  influence: 2,
+  cardType: "hardware",
+  subTypes: ["Console","Cybernetic"],
+  installCost: 2,
+  unique: true,
+  memoryUnits: 1,
+  //You get +3 maximum hand size.
+  modifyMaxHandSize: {
+    Resolve: function (player) {
+      if (player == runner) return 3; //+3
+      return 0; //no modification to maximum hand size
+    },
+  },
+  //When you install this hardware, suffer 1 core damage.
+  responseOnInstall: {
+	Enumerate: function(card) {
+      if (card == this) return [{}];
+	  return [];
+	},		
+    Resolve: function (params) {
+	  //damage can be prevented
+      Damage("core", 1, true);
+    },
+  },  
+  //Whenever the Corp scores an agenda, sabotage 1.
+  responseOnScored: {
+    Resolve: function (params) {
+      Sabotage(1);
+    },
+  },
+};
+
+cardSet[33007] = {
+  title: "Begemot",
+  imageFile: "33007.png",
+  elo: 1555,
+  player: runner,
+  faction: "Anarch",
+  influence: 4,
+  cardType: "program",
+  subTypes: ["Icebreaker", "Fracter"],
+  memoryCost: 2,
+  installCost: 5,
+  strength: 2,
+  //When you install this program, suffer 1 core damage.
+  responseOnInstall: {
+	Enumerate: function(card) {
+      if (card == this) return [{}];
+	  return [];
+	},		
+    Resolve: function (params) {
+	  //damage can be prevented
+      Damage("core", 1, true);
+    },
+  },  
+  //This program gets +1 strength for each core damage you have taken this game.
+  modifyStrength: {
+    Resolve: function (card) {
+      if (card == this) return runner.coreDamage;
+      return 0; //no modification to strength
+    },
+  },
+  //Interface -> 1[c]: Break any number of barrier subroutines.
+  //basically the approach is have a SharedDecisionCallback that can be used recursively
+  SharedDecisionCallback: function(params) {
+	if (typeof params != 'undefined') {
+	  if (typeof params.subroutine != 'undefined') {
+		Break(params.subroutine);
+	  }
+	  else return; //done breaking
+	}
+	var choices = ChoicesEncounteredSubroutines();
+	if (choices.length < 1) return; //done breaking
+	for (var i = 0; i < choices.length; i++) {
+	  choices[i].label =
+		"(Begemot) Break another subroutine. -> " + choices[i].label;
+	}
+	choices.push({
+	  id: choices.length,
+	  label: "Continue",
+	  button: "Continue",
+	});
+	DecisionPhase(
+	  runner,
+	  choices,
+	  this.SharedDecisionCallback,
+	  "Break any number of barrier subroutines",
+	  "Begemot",
+	  this
+	);
+  },
+  abilities: [
+    {
+      text: "Break any number of barrier subroutines",
+      Enumerate: function () {
+        if (!CheckEncounter()) return [];
+        if (!CheckSubType(attackedServer.ice[approachIce], "Barrier"))
+          return [];
+        if (!CheckCredits(runner, 1, "using", this)) return [];
+        if (!CheckStrength(this)) return [];
+        //None isn't a valid option because it doesn't try to change the game state
+        //See NISEI Comprehensive Rules 1.2.5 (https://nisei.net/wp-content/uploads/2021/03/Comprehensive_Rules.pdf)
+        //So my chosen implementation is: choose first to break, then any further options are optional.
+        return ChoicesEncounteredSubroutines();
+      },
+      Resolve: function (params) {
+        SpendCredits(
+          runner,
+          1,
+          "using",
+          this,
+		  function() {
+			Break(params.subroutine);
+			this.SharedDecisionCallback();
+		  },
+          this
+        );
+      },
+    },
+  ],
+  AIImplementBreaker: function(rc,result,point,server,cardStrength,iceAI,iceStrength,clicksLeft,creditsLeft) {
+	//note: args for ImplementIcebreaker are: point, card, cardStrength, iceAI, iceStrength, iceSubTypes, costToUpStr, amtToUpStr, costToBreak, amtToBreak, creditsLeft
+    result = result.concat(
+        rc.ImplementIcebreaker(
+          point,
+          this,
+          cardStrength,
+          iceAI,
+          iceStrength,
+          ["Barrier"],
+          Infinity, //fixed strength breaker
+          0,
+          1,
+          iceAI.sr.length, //break any number (don't use Infinity here because all combinations of break/leave unbroken are considered)
+          creditsLeft
+        )
+    ); //cost to str, amt to str, cost to brk, amt to brk
+	return result;
+  },
+  AIPreferredInstallChoice: function (
+    choices //outputs the preferred index from the provided choices list (return -1 to not install)
+  ) {
+	//don't install if this is last click
+	if (runner.clickTracker < 2) return -1; //don't install
+	//never intentionally flatline
+	if (runner.grip.length < 2) return -1; //don't install
+    return 0; //do install
+  },
 };

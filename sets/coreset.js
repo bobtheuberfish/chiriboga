@@ -695,9 +695,10 @@ coreSet[32] = {
       choices.push({ id: 1, label: "Continue" });
       function decisionCallback(params) {
         if (params.id == 0) {
-          Trash(this, false);
-          intended.addTags--;
-          Log("1 tag avoided");
+          Trash(this, false, function(cardsTrashed) {
+            intended.addTags--;
+            Log("1 tag avoided");
+		  },this);
         }
       }
       DecisionPhase(runner, choices, decisionCallback, null, "Decoy", this);
@@ -965,8 +966,9 @@ coreSet[48] = {
       function decisionCallback(params) {
         if (params.card) {
 		  intended.trash.splice(intended.trash.indexOf(params.card));
-          Trash(this, false);
-          Log(params.card.title+" prevented from being trashed");
+          Trash(this, false, function(cardsTrashed) {
+			Log(params.card.title+" prevented from being trashed");
+		  },this);
         }
       }
       DecisionPhase(

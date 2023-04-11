@@ -567,8 +567,10 @@ cardSet[30007] = {
       Resolve: function (params) {
         SpendClicks(runner, 1);
         var creditsToGain = 2 * Counters(this, "virus");
-        Trash(this, false); //false means it cannot be prevented (because it's a cost)
-        GainCredits(runner, creditsToGain);
+		//false means trash cannot be prevented (because it's a cost)
+        Trash(this, false, function(cardsTrashed) {
+          GainCredits(runner, creditsToGain);
+		},this); 
       },
     },
   ],
@@ -2798,8 +2800,9 @@ cardSet[30037] = {
       TakeCredits(corp, this, 3); //removes from card, adds to credit pool
       if (!CheckCounters(this, "credits", 1)) {
         //When it is empty, trash it and draw 1 card.
-        Trash(this); //in theory prevent could be allowed but why would you? Also it would mean this can no longer be automatic
-        Draw(corp, 1);
+        Trash(this, true, function(cardsTrashed) {
+          Draw(corp, 1);
+		},this);
       }
     },
   },
@@ -3432,12 +3435,11 @@ cardSet[30044] = {
   AICardsDiscarded: [],
   SharedDecisionCallback: function(params) {
 	if (params.card) {
-		Trash(params.card);
-		if (corp.AI != null) this.AICardsDiscarded.push(params.card);
-		if (corp.HQ.cards.length > 0) {
-			this.SharedTrashFromHQDecision();
-			return;
-		}
+		Trash(params.card, true, function(cardsTrashed) {
+		  if (corp.AI != null) this.AICardsDiscarded.push(params.card);
+		  this.SharedTrashFromHQDecision();
+		}, this);
+		return;
 	}
 	//Shuffle up to 3 cards from Archives into R&D.
 	var choices = ChoicesArrayCards(corp.archives.cards);
@@ -3808,21 +3810,25 @@ cardSet[30050] = {
           //new code (drag to Archives one at a time)
           var choicesA = ChoicesHandCards(corp);
           function decisionCallbackA(paramsA) {
-            Trash(paramsA.card);
-            var choicesB = ChoicesHandCards(corp);
-            function decisionCallbackB(params) {
-              Trash(params.card);
-              EndTheRun();
-            }
-            DecisionPhase(
-              corp,
-              choicesB,
-              decisionCallbackB,
-              "Anoetic Void",
-              "Discard",
-              this,
-              "discard"
-            );
+			//false here so that the trash isn't preventable (otherwise the ability shouldn't work)
+            Trash(paramsA.card, false, function(cardsTrashed) {
+              var choicesB = ChoicesHandCards(corp);
+              function decisionCallbackB(params) {
+			    //false here so that the trash isn't preventable (otherwise the ability shouldn't work)
+                Trash(params.card, false, function(cardsTrashed) {
+                  EndTheRun();
+			    }, this);
+              }
+              DecisionPhase(
+                corp,
+                choicesB,
+                decisionCallbackB,
+                "Anoetic Void",
+                "Discard",
+                this,
+                "discard"
+              );
+			},this);  
           }
           DecisionPhase(
             corp,

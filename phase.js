@@ -947,7 +947,7 @@ phases.corpActionMain = {
         "trashing",
         params.card,
         function () {
-          IncrementPhase(); //set new phase first since trash true uses a pseudophase
+          IncrementPhase(); //set new phase first since trash uses a pseudophase
           Trash(params.card, true);
         },
         this

@@ -125,30 +125,14 @@ function Rez(card, ignoreAllCosts=false, onRezResolve=null, context=null, allowC
   card.rezzed = true;
   card.renderer.FaceUp(); //in case Render is not forthcoming
   Log("Corp rezzed " + GetTitle(card, true));
-  //if unique, old one is immediately and unpreventably trashed (except if facedown, and facedown cards don't count for check)
-  if (typeof card.unique !== "undefined") {
-    if (card.unique == true) {
-      var installedCards = InstalledCards(card.player);
-      for (var i = 0; i < installedCards.length; i++) {
-        if (installedCards[i] != card && installedCards[i].rezzed) {
-          if (GetTitle(installedCards[i]) == GetTitle(card)) {
-            Log(
-              GetTitle(card) +
-                " is unique, the older copy will be unpreventably trashed."
-            );
-            Trash(installedCards[i], false);
-          }
-        }
-      }
-    }
-  }
-  //call the resolve callback
-  if (onRezResolve) onRezResolve.call(context);
-  //first the automatic triggers
-  AutomaticTriggers("automaticOnRez", [card]);
-  //then the Enumerate ones
-  //currently giving whoever's turn it is priority...not sure this is always going to be right
-  TriggeredResponsePhase(playerTurn, "responseOnRez", [card], function() {
+  var finishRez = function(cardsTrashed) {
+    //call the resolve callback
+    if (onRezResolve) onRezResolve.call(context);
+    //first the automatic triggers
+    AutomaticTriggers("automaticOnRez", [card]);
+    //then the Enumerate ones
+    //currently giving whoever's turn it is priority...not sure this is always going to be right
+    TriggeredResponsePhase(playerTurn, "responseOnRez", [card], function() {
 	  //run recalculation has to be done AFTER all the rezzing effects in case they change ice/program states
 	  if (runner.AI != null) {
 		runner.AI.LoseInfoAboutHQCards(card);
@@ -162,7 +146,31 @@ function Rez(card, ignoreAllCosts=false, onRezResolve=null, context=null, allowC
 		  runner.AI.RecalculateRunIfNeeded();		  
 		}
 	  }
-  }, "Rez");
+    }, "Rez");
+  };
+  //if unique, old one is immediately and unpreventably trashed (except if facedown, and facedown cards don't count for check)
+  var uniqueToTrash = null;
+  if (typeof card.unique !== "undefined") {
+    if (card.unique == true) {
+      var installedCards = InstalledCards(card.player);
+      for (var i = 0; i < installedCards.length; i++) {
+        if (installedCards[i] != card && installedCards[i].rezzed) {
+          if (GetTitle(installedCards[i]) == GetTitle(card)) {
+			uniqueToTrash = installedCards[i];
+			break;
+          }
+        }
+      }
+    }
+  }
+  if (uniqueToTrash) {
+	Log(
+	  GetTitle(card) +
+		" is unique, the older copy will be unpreventably trashed."
+	);
+	Trash(uniqueToTrash, false, finishRez, this);
+  }
+  else finishRez([]);
 }
 
 /**
@@ -469,11 +477,11 @@ function Install(
 				  outStr = "ice protecting " + CardServerName(installingCard, true);
 				Log(PlayerName(installingCard.player) + " installed " + outStr);
 				//if unique or a console, old one is immediately and unpreventably trashed (except if facedown, and facedown cards don't count for check)
+				var cardToReplace = null;
 				if (
 				  typeof installingCard.unique !== "undefined" &&
 				  installingCard.faceUp
 				) {
-				  var cardToReplace = null;
 				  var replaceReason = "";
 				  if (CheckSubType(installingCard, "Console")) {
 					//console subtype
@@ -501,22 +509,25 @@ function Install(
 					  }
 					}
 				  }
-				  if (cardToReplace) {
+				}
+				var finishInstall = function(cardsTrashed) {
+				  //install done, card becomes active
+				  //first the automatic triggers
+				  AutomaticTriggers("automaticOnInstall", [installingCard]);
+				  //then the Enumerate ones
+				  //currently giving whoever's turn it is priority...not sure this is always going to be right
+				  TriggeredResponsePhase(playerTurn, "responseOnInstall", [installingCard], function() {
+					IncrementPhase(returnToPhase);
+				  }, "Installed");
+				};
+				if (cardToReplace) {
 					Log(
 						GetTitle(installingCard) +
 						  " is "+replaceReason+", the older card will be unpreventably trashed."
 					);
-					Trash(cardToReplace, false);
-				  }
+					Trash(cardToReplace, false, finishInstall, this);
 				}
-				//install done, card becomes active
-				//first the automatic triggers
-				AutomaticTriggers("automaticOnInstall", [installingCard]);
-				//then the Enumerate ones
-				//currently giving whoever's turn it is priority...not sure this is always going to be right
-				TriggeredResponsePhase(playerTurn, "responseOnInstall", [installingCard], function() {
-					IncrementPhase(returnToPhase);
-				}, "Installed");
+				else finishInstall([]);
 			  },
 			  this
 			);
@@ -1404,22 +1415,21 @@ function Sabotage(num) {
     }
   }
   function decisionCallback(params) {
-	//all cards are trashed simultaneously (for now we will assume the trashes are unpreventable and don't trigger any response)
+	//all cards are trashed simultaneously (for now we will assume the trashes are unpreventable)
+	var cardsToTrash = [];
 	var trashedFromHQ = 0;
 	for (var i=0; i<params.cards.length; i++) {
 		if (params.cards[i]) {
+			cardsToTrash.push(params.cards[i]);
 			trashedFromHQ++;
 		}
 	}
-	Log("Sabotaged "+trashedFromHQ+" from HQ and "+(num-trashedFromHQ)+" from R&D");
-	for (var i=0; i<params.cards.length; i++) {
-		if (params.cards[i]) {
-			Trash(params.cards[i], false);
-		}
+	var trashedFromRnD = num - trashedFromHQ;
+	for (var i=0; i<trashedFromRnD; i++) {
+		cardsToTrash.push(corp.RnD.cards[corp.RnD.cards.length-1-i]);
 	}
-    for (var i=trashedFromHQ; i<num; i++) {
-	  Trash(corp.RnD.cards[corp.RnD.cards.length-1], false);
-    }
+	Log("Sabotaged "+trashedFromHQ+" from HQ and "+trashedFromRnD+" from R&D");
+	Trash(cardsToTrash, false);
 	//note that cards trashed this way enter Archives facedown
   }
   var title = "Sabotage "+num;
@@ -1447,8 +1457,9 @@ function TrashPrograms(num) {
   });
   if (programOptions.length < 1) return; //trashing is over
   function decisionCallback(params) {
-    Trash(params.card, true);
-    TrashPrograms(num - 1); //recurse
+    Trash(params.card, true, function (cardsTrashed) {
+      TrashPrograms(num - 1); //recurse
+	},this);
   }
   DecisionPhase(
     corp,

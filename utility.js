@@ -499,6 +499,7 @@ function Narrate() {
 	src = src.replaceAll('rezzed','rezd');
 	src = src.replaceAll('Whitespace','white space');
 	src = src.replaceAll('Esâ Afontov','essa ahfontuf');
+	src = src.replaceAll('Begemot','beggemott');
 	//replace unspeakable characters with unaccented letters
 	src = src.normalize('NFD');
 	//now speak
@@ -3034,6 +3035,7 @@ function DeckBuild(
 	  var consoleCards = [];
 	  if (setIdentifiers.includes('sg')) consoleCards = consoleCards.concat([30003, 30023, 30014]);
 	  if (setIdentifiers.includes('su21')) consoleCards = consoleCards.concat([]);
+	  if (setIdentifiers.includes('ms')) consoleCards = consoleCards.concat([33006]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		consoleCards,
@@ -3050,6 +3052,7 @@ function DeckBuild(
 	  var fracterCards = [];
 	  if (setIdentifiers.includes('sg')) fracterCards = fracterCards.concat([30006, 30016]);
 	  if (setIdentifiers.includes('su21')) fracterCards = fracterCards.concat([31006]);
+	  if (setIdentifiers.includes('ms')) fracterCards = fracterCards.concat([33007]);
 	  cardsAdded = cardsAdded.concat(DeckBuildRandomly(
 		identityCard,
 		fracterCards,
@@ -3149,7 +3152,7 @@ function DeckBuild(
 		31027, 31028, 31029, 31030, 31031, 31032, 31033, 31034, 31035, 31036, 31037, 31038, 31039,
 	  ]);
 	  if (setIdentifiers.includes('ms')) otherCards = otherCards.concat([
-	    33002, 33003, 33004, 33005,
+	    33002, 33003, 33004, 33005, 33006,
 	  ]);
 	  influenceUsed = CountInfluence(
 		identityCard,

@@ -105,7 +105,7 @@ class RunnerAI {
   }
 
   _wastefulToInstall(card) {
-    if (this._uniqueCopyAlreadyInstalled(card)) return true;
+	if (!this._passBasicWastefulInstallCheck(card)) return true;
     if (this._installWouldExceedMU(card)) return true;
     if (
       CheckSubType(card, "Fracter") &&
@@ -1114,8 +1114,12 @@ class RunnerAI {
 	return bestpath;
   }
   
-  //basic pre-checks e.g. don't install resources when tagged
+  //basic pre-checks e.g. don't install over a unique, or console over a console, don't install resources when tagged
   _passBasicWastefulInstallCheck(cardToInstall) {
+	if (this._uniqueCopyAlreadyInstalled(cardToInstall)) return false;
+	if (CheckSubType(cardToInstall, "Console")) {
+		if (this._installedCardExistsWithSubType("Console")) return false;
+	}
 	if (cardToInstall.cardType == "resource") {
 		//don't install resources when tagged
 		if (runner.tags > 0) return false;
