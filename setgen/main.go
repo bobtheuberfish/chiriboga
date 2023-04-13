@@ -1,7 +1,7 @@
 // Title: setgen
 // Purpose: convert attributes and values from trusted Netrunner sources
 // into Chiriboga deck set formatted JSON.
-// Version: 0.01
+// Version: 0.02
 
 package main
 
@@ -24,15 +24,15 @@ type Card struct {
 		Title      string `json:"title"`
 		Id         string `json:"latest_printing_id"`
 		Elo        int
-		Player     string   `json:"side_id"`
-		Faction    string   `json:"faction_id"`
-		Influence  int      `json:"influence_cost"`
-		Cardtype   string   `json:"card_type_id"`
-		Subtypes   []string `json:"card_subtype_ids"`
-		Playcost   int      `json:"cost"`
-		Strength   int      `json:"strength"`
-		Trashcost  int      `json:"trash_cost"`
-		Memorycost int      `json:"memory_cost"`
+		Player     string `json:"side_id"`
+		Faction    string `json:"faction_id"`
+		Influence  int    `json:"influence_cost"`
+		Cardtype   string `json:"card_type_id"`
+		Subtypes   string `json:"display_subtypes"`
+		Playcost   int    `json:"cost"`
+		Strength   int    `json:"strength"`
+		Trashcost  int    `json:"trash_cost"`
+		Memorycost int    `json:"memory_cost"`
 	} `json:"attributes"`
 }
 
@@ -46,7 +46,7 @@ type Ranking struct {
 }
 
 func main() {
-	fmt.Print("Enter Netrunner Card Set to generate (ex: midnight_sun, parhelion, [23_seconds]): ")
+	fmt.Print("Enter Netrunner Card Set to generate (ex: 23_seconds, parhelion, [midnight_sun]): ")
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
@@ -56,7 +56,7 @@ func main() {
 	input = strings.TrimSuffix(input, "\n")
 	input = strings.TrimSuffix(input, "\r")
 	if input == "" {
-		input = "23_seconds"
+		input = "midnight_sun"
 	}
 	resp, err := http.Get("https://api-preview.netrunnerdb.com/api/v3/public/card_sets/" + input + "/cards")
 	if err != nil {
@@ -123,22 +123,33 @@ func main() {
 		file.WriteString("    imageFile: \"" + card.Attributes.Id + ".png\",\n")
 		file.WriteString("    elo: " + strconv.Itoa(card.Attributes.Elo) + ",\n")
 		file.WriteString("    player: " + card.Attributes.Player + ",\n")
-		file.WriteString("    faction: \"" + card.Attributes.Faction + "\",\n")
+		if card.Attributes.Faction == "nbn" {
+			card.Attributes.Faction = "NBN"
+		}
+		if card.Attributes.Faction == "haas_bioroid" {
+			card.Attributes.Faction = "Haas-Bioroid"
+		}
+		if card.Attributes.Faction == "weyland_consortium" {
+			card.Attributes.Faction = "Weyland Consortium"
+		}
+		file.WriteString("    faction: \"" + capitalizeFirstLetter(card.Attributes.Faction) + "\",\n")
 		file.WriteString("    influence: " + strconv.Itoa(card.Attributes.Influence) + ",\n")
 		file.WriteString("    cardType: \"" + card.Attributes.Cardtype + "\",\n")
 		file.WriteString("    rezCost: " + strconv.Itoa(card.Attributes.Playcost) + ",\n")
-		file.WriteString("    strength: " + strconv.Itoa(card.Attributes.Strength) + ",\n")
-
-		if card.Attributes.Subtypes != nil {
-			file.WriteString("    subTypes: [")
-			for _, sub := range card.Attributes.Subtypes {
-				if sub != card.Attributes.Subtypes[len(card.Attributes.Subtypes)-1] {
-					file.WriteString("\"" + sub + "\",")
-				} else {
-					file.WriteString("\"" + sub + "\"")
-				}
-			}
-			file.WriteString("],\n")
+		if card.Attributes.Memorycost != 0 {
+			file.WriteString("    memoryCost: " + strconv.Itoa(card.Attributes.Memorycost) + ",\n")
+		}
+		if card.Attributes.Trashcost != 0 {
+			file.WriteString("    trashCost: " + strconv.Itoa(card.Attributes.Trashcost) + ",\n")
+		}
+		if card.Attributes.Strength != 0 {
+			file.WriteString("    strength: " + strconv.Itoa(card.Attributes.Strength) + ",\n")
+		}
+		if card.Attributes.Subtypes != "" {
+			file.WriteString("    subTypes: [\"")
+			subtypes := strings.ReplaceAll(card.Attributes.Subtypes, " - ", "\", \"")
+			file.WriteString(subtypes)
+			file.WriteString("\"],\n")
 		}
 		file.WriteString("\n")
 		file.WriteString("// Subroutines and AI Implementations Go Here\n")
@@ -148,4 +159,13 @@ func main() {
 	}
 
 	fmt.Println("Results saved in file: " + input + ".json.")
+}
+
+func capitalizeFirstLetter(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	firstChar := string(s[0])
+	restOfString := s[1:]
+	return fmt.Sprintf("%s%s", strings.ToUpper(firstChar), restOfString)
 }
