@@ -3025,8 +3025,9 @@ cardSet[31035] = {
 		}
 	}
 	//some simple per-card rules (these might not be ideal, test and tweak)
+	//TODO move these to per-card AIOkToTrash
 	//Cookbook: no virus programs left in grip or stack (ignores Retrieval/Test Run ideas)
-	if (card.title == "Cookbook") {
+	if (card.title == "Cookbook" || card.title == "Avgustina Ivanovskaya") {
 		var gripOrStack = runner.grip.concat(runner.stack);
 		var virusProgramsInGripOrStack = 0;
 		for (var i=0; i<gripOrStack.length; i++) {

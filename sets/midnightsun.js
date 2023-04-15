@@ -436,3 +436,97 @@ cardSet[33007] = {
     return 0; //do install
   },
 };
+
+cardSet[33008] = {
+  title: "Avgustina Ivanovskaya",
+  imageFile: "33008.png",
+  elo: 1431,
+  player: runner,
+  faction: "Anarch",
+  influence: 1,
+  cardType: "resource",
+  subTypes: ["Connection"],
+  installCost: 1,
+  unique: true,
+  //The first time each turn you install a virus program, sabotage 1.
+  installedVirusProgramThisTurn: false,
+  firstVirusProgramInstall: null,
+  responseOnRunnerTurnBegins: {
+    Resolve: function () {
+      this.installedVirusProgramThisTurn = false;
+	  this.firstVirusProgramInstall = null;
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  responseOnCorpTurnBegins: {
+    Resolve: function () {
+      this.installedVirusProgramThisTurn = false;
+	  this.firstVirusProgramInstall = null;
+    },
+    automatic: true,
+    availableWhenInactive: true,
+  },
+  automaticOnInstall: {
+    Resolve: function (card) {
+	  if (!this.installedVirusProgramThisTurn && !this.firstVirusProgramInstall) {
+        if (CheckCardType(card, ["program"])) {
+          if (CheckSubType(card, "Virus")) {
+		    this.installedVirusProgramThisTurn = true;
+		    this.firstVirusProgramInstall = card;
+		  }
+        }
+	  }
+	  else this.firstVirusProgramInstall = null;
+    },
+	availableWhenInactive: true,
+  },
+  responseOnInstall: {
+	Enumerate: function(card) {
+      if (card == this.firstVirusProgramInstall) return [{}];
+	  return [];
+	},		
+    Resolve: function (params) {
+	  this.firstVirusProgramInstall = null;
+	  Sabotage(1);
+    },
+  },
+  //require two clicks spare for run, require virus card in hand with AIInstallBeforeRun > 0, and enough spare credits to still run after installing both
+  AIInstallBeforeRun: function(server,potential,useRunEvent,runCreditCost,runClickCost) {
+	  if (runClickCost < runner.clickTracker - 2) {
+		  for (var i=0; i<runner.grip.length; i++) {
+			  if (CheckSubType(runner.grip[i],"Virus")) {
+				if (typeof runner.grip[i].AIInstallBeforeRun == "function") {
+					var virusIBRPriority = runner.grip[i].AIInstallBeforeRun.call(runner.grip[i],server,potential,useRunEvent,runCreditCost,runClickCost);
+					if (virusIBRPriority > 0) {
+						if ( runCreditCost <= AvailableCredits(runner) - InstallCost(this) - InstallCost(runner.grip[i]) ) {
+							return virusIBRPriority + 1; //yes, at higher priority than that virus card
+						}
+					}
+				}
+			  }
+		  }
+	  }
+	  return 0; //no
+  },
+  AIInstallBeforeInstall: function(cardToInstall) {
+	//return true to install this before cardToInstall
+	//in this case we'll just require sufficient credits for both (could require clicks/mu too but will go with this for now)
+	if (CheckSubType(cardToInstall,"Virus")) {
+		if ( AvailableCredits(runner) >= InstallCost(this) - InstallCost(cardToInstall) ) {
+			return true; //i.e. don't install cardToInstall until this has been installed
+		}
+	}
+	return false; //i.e. ok to install cardToInstall first
+  },
+  AIWorthKeeping: function (installedRunnerCards, spareMU) {
+	  //keep if any virus cards in hand
+	  for (var j = 0; j < runner.grip.length; j++) {
+		if (CheckSubType(runner.grip[j], "Virus")) {
+		  return true;
+		  break;
+		}
+	  }
+	  return false;
+  },
+};

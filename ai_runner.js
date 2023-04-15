@@ -1135,10 +1135,11 @@ class RunnerAI {
 	return true;
   }
 
-  _commonCardToInstallChecks(cardToInstall) {
+  //specify skipIBI to prevent infinite loop
+  _commonCardToInstallChecks(cardToInstall, skipIBI=false) {
 	  if (cardToInstall) {
 		if (!this._passBasicWastefulInstallCheck(cardToInstall)) return false;
-		this._log("maybe by installing "+cardToInstall.title+"?");	
+		if (!skipIBI) this._log("maybe by installing "+cardToInstall.title+"?");	
 		var canBeInstalled = true;
 		var choices = ChoicesCardInstall(cardToInstall);
 		if (!CheckInstall(cardToInstall)) canBeInstalled = false;
@@ -1151,7 +1152,27 @@ class RunnerAI {
 		  if (cardToInstall.AIPreferredInstallChoice(choices) < 0)
 			canBeInstalled = false; //card AI code deemed it unworthy
 		}
-		if (canBeInstalled && !this._wastefulToInstall(cardToInstall)) return true;
+		if (canBeInstalled && !this._wastefulToInstall(cardToInstall)) {
+			if (!skipIBI) {
+				//check grip for 'install before install' conditions
+				for (var i=0; i<runner.grip.length; i++) {
+				  var ibiCard = runner.grip[i];
+				  if (ibiCard != cardToInstall) {
+					if (typeof ibiCard.AIInstallBeforeInstall == "function") {
+					  //it will only be a relevant IBI if it is even worth installing (note true to skip IBI infinite loop)
+					  if (this._commonCardToInstallChecks(ibiCard,true)) {
+						  if (ibiCard.AIInstallBeforeInstall.call(ibiCard,cardToInstall)) {
+							this._log("no that should wait until "+ibiCard.title+" is installed");
+							return false; //don't install until the install-before-install is installed
+						  }
+					  }
+					}
+				  }
+				}
+			}
+			//no install-before-installs, so yes install this
+			return true;
+		}
 	  }
 	  return false;
   }
@@ -2327,7 +2348,7 @@ console.log(this.preferred);
 					var ibrPriority = ibrCard.AIInstallBeforeRun.call(ibrCard,this.serverList[0].server,this.serverList[0].potential,this.serverList[0].useRunEvent,runCreditCost,runClickCost);
 					if (ibrPriority > brHighestPriority) {
 					  if (!this._wastefulToInstall(ibrCard)) {
-						  if (runCreditCost < AvailableCredits(runner) - InstallCost(ibrCard)) {
+						  if (runCreditCost <= AvailableCredits(runner) - InstallCost(ibrCard)) {
 							  var ibrChoices = ChoicesCardInstall(ibrCard);
 							  if (ibrChoices.length > 0) {
 								  var ibrIsValidInstall = false;

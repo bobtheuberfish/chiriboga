@@ -748,7 +748,7 @@ cardSet[30009] = {
 				if (typeof runner.grip[i].AIInstallBeforeRun == "function") {
 					var virusIBRPriority = runner.grip[i].AIInstallBeforeRun.call(runner.grip[i],server,potential,useRunEvent,runCreditCost,runClickCost);
 					if (virusIBRPriority > 0) {
-						if ( runCreditCost < AvailableCredits(runner) - InstallCost(this) - InstallCost(runner.grip[i]) ) {
+						if ( runCreditCost <= AvailableCredits(runner) - InstallCost(this) - InstallCost(runner.grip[i]) ) {
 							return virusIBRPriority + 1; //yes, at higher priority than that virus card
 						}
 					}
@@ -757,6 +757,16 @@ cardSet[30009] = {
 		  }
 	  }
 	  return 0; //no
+  },
+  AIInstallBeforeInstall: function(cardToInstall) {
+	//return true to install this before cardToInstall
+	//in this case we'll just require sufficient credits for both (could require clicks/mu too but will go with this for now)
+	if (CheckSubType(cardToInstall,"Virus")) {
+		if ( AvailableCredits(runner) >= InstallCost(this) + InstallCost(cardToInstall) ) {
+			return true; //i.e. don't install cardToInstall until this has been installed
+		}
+	}
+	return false; //i.e. ok to install cardToInstall first
   },
   AIWorthKeeping: function (installedRunnerCards, spareMU) {
 	  //keep if any virus cards in hand

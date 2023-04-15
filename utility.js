@@ -500,6 +500,7 @@ function Narrate() {
 	src = src.replaceAll('Whitespace','white space');
 	src = src.replaceAll('Esâ Afontov','essa ahfontuf');
 	src = src.replaceAll('Begemot','beggemott');
+	src = src.replaceAll('Avgustina Ivanovskaya','avgusteena eevahnoffskahya');
 	//replace unspeakable characters with unaccented letters
 	src = src.normalize('NFD');
 	//now speak
@@ -3152,7 +3153,7 @@ function DeckBuild(
 		31027, 31028, 31029, 31030, 31031, 31032, 31033, 31034, 31035, 31036, 31037, 31038, 31039,
 	  ]);
 	  if (setIdentifiers.includes('ms')) otherCards = otherCards.concat([
-	    33002, 33003, 33004, 33005, 33006,
+	    33002, 33003, 33004, 33005, 33006, 33007, 33008,
 	  ]);
 	  influenceUsed = CountInfluence(
 		identityCard,
