@@ -6088,7 +6088,7 @@ cardSet[31077] = {
   AIWorthwhileIce: function(server) {
 	//don't install more than one copy of Ice Wall in the same server
 	if (server) {
-		if (corp.AI._copyOfCardExistsIn("Ice Wall", server.ice)) return false; //not worthwhile
+		if (corp.AI._copiesOfCardIn("Ice Wall", server.ice).length > 1) return false; //not worthwhile
 	}
 	return true; //worthwhile
   },
