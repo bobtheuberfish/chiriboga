@@ -3725,8 +3725,8 @@ cardSet[31044] = {
     result.sr = [[["endTheRun"]]];
 	return result;
   },
-  //for corp to decide whether to install/rez this yet
-  AIWorthwhileIce: function(server) {
+  //for corp to decide whether to install/rez this yet (purpose is "install" or "rez")
+  AIWorthwhileIce: function(server, purpose) {
 	  //worthwhile only if there is a program hosted on ice that's hasn't got AIDisablesHostedPrograms
 	  var installedCards = InstalledCards(runner);
 	  for (var i=0; i<installedCards.length; i++) {
@@ -3893,8 +3893,8 @@ cardSet[31045] = {
     }
 	return result;
   },
-  //for corp to decide whether to install/rez this yet
-  AIWorthwhileIce: function(server) {
+  //for corp to decide whether to install/rez this yet (purpose is "install" or "rez")
+  AIWorthwhileIce: function(server, purpose) {
 	  //worthwhile only if there is a rezzed bioroid ice that isn't a Ravana 1.0
 	  return (this.SharedChoicesCards().length > 0);
   },
@@ -5872,8 +5872,8 @@ cardSet[31075] = {
 	result.sr.push([["endTheRun"]]);
 	return result;
   },
-  //for corp to decide whether to install/rez this yet
-  AIWorthwhileIce: function(server) {
+  //for corp to decide whether to install/rez this yet (purpose is "install" or "rez")
+  AIWorthwhileIce: function(server, purpose) {
 	//worthwhile only if there is a 1 point agenda to forfeit
 	var oneptagendas = false;
 	for (var i=0; i<corp.scoreArea.length; i++) {
@@ -6084,11 +6084,13 @@ cardSet[31077] = {
     result.sr = [[["endTheRun"]]];
 	return result;
   },
-  //for corp to decide whether to install/rez this yet
-  AIWorthwhileIce: function(server) {
-	//don't install more than one copy of Ice Wall in the same server
-	if (server) {
+  //for corp to decide whether to install/rez this yet (purpose is "install" or "rez")
+  AIWorthwhileIce: function(server, purpose) {
+	if (purpose == "install") {
+	  //don't install more than one copy of Ice Wall in the same server
+	  if (server) {
 		if (corp.AI._copyOfCardExistsIn("Ice Wall", server.ice)) return false; //not worthwhile
+	  }
 	}
 	return true; //worthwhile
   },

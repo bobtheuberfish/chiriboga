@@ -45,7 +45,7 @@ class CorpAI {
 		if (extraCost < corp.creditPool) { //even not-affordable ice is excluded if it can't be installed
 			var yesToThisIce = true;
 			if (typeof cards[i].AIWorthwhileIce == 'function') {
-			  yesToThisIce = cards[i].AIWorthwhileIce.call(cards[i],serverToInstallTo);
+			  yesToThisIce = cards[i].AIWorthwhileIce.call(cards[i],serverToInstallTo,"install");
 			}
 			var isAffordable = (cards[i].rezCost + extraCost <= corp.creditPool) && yesToThisIce;
 			if (affordable == isAffordable) relevantIceInCards.push(cards[i]);
@@ -1900,7 +1900,7 @@ class CorpAI {
 	  if (!this._runnerMayWinIfServerBreached(server)) {
 		//check for on-card not-worthwhile reason
 		if (typeof card.AIWorthwhileIce == 'function') {
-			if (!card.AIWorthwhileIce.call(card,server)) {
+			if (!card.AIWorthwhileIce.call(card,server,"rez")) {
 				this._log("Would be better not to rez this ice quite yet");
 				rezIce = false;
 			}
