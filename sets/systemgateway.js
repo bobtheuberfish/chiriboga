@@ -4269,6 +4269,11 @@ cardSet[30055] = {
     result.sr = [[["endTheRun"]]];
 	return result;
   },
+  AIRezForFree: function() {
+	//only rez this for free if it is in the attacked server
+	if (attackedServer == GetServer(this)) return true;
+	return false;
+  },
 };
 cardSet[30056] = {
   title: "Predictive Planogram",
@@ -4947,6 +4952,12 @@ cardSet[30069] = {
   SharedEnumerate: function (targetCard) {
     if (targetCard == this) {
       var choices = ChoicesInstalledCards(corp, function (card) {
+		//special case: if AI, ignore some ice for this list
+		if (corp.AI != null) {
+			if (typeof card.AIRezForFree == 'function') {
+			  if (!card.AIRezForFree.call(card)) return false;
+			}
+		}
         return CheckRez(card, ["ice"]);
       });
       if (choices.length < 1) return [];
