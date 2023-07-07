@@ -458,3 +458,22 @@ div.options {
 #rewind-select:disabled {
 	opacity:0.5;
 }
+
+#text-render-lists {
+	margin-top:5%;
+}
+.text-card {
+	display:block;
+}
+#runner-field {
+	float:left;
+}
+#corp-field {
+	float:right;
+}
+#runner-field div {
+	display:inline-block;
+}
+#corp-field div {
+	display:inline-block;
+}

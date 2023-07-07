@@ -65,10 +65,14 @@ var autoContinueLimit = 1.0;
 var autoContinueTimer = 0.0;
 //animate the thinking text to be clear the game isn't frozen
 setInterval(function () { var tstr=$('#thinking').html(); if (tstr) { if (tstr.length < 11) $('#thinking').append("."); else $('#thinking').html("Thinking"); } }, 1000);
+//accessibility mode if relevant
+var accessibilityMode = "default";
 
 //INITIALISATION
 // Performs the initialisation of game state. Contains the main loop for command mode (user interaction).
 function Init() {
+  if (URIParameter("mode") == "text") accessibilityMode = "text";
+
   //Rewind
   $("#rewind-select").on("change",function(){
 	var rewindTo = $("#rewind-select").val();
@@ -169,21 +173,40 @@ function Init() {
   runner.installingCards = []; //card(s) being installed (they stay in place rather than moving during render)
 
   //Initialise the renderer
-  cardRenderer = new CardRenderer.Renderer(ResizeCallback); //The parameter here is resizeCallback i.e. ResizeCallback is called on resize
-
-  //place the card renderer between background image and page elements
-  document
-    .getElementById("contentcontainer")
-    .insertBefore(cardRenderer.app.view, document.getElementById("output"));
-  var loader = new PIXI.loaders.Loader();
-  loader.add("images/Corp_back.png");
-  loader.add("images/Runner_back.png");
-  loader.load(Setup); //once back textures are loaded, the GUI can be generated, so this calls Setup
+  cardRenderer = new CardRenderer.Renderer(ResizeCallback, accessibilityMode); //The parameter here is resizeCallback i.e. ResizeCallback is called on resize
 
   //watch for exit from fullscreen (to restore the button)
   document.addEventListener("fullscreenchange", (event) => {
     if (!document.fullscreenElement) $(".fullscreen-button").show();
   });
+
+  //Accessibility mode, as relevant
+  if (URIParameter("mode") == "text") {
+	$("#loading").hide();
+	$("canvas").hide();
+	$("#cmdform").css("width","calc(100% - 50px)");
+	$("#cmdform").show();
+	$("#cmdform input").show();
+	$('#cmdform input[type="submit"]').css("color","black");
+	$("#output").css("margin-bottom", "80px");
+	//replace form submit action
+	$("#cmdform").submit(function(event) {
+	  event.preventDefault(); // Prevent form submission
+	  $('#cmdform input[type="text"]').val("");
+	});	
+	//call setup and start (since we won't wait for textures to load)
+	Setup();
+	StartGame();
+  } else {
+    //place the card renderer between background image and page elements
+    document
+      .getElementById("contentcontainer")
+      .insertBefore(cardRenderer.app.view, document.getElementById("output"));
+    var loader = new PIXI.loaders.Loader();
+    loader.add("images/Corp_back.png");
+    loader.add("images/Runner_back.png");
+    loader.load(Setup); //once back textures are loaded, the GUI can be generated, so this calls Setup
+  }
 }
 
 //used for rewinding
@@ -311,6 +334,130 @@ var previousViewingGrid = null; //in case we need it for more than one render
 var fieldZoom = 1.0;
 function Render() {
   if (mainLoopDelay < 1) return; //console only if rapidplay required
+
+  if (accessibilityMode == "text") {
+	//output all card piles as divs
+    function cardToOutputString(c) {
+		var ret = "";
+		if (PlayerCanLook(viewingPlayer,c)) {
+			ret += c.title;
+			//TODO list counters and any other status information such as modified subtype, hosted cards...
+			if (!c.renderer.faceUp && c.cardLocation != corp.HQ.cards && c.cardLocation != runner.grip) ret += " (facedown)";
+		}
+		else if (c.cardType == "ice" && CheckInstalled(c)) ret += "facedown ice";
+		else if (c.cardLocation == corp.HQ.cards || c.cardLocation == runner.grip) ret += "card";
+		else ret += "facedown card";
+		return ret;
+	}
+	function pileToOutputString(p,collapseSequentialOnly=true) {
+		if (p.length == 0) return "No cards";
+		//start by making an array of per-card strings
+		var stringArray = [];
+		for (var i=0; i<p.length; i++) {
+			stringArray.push(cardToOutputString(p[i]));
+		}
+		//collapse sequential duplicates
+		var combinedArray = [];
+		for (var j=0; j<stringArray.length; j++) {
+			var currentElement = stringArray[j];
+			var count = 1;
+			var i = j;
+			while (i + 1 < stringArray.length && ( currentElement == stringArray[i + 1] || !collapseSequentialOnly ) ) {
+				if (currentElement == stringArray[i + 1]) {
+					count++;
+					stringArray.splice(i+1,1);
+				}
+				else {
+					i++;
+				}
+			}
+			if (count > 1) {
+				if (currentElement == "facedown card") combinedArray.push(count + " facedown cards");
+				else if (currentElement == "card") combinedArray.push(count + " cards");
+				else combinedArray.push(count + " " + currentElement); //"facedown ice" fits this formula too
+			}
+			else {
+				if (currentElement == "facedown card") combinedArray.push("1 facedown card");
+				else if (currentElement == "facedown ice") combinedArray.push("1 facedown ice");
+				else if (currentElement == "card") combinedArray.push("1 card");
+				else combinedArray.push(currentElement);
+			}
+		}
+		//then output as string
+		var ret = "";
+		for (var i=0; i<combinedArray.length; i++) {
+			ret += '<span class="text-card">'+combinedArray[i]+'</span>';
+		}
+		return ret;
+	}
+	var carddivs = '<div id="text-render-lists"><div id="runner-field"><h1>Runner</h1>';
+	carddivs += '<div id="runner-identity">';
+	carddivs += '<h4>'+cardToOutputString(runner.identityCard)+'</h4>';
+	if (typeof runner.identityCard.setAsideCards != 'undefined') carddivs += pileToOutputString(runner.identityCard.setAsideCards, false); //false collapses non-sequential duplicates
+	carddivs += '</div>';
+	carddivs += '<div id="runner-grip"><h2>Grip ('+runner.grip.length+')</h2>';
+	carddivs += pileToOutputString(runner.grip, false); //false collapses non-sequential duplicates
+	carddivs += '</div>';
+	carddivs += '<div id="runner-heap"><h2>Heap</h2>';
+	carddivs += pileToOutputString(runner.heap, false);  //false collapses non-sequential duplicates
+	carddivs += '</div>';
+	carddivs += '<div id="runner-stack"><h2>Stack</h2>';
+	carddivs += pileToOutputString(runner.stack);
+	carddivs += '</div>';
+	carddivs += '<div id="runner-rig"><h2>Rig</h2>';
+	carddivs += '<div id="runner-rig-programs"><h3>Programs</h3>';
+	carddivs += pileToOutputString(runner.rig.programs, false); //false collapses non-sequential duplicates
+	carddivs += '</div>';
+	carddivs += '<div id="runner-rig-hardware"><h3>Hardware</h3>';
+	carddivs += pileToOutputString(runner.rig.hardware, false); //false collapses non-sequential duplicates
+	carddivs += '</div>';
+	carddivs += '<div id="runner-rig-resources"><h3>Resources</h3>';
+	carddivs += pileToOutputString(runner.rig.resources, false); //false collapses non-sequential duplicates
+	carddivs += '</div>';
+	
+	
+	carddivs += '</div></div><div id="corp-field"><h1>Corp</h1>';
+	//HQ
+	carddivs += '<div id="corp-hq"><h2>HQ ('+corp.HQ.cards.length+')</h2>';
+	carddivs += '<h4>'+cardToOutputString(corp.identityCard)+'</h4>';
+	carddivs += '<div id="corp-hq-cards"><h3>Hand</h3>';
+	carddivs += pileToOutputString(corp.HQ.cards, false); //false collapses non-sequential duplicates
+	carddivs += '</div><div id="corp-hq-root"><h3>Root</h3>';
+	carddivs += pileToOutputString(corp.HQ.root);
+	carddivs += '</div><div id="corp-hq-ice"><h3>Ice</h3>';
+	carddivs += pileToOutputString(corp.HQ.ice);
+	carddivs += '</div></div>';
+	//R&D
+	carddivs += '<div id="corp-rnd"><h2>R&D</h2>';
+	carddivs += '<div id="corp-rnd-cards"><h3>Pile</h3>';
+	carddivs += pileToOutputString(corp.RnD.cards);
+	carddivs += '</div><div id="corp-rnd-root"><h3>Root</h3>';
+	carddivs += pileToOutputString(corp.RnD.root);
+	carddivs += '</div><div id="corp-rnd-ice"><h3>Ice</h3>';
+	carddivs += pileToOutputString(corp.RnD.ice);
+	carddivs += '</div></div>';
+	//Archives
+	carddivs += '<div id="corp-archives"><h2>Archives</h2>';
+	carddivs += '<div id="corp-archives-cards"><h3>Pile</h3>';
+	carddivs += pileToOutputString(corp.archives.cards, false); //false collapses non-sequential duplicates
+	carddivs += '</div><div id="corp-archives-root"><h3>Root</h3>';
+	carddivs += pileToOutputString(corp.archives.root);
+	carddivs += '</div><div id="corp-archives-ice"><h3>Ice</h3>';
+	carddivs += pileToOutputString(corp.archives.ice);
+	carddivs += '</div></div>';
+	//Remotes
+	for (var i=0; i<corp.remoteServers.length; i++) {
+		carddivs += '<div id="corp-remote-'+i+'"><h2>Remote server</h2>';
+		carddivs += '<div id="corp-remote-'+i+'-root"><h3>Root</h3>';
+		carddivs += pileToOutputString(corp.remoteServers[i].root);
+		carddivs += '</div><div id="corp-remote-'+i+'-ice"><h3>Ice</h3>';
+		carddivs += pileToOutputString(corp.remoteServers[i].ice);
+		carddivs += '</div></div>';
+	}	
+	carddivs += '</div></div>';
+	$("#output").html(carddivs);
+	//TODO disable the rest of the render script?
+  }
 
   previousViewingGrid = null;
 
@@ -668,6 +815,13 @@ function Render() {
   $("#menubar").css("transform", "scale(" + interfaceScale + ")");
   $("#history-wrapper").css("width", interfaceScale * 56 + "px");
   $("#history-wrapper").css("top", interfaceScale * 65 + "px");
+  
+  if ($('#largerhistory').prop('checked')) {
+    $("#history-wrapper").css("transform-origin", "top right");
+    $("#history-wrapper").css("transform", "scale(1.5)");
+  }
+  else $("#history-wrapper").css("transform", "scale(1)");
+  
   $("#history").css("width", interfaceScale * 56 + "px");
   $(".historycontents").css("transform-origin", "top left");
   $(".historycontents").css("transform", "scale(" + interfaceScale + ")");
