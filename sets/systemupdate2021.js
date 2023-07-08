@@ -695,7 +695,7 @@ cardSet[31011] = {
   elo: 1565,
   player: runner,
   faction: "Anarch",
-  influence: 2,
+  influence: 1,
   cardType: "resource",
   subTypes: ["Connection","Seedy"],
   installCost: 2,
