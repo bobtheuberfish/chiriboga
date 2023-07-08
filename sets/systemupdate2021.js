@@ -4506,8 +4506,8 @@ cardSet[31054] = {
   },
   automaticOnAccessComplete: {
     Resolve: function (card) {
-	  //Snare! is revealed until access completes
-      if (card == this) if (!this.storedFaceUp) this.faceUp = false;
+	  //Snare! is revealed until access completes (unless it is in Archives, in which case it becomes faceup as per NSG 4.4.6)
+      if (card == this && card.cardLocation != corp.archives.cards) if (!this.storedFaceUp) this.faceUp = false;
     },
     automatic: true,
 	availableWhenInactive: true,
