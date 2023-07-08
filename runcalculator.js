@@ -504,7 +504,7 @@ class RunCalculator {
 			poolCreditLimit,
 			otherCredits,
             tagLimit
-          )
+          ).valid
         )
           result.push(potential_result[i]); //cost is cumulative up to and including this point
       }
@@ -643,7 +643,7 @@ class RunCalculator {
 				  poolCreditLimit,
 				  otherCredits,
                   tagLimit
-                )
+                ).valid
               )
                 result.push(next_encounter_point);
               //cost is cumulative up to and including this point
@@ -725,6 +725,7 @@ class RunCalculator {
 
   //since values are cumulative, the point at the end of the path represents total
   ValidPoint(p, damageLimit, clickLimit, poolCreditLimit, otherCredits, tagLimit) {
+	var reason = "";
     if (typeof p.valid == "undefined") {
       //check for already calculated and stored value
       p.valid = false; //by default, then set to true if check succeeds
@@ -742,7 +743,9 @@ class RunCalculator {
 	  //path is invalid if attempting to reduce pool below zero
 	  
 	  //check and apply effects
+	  reason = "clicks";
       if (clicksLeft >= 0) {
+		reason = "credits";
         if (poolCreditsLeft >= 0) {
           var totalEffect = this.TotalEffect(p);
           var totalDamage = 0;
@@ -753,6 +756,7 @@ class RunCalculator {
 		  if (clicksLeft < 1 && damageLimit != Infinity && !attackedServer) damageLimit = runner.grip.length - MaxHandSize(runner); //try to keep a full hand at end of turn	
 		  if (damageLimit < 0) damageLimit = 0;
 		  //now check damage against limit
+		  reason = "damage";
           if (totalDamage <= damageLimit) {
             var totalTag = 0;
             if (totalEffect.tag) totalTag += totalEffect.tag;
@@ -761,18 +765,19 @@ class RunCalculator {
 			  Math.min(clicksLeft, Math.floor(poolCreditsLeft * 0.5)) - runner.tags; //allow 1 tag for each click+2[c] (pool only for now) remaining but less if tagged
 			if (tagLimit < 0) tagLimit = 0;
 			//now check tags against limit
+			reason = "tags";
             if (totalTag <= tagLimit) p.valid = true;
           }
         }
       }
     }
-    return p.valid;
+    return {valid: p.valid, reason: reason};
   }
 
   //Check whether path p is within limits
   ValidPath(p, damageLimit, clickLimit, poolCreditLimit, otherCredits, tagLimit) {
     var back = p[p.length - 1];
-    return this.ValidPoint(
+	var valid = this.ValidPoint(
       back,
       damageLimit,
       clickLimit,
@@ -780,6 +785,7 @@ class RunCalculator {
 	  otherCredits,
       tagLimit
     );
+    return {valid: valid.valid, reason: valid.reason};
   }
   
   //Helper to create an empty pathing point
@@ -988,6 +994,13 @@ class RunCalculator {
         data.approachOptions[1].credits += 5;
       }
     }
+	//if there is only one approach option and it does damage, we'll treat the damage as a limit until approach time
+	if (data.approachOptions.length == 1) {
+		var totalApproachEffect = this.TotalEffect(data.approachOptions[0]);
+		var totalApproachDamage = this.TotalDamage(totalApproachEffect);
+		data.storedDamage = totalApproachDamage;
+		data.damageLimit -= totalApproachDamage;
+	}
 	data.doInnerLoop = data.server.ice.length > 0 && data.startIceIdx > -1;
     if (data.doInnerLoop) {
       //record execution time for testing
@@ -1077,7 +1090,7 @@ class RunCalculator {
 			data.poolCreditLimit,
 			data.otherCredits,
             data.tagLimit
-          )
+          ).valid
         ) {
           var path_finished = false;
           //complete paths finish at server, incomplete paths finish after encounter or at etr
@@ -1135,7 +1148,9 @@ class RunCalculator {
             ServerName(data.server) +
             " with an execution time of " +
             (Date.now() - data.timeInMS) +
-            " ms"
+            " ms (" +
+			data.successful_paths +
+			" successful paths)"
         );
 		//if (!this.suppressOutput) {
         //  console.log("Successful paths: "+data.successful_paths);
@@ -1147,6 +1162,7 @@ class RunCalculator {
     //if there is no ice, the only path is straight into server (this.paths=[] means no valid paths)
     else this.paths = [[this.EmptyPoint(data.startIceIdx)]]; //should this be -1?
 	//finish each path with any possible approach options
+	if (typeof data.storedDamage != 'undefined') data.damageLimit += data.storedDamage; //restore any changes made to account for approach damage
 	var finalpaths = [];
 	for (var i=0; i<this.paths.length; i++) {
       for (var j = 0; j < data.approachOptions.length; j++) {
@@ -1158,9 +1174,10 @@ class RunCalculator {
 		approachPoint.runner_clicks_spent += data.approachOptions[j].clicks;
 		approachPoint.effects = approachPoint.effects.concat(data.approachOptions[j].effects);
 		possiblePath.push(approachPoint);
-        if (this.ValidPath(possiblePath, data.damageLimit, data.clickLimit, data.poolCreditLimit, data.otherCredits, data.tagLimit))
+		var validity = this.ValidPath(possiblePath, data.damageLimit, data.clickLimit, data.poolCreditLimit, data.otherCredits, data.tagLimit);
+        if (validity.valid)
           finalpaths.push(possiblePath);
-	    else this._log("Ignoring path "+i+" due to invalid approach");
+	    else this._log("Ignoring path "+i+" due to invalid approach ("+validity.reason+")");
 	  }
 	}
 	this.paths = finalpaths;
