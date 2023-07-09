@@ -319,7 +319,8 @@ function Install(
   onInstallResolve,
   context,
   onCancelResolve,
-  onPaymentComplete
+  onPaymentComplete,
+  allowCancel=true
 ) {
   var oldLocation = installingCard.cardLocation; //in case of cancel
   var oldPhase = currentPhase; //in case of cancel
@@ -409,16 +410,6 @@ function Install(
 			  return [{}];
 			}
 			return [];
-		  },
-		},
-		Cancel: {
-		  trash: function () {
-			ChangePhase(oldPhase, true);
-			MoveCard(installingCard, oldLocation);
-			if (typeof onCancelResolve === "function")
-			  onCancelResolve.call(context);
-			Cancel();
-			Render();
 		  },
 		},
 		Resolve: {
@@ -534,6 +525,18 @@ function Install(
 		  },
 		},
 	  };
+	  if (allowCancel) {
+		installTrashPhase.Cancel = {
+		  trash: function () {
+			ChangePhase(oldPhase, true);
+			MoveCard(installingCard, oldLocation);
+			if (typeof onCancelResolve === "function")
+			  onCancelResolve.call(context);
+			Cancel();
+			Render();
+		  },
+		};
+	  }
 	  if (returnToPhase) installTrashPhase.next = currentPhase;
 	  else installTrashPhase.next = currentPhase.next;
 	  installTrashPhase.player = installingCard.player;

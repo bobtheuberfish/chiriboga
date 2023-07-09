@@ -2251,8 +2251,10 @@ cardSet[31028] = {
 			Shuffle(runner.stack);
 			Log("Stack shuffled");
 		}
-		Install(paramsB.card, paramsB.host, true); //true means ignore costs
-		this.lingeringEffectTarget = paramsB.card;
+		//install ignoring all costs, and disallow cancel
+		Install(paramsB.card, paramsB.host, true, null, true, function(){
+			this.lingeringEffectTarget = paramsB.card;
+		}, this, null, null, false);
 	  },
 	  "Test Run",
 	  "Test Run",
@@ -2276,6 +2278,7 @@ cardSet[31028] = {
 		//MoveCardTriggers will fire automaticOnUninstall which resets lingeringEffectTarget
 		MoveCard(this.lingeringEffectTarget, runner.stack);
 		Log(targetTitle+" added to top of stack");
+		this.lingeringEffectTarget=null; //this turn only
 	  }
     },
     automatic: true,
