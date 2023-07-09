@@ -65,14 +65,10 @@ var autoContinueLimit = 1.0;
 var autoContinueTimer = 0.0;
 //animate the thinking text to be clear the game isn't frozen
 setInterval(function () { var tstr=$('#thinking').html(); if (tstr) { if (tstr.length < 11) $('#thinking').append("."); else $('#thinking').html("Thinking"); } }, 1000);
-//accessibility mode if relevant
-var accessibilityMode = "default";
 
 //INITIALISATION
 // Performs the initialisation of game state. Contains the main loop for command mode (user interaction).
 function Init() {
-  if (URIParameter("mode") == "text") accessibilityMode = "text";
-
   //Rewind
   $("#rewind-select").on("change",function(){
 	var rewindTo = $("#rewind-select").val();
@@ -181,19 +177,22 @@ function Init() {
   });
 
   //Accessibility mode, as relevant
-  if (URIParameter("mode") == "text") {
+  if (accessibilityMode = "text") {
+	$("#footer").css("width","100%");
 	$("#loading").hide();
 	$("canvas").hide();
+	/*
 	$("#cmdform").css("width","calc(100% - 50px)");
 	$("#cmdform").show();
 	$("#cmdform input").show();
 	$('#cmdform input[type="submit"]').css("color","black");
-	$("#output").css("margin-bottom", "80px");
 	//replace form submit action
 	$("#cmdform").submit(function(event) {
 	  event.preventDefault(); // Prevent form submission
 	  $('#cmdform input[type="text"]').val("");
 	});	
+	*/
+	$("#output").css("margin-bottom", "80px");
 	//call setup and start (since we won't wait for textures to load)
 	Setup();
 	StartGame();
@@ -341,8 +340,25 @@ function Render() {
 		var ret = "";
 		if (PlayerCanLook(viewingPlayer,c)) {
 			ret += c.title;
-			//TODO list counters and any other status information such as modified subtype, hosted cards...
-			if (!c.renderer.faceUp && c.cardLocation != corp.HQ.cards && c.cardLocation != runner.grip) ret += " (facedown)";
+			//list counters and any other status information counters, hosted cards...
+			var statuses = [];
+			if (!IsFaceUp(c) && c.cardLocation != corp.HQ.cards && c.cardLocation != runner.grip) statuses.push("facedown");
+			["virus","credits","advancement","chosenWord","chosenServer","chosenCard","hostedCards"].forEach(function(st) {
+				if (c[st]) {
+					if (st == "chosenWord") statuses.push(c[st]+" chosen");
+					else if (st == "chosenServer") statuses.push(ServerName(c[st])+" chosen");
+					else if (st == "chosenCard") statuses.push(GetTitle(c[st],true)+" chosen");
+					else if (st == "hostedCards") {
+						var hcs = [];
+						for (var i=0; i<c.hostedCards.length; i++) {
+							hcs.push(cardToOutputString(c.hostedCards[i]));
+						}
+						statuses.push("hosting "+hcs.join(', '));
+					}
+					else statuses.push(c[st]+" "+st);
+				}
+			});
+			if (statuses.length > 0) ret += " ("+statuses.join(', ')+")";
 		}
 		else if (c.cardType == "ice" && CheckInstalled(c)) ret += "facedown ice";
 		else if (c.cardLocation == corp.HQ.cards || c.cardLocation == runner.grip) ret += "card";
@@ -390,7 +406,7 @@ function Render() {
 		}
 		return ret;
 	}
-	var carddivs = '<div id="text-render-lists"><div id="runner-field"><h1>Runner</h1>';
+	var carddivs = '<div id="text-render-lists"><div id="runner-field"><h1>Runner ('+runner.creditPool+' credits)</h1>';
 	carddivs += '<div id="runner-identity">';
 	carddivs += '<h4>'+cardToOutputString(runner.identityCard)+'</h4>';
 	if (typeof runner.identityCard.setAsideCards != 'undefined') carddivs += pileToOutputString(runner.identityCard.setAsideCards, false); //false collapses non-sequential duplicates
@@ -416,7 +432,7 @@ function Render() {
 	carddivs += '</div>';
 	
 	
-	carddivs += '</div></div><div id="corp-field"><h1>Corp</h1>';
+	carddivs += '</div></div><div id="corp-field"><h1>Corp ('+corp.creditPool+' credits)</h1>';
 	//HQ
 	carddivs += '<div id="corp-hq"><h2>HQ ('+corp.HQ.cards.length+')</h2>';
 	carddivs += '<h4>'+cardToOutputString(corp.identityCard)+'</h4>';
@@ -447,16 +463,29 @@ function Render() {
 	carddivs += '</div></div>';
 	//Remotes
 	for (var i=0; i<corp.remoteServers.length; i++) {
-		carddivs += '<div id="corp-remote-'+i+'"><h2>Remote server</h2>';
+		carddivs += '<div id="corp-remote-'+i+'"><h2>Remote '+i+'</h2>';
 		carddivs += '<div id="corp-remote-'+i+'-root"><h3>Root</h3>';
 		carddivs += pileToOutputString(corp.remoteServers[i].root);
 		carddivs += '</div><div id="corp-remote-'+i+'-ice"><h3>Ice</h3>';
 		carddivs += pileToOutputString(corp.remoteServers[i].ice);
 		carddivs += '</div></div>';
 	}	
-	carddivs += '</div></div>';
+	carddivs += '</div>';
+	carddivs += '<div id="resolving">';
+	carddivs += '<h3>Resolving</h3>';
+	carddivs += pileToOutputString(corp.resolvingCards.concat(runner.resolvingCards));
+	carddivs += '</div>';
+	/*
+	carddivs += '<div id="removed-from-game">';
+	carddivs += '<h3>Removed from game</h3>';
+	carddivs += pileToOutputString(removedFromGame);
+	carddivs += '</div>';
+	*/
+	carddivs += '</div>';
 	$("#output").html(carddivs);
-	//TODO disable the rest of the render script?
+	
+	$("#menubutton").focus();
+	return;
   }
 
   previousViewingGrid = null;
@@ -1497,6 +1526,15 @@ function Setup() {
   //wait for textures to load (will call StartGame which calls Main)
 }
 
+//convert the text of selector to comma separated text
+function SpansToCST(selecter) {
+	var ret = [];
+	$(selecter).each(function(){
+	  ret.push($(this).text());
+	});
+	return ret.join(', ');
+}
+
 function StartGame() {
   if (!currentPhase) IncrementPhase(); //move to first phase
   if (!skipShuffleAndDraw) {
@@ -1512,8 +1550,12 @@ function StartGame() {
     }
     Log("Each player has taken five credits and drawn five cards");	
 	Render();
-	//Narrate();
-	stackedLog = []; //skip narration
+	if (accessibilityMode == "text") {
+	  if (viewingPlayer == runner) Log("Your hand is "+SpansToCST("#runner-grip span"));
+	  else Log("Your hand is "+SpansToCST("#corp-hq-cards span"));
+	  Narrate();
+	}
+	else stackedLog = []; //skip setup narration
 	}, "Before Starting Hand");
   }
   Main();

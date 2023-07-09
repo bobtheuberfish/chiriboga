@@ -166,7 +166,7 @@ function CheckCardType(card, valid) {
     if (i < valid.length - 2) outstr += ", ";
     else if (i < valid.length - 1) outstr += " or ";
   }
-  outstr += " (" + GetTitle(card) + " is " + card.cardType + ")";
+  outstr += " (" + card.title + " is " + card.cardType + ")";
   return false;
 }
 

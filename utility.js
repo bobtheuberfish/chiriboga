@@ -533,7 +533,7 @@ function Log(src) {
     .append("<br/>" + Iconify(src));
   
   if (activePlayer) {
-    if ( $('#narration').prop('checked') && activePlayer.AI ) stackedLog.push(src); //only narrate AI player
+    if ( $('#narration').prop('checked') && ( activePlayer.AI || accessibilityMode == "text" ) ) stackedLog.push(src); //only narrate AI player
   }
 }
 
@@ -632,9 +632,23 @@ function LogError(src) {
  * @returns {String} the title
  */
 function GetTitle(card, hideHidden) {
+  var hideTitle = false;
   if (hideHidden) {
-    if (!PlayerCanLook(viewingPlayer, card)) return "[hidden card]";
+    if (!PlayerCanLook(viewingPlayer, card)) hideTitle = true;
   }
+  //text mode behaviour
+  if (accessibilityMode == "text") {
+	  var ret = "";
+	  if (hideTitle) ret += "hidden card";
+	  else ret += card.title;
+	  if (CheckInstalled(card)) {
+		  var serv = GetServer(card);
+		  if (CheckCardType(card, ["ice"])) ret += " protecting "+ServerName(serv)+" at position "+serv.ice.indexOf(card);
+	  }
+	  return ret;
+  }
+  //default behaviour below
+  if (hideTitle) return "[hidden card]";
   return card.title; //the only time in code that card.title should be found (otherwise use GetTitle(card,true) or GetTitle(card)
 }
 
@@ -1120,6 +1134,7 @@ function PlayerCanLook(player, card) {
   if (player == runner && card.knownToRunner) return true;
   if (player == null) return false;
   if (card.cardLocation == PlayerHand(player)) return true;
+  if (typeof player.identityCard.setAsideCards != 'undefined' && card.cardLocation == player.identityCard.setAsideCards) return true;
   if (
     player == corp &&
     card.player == corp &&

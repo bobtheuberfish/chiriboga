@@ -630,7 +630,7 @@ function EnumeratePhase() {
   
   //some actions need no button (human control only)
   var noButton = [];
-  if (activePlayer.AI == null) {
+  if (activePlayer.AI == null && accessibilityMode != "text") {
     noButton.push("gain");
     noButton.push("draw");
     noButton.push("remove");
@@ -801,7 +801,7 @@ function MakeChoice() {
   //this is because the AI may be specifically waiting to take an action/choice
   //and be confused when that option is not offered to it
   if (activePlayer.AI != null) {
-    //active player is AI controlled
+	//active player is AI controlled
 	activePlayer.AI.SelectChoice(validOptions)
 	.then((result) => {
 	  ResolveChoice(result);
@@ -812,200 +812,211 @@ function MakeChoice() {
 	  console.log(validOptions);
 	  ResolveChoice(0);
 	});
-    return;
+	return;
   } else if (activePlayer.testAI != null) {
-    //say what the AI would have done if it was playing
-    console.log(
-      "AI would have chosen: " +
-        JSON.stringify(
-          validOptions[activePlayer.testAI.SelectChoice(validOptions)]
-        )
-    );
+	//say what the AI would have done if it was playing
+	console.log(
+	  "AI would have chosen: " +
+		JSON.stringify(
+		  validOptions[activePlayer.testAI.SelectChoice(validOptions)]
+		)
+	);
   }
 
   if (validOptions.length == 1) {
-    ResolveChoice(0);
-    return;
+	ResolveChoice(0);
+	return;
   }
 
-  //some options are rendered as buttons anyway (not the same functionality as Cancel which reverts phase rather than being a resolution to the phase)
-  var nonButtonOptions = [];
-  var buttonExists = false;
-  footerHtml = "";
-  for (var i = 0; i < validOptions.length; i++) {
-	var styleStr = '';
-	//determine dynamic button names
-	if (typeof validOptions[i].multiSelectDynamicButtonText == "function") {
-		//start with none selected
-		validOptions[i].button = validOptions[i].multiSelectDynamicButtonText(0);
-	}
-	if (typeof validOptions[i].multiSelectDynamicButtonEnabler == "function") {
-		//set initial enabled state to hidden, if required
-		if (!validOptions[i].multiSelectDynamicButtonEnabler(0)) styleStr = 'style="display:none;" ';
-	}
-	//render buttons
-    if (typeof validOptions[i].button !== "undefined") {
-      buttonExists = true;
-      footerHtml +=
-        '<button class="button" '+styleStr+'id="resolvechoice-'+i+'" onclick="ResolveChoice(' +
-        i +
-        ');">' +
-        Iconify(validOptions[i].button, true) +
-        "</button>"; //the true inverts to black
-    } else nonButtonOptions.push(validOptions[i]);
+  //text mode just displays all options
+  if (accessibilityMode != "text") {
+	  //some options are rendered as buttons anyway (not the same functionality as Cancel which reverts phase rather than being a resolution to the phase)
+	  var nonButtonOptions = [];
+	  var buttonExists = false;
+	  footerHtml = "";
+	  for (var i = 0; i < validOptions.length; i++) {
+		var styleStr = '';
+		//determine dynamic button names
+		if (typeof validOptions[i].multiSelectDynamicButtonText == "function") {
+			//start with none selected
+			validOptions[i].button = validOptions[i].multiSelectDynamicButtonText(0);
+		}
+		if (typeof validOptions[i].multiSelectDynamicButtonEnabler == "function") {
+			//set initial enabled state to hidden, if required
+			if (!validOptions[i].multiSelectDynamicButtonEnabler(0)) styleStr = 'style="display:none;" ';
+		}
+		//render buttons
+		if (typeof validOptions[i].button !== "undefined") {
+		  buttonExists = true;
+		  footerHtml +=
+			'<button class="button" '+styleStr+'id="resolvechoice-'+i+'" onclick="ResolveChoice(' +
+			i +
+			');">' +
+			Iconify(validOptions[i].button, true) +
+			"</button>"; //the true inverts to black
+		} else nonButtonOptions.push(validOptions[i]);
+	  }
+
+	  //accessing archives (for usability)
+	  if (
+		attackedServer == corp.archives &&
+		typeof phaseOptions.access !== "undefined"
+	  ) {
+		footerHtml +=
+		  '<button class="button" onclick="AccessAllInArchives();">Access All</button>';
+	  }
+
+	  //show cancel button if relevant
+	  if (typeof currentPhase.Cancel !== "undefined" && !currentPhase.preventCancel) {
+		if (typeof currentPhase.Cancel[executingCommand] === "function") {
+		  footerHtml +=
+			'<button class="button" onclick="currentPhase.Cancel[executingCommand]();">Cancel</button>'; //provide a cancel button
+		}
+	  }
+
+	  //some actions need advice
+	  if (footerHtml == "") {
+		if (executingCommand == "trigger")
+		  footerHtml = "<h2>Choose next to trigger</h2>";
+	  }
+
+	  if (footerHtml != "") $("#footer").html(footerHtml);
+
+	  //return before rendering modal if it's not required
+
+	  //only buttons? then we're done.
+	  if (nonButtonOptions.length == 0) return; //skip render of modal
+
+	  //only a list of unique servers/subroutines? choose by click!
+	  if (OptionsAreOnlyUniqueServers()) return; //skip render of modal
+	  if (OptionsAreOnlyUniqueSubroutines()) {
+		var ice = GetMostRelevantIce();
+		cardRenderer.RenderSubroutineChoices(ice, validOptions);
+		ice.renderer.ToggleZoom();
+		return; //skip render of modal
+	  }
+
+	  //or if there is more than one .card present in options (two options with same card count as one)
+	  //or a single .card but at least one button as well
+	  // don't render a modal, use click callbacks instead
+	  // if any of those cards are in a pile i.e. archives.cards, RnD.cards, stack, or heap use grid view
+	  var uniqueCard = null;
+	  for (var i = 0; i < validOptions.length; i++) {
+		if (typeof validOptions[i].button !== "undefined") continue; //already rendered as a button
+
+		if (typeof validOptions[i].card !== "undefined") {
+		  if (validOptions[i].card != uniqueCard) {
+			if (uniqueCard != null || buttonExists) {
+			  var useViewingGrid = false;
+			  for (var j = 0; j < validOptions.length; j++) {
+				if (validOptions[j].card) {
+				  //i.e. defined and not null
+				  if (typeof validOptions[j].card.cardLocation !== "undefined") {
+					if (validOptions[j].card.cardLocation == corp.archives.cards) {
+					  if (
+						corp.archives.cards[corp.archives.cards.length - 1] !=
+						validOptions[j].card
+					  )
+						useViewingGrid = true; //top card ok but others obscured
+					} else if (
+					  validOptions[j].card.cardLocation == corp.RnD.cards
+					) {
+					  if (
+						corp.RnD.cards[corp.RnD.cards.length - 1] !=
+						validOptions[j].card
+					  )
+						useViewingGrid = true; //top card ok but others obscured
+					} else if (validOptions[j].card.cardLocation == runner.heap)
+					  useViewingGrid = true;
+					else if (validOptions[j].card.cardLocation == runner.stack)
+					  useViewingGrid = true;
+					else if (typeof runner.identityCard.setAsideCards != 'undefined' && validOptions[j].card.cardLocation == runner.identityCard.setAsideCards)
+					  useViewingGrid = true;
+				  }
+				}
+			  }
+			  if (useViewingGrid) {
+				viewingGrid = [];
+				for (var j = 0; j < validOptions.length; j++) {
+				  var includeInViewingGrid = true;
+				  //don't include buttons in viewing grid
+				  if (typeof validOptions[j].button !== "undefined")
+					includeInViewingGrid = false;
+				  //don't include cards from root
+				  if (!validOptions[j].card) includeInViewingGrid = false;
+				  else {
+					var cardServer = GetServer(validOptions[j].card);
+					if (cardServer !== null) {
+					  if (validOptions[j].card.cardLocation == cardServer.root)
+						includeInViewingGrid = false;
+					}
+				  }
+				  if (includeInViewingGrid) viewingGrid.push(validOptions[j].card);
+				}
+			  }
+
+			  useHostForAvailability = false;
+			  for (
+				var j = 0;
+				j < validOptions.length;
+				j++ //highlight cards
+			  ) {
+				if (typeof validOptions[j].card !== "undefined") {
+				  if (validOptions[j].card !== null)
+					validOptions[j].card.renderer.UpdateGlow();
+				}
+			  }
+			  return; //skip render of modal
+			}
+			uniqueCard = validOptions[i].card;
+		  }
+		}
+	  }
+
+	  //or the same card present in all and all have .host (click will choose by host)
+	  var onlyCard = null;
+	  var i = 0;
+	  for (; i < validOptions.length; i++) {
+		if (typeof validOptions[i].button !== "undefined") continue; //already rendered as a button
+
+		if (typeof validOptions[i].host !== "undefined") {
+		  if (validOptions[i].host != null) {
+			if (typeof validOptions[i].card !== "undefined") {
+			  if (validOptions[i].card != null) {
+				if (onlyCard == null) onlyCard = validOptions[i].card;
+				else if (onlyCard != validOptions[i].card) break; //all must have same card
+			  } else break;
+			} else break;
+		  } else break;
+		} else break;
+	  }
+	  if (i == validOptions.length) {
+		//reached end of loop, all must have .host and same .card, skip render of modal and highlight hosts
+		useHostForAvailability = true;
+		for (
+		  var j = 0;
+		  j < validOptions.length;
+		  j++ //highlight cards
+		) {
+		  validOptions[j].host.renderer.UpdateGlow();
+		}
+		return;
+	  }
   }
-
-  //accessing archives (for usability)
-  if (
-    attackedServer == corp.archives &&
-    typeof phaseOptions.access !== "undefined"
-  ) {
-    footerHtml +=
-      '<button class="button" onclick="AccessAllInArchives();">Access All</button>';
-  }
-
-  //show cancel button if relevant
-  if (typeof currentPhase.Cancel !== "undefined" && !currentPhase.preventCancel) {
-    if (typeof currentPhase.Cancel[executingCommand] === "function") {
-      footerHtml +=
-        '<button class="button" onclick="currentPhase.Cancel[executingCommand]();">Cancel</button>'; //provide a cancel button
-    }
-  }
-
-  //some actions need advice
-  if (footerHtml == "") {
-    if (executingCommand == "trigger")
-      footerHtml = "<h2>Choose next to trigger</h2>";
-  }
-
-  if (footerHtml != "") $("#footer").html(footerHtml);
-
-  //return before rendering modal if it's not required
-
-  //only buttons? then we're done.
-  if (nonButtonOptions.length == 0) return; //skip render of modal
-
-  //only a list of unique servers/subroutines? choose by click!
-  if (OptionsAreOnlyUniqueServers()) return; //skip render of modal
-  if (OptionsAreOnlyUniqueSubroutines()) {
-    var ice = GetMostRelevantIce();
-    cardRenderer.RenderSubroutineChoices(ice, validOptions);
-    ice.renderer.ToggleZoom();
-    return; //skip render of modal
-  }
-
-  //or if there is more than one .card present in options (two options with same card count as one)
-  //or a single .card but at least one button as well
-  // don't render a modal, use click callbacks instead
-  // if any of those cards are in a pile i.e. archives.cards, RnD.cards, stack, or heap use grid view
-  var uniqueCard = null;
-  for (var i = 0; i < validOptions.length; i++) {
-    if (typeof validOptions[i].button !== "undefined") continue; //already rendered as a button
-
-    if (typeof validOptions[i].card !== "undefined") {
-      if (validOptions[i].card != uniqueCard) {
-        if (uniqueCard != null || buttonExists) {
-          var useViewingGrid = false;
-          for (var j = 0; j < validOptions.length; j++) {
-            if (validOptions[j].card) {
-              //i.e. defined and not null
-              if (typeof validOptions[j].card.cardLocation !== "undefined") {
-                if (validOptions[j].card.cardLocation == corp.archives.cards) {
-                  if (
-                    corp.archives.cards[corp.archives.cards.length - 1] !=
-                    validOptions[j].card
-                  )
-                    useViewingGrid = true; //top card ok but others obscured
-                } else if (
-                  validOptions[j].card.cardLocation == corp.RnD.cards
-                ) {
-                  if (
-                    corp.RnD.cards[corp.RnD.cards.length - 1] !=
-                    validOptions[j].card
-                  )
-                    useViewingGrid = true; //top card ok but others obscured
-                } else if (validOptions[j].card.cardLocation == runner.heap)
-                  useViewingGrid = true;
-                else if (validOptions[j].card.cardLocation == runner.stack)
-                  useViewingGrid = true;
-                else if (typeof runner.identityCard.setAsideCards != 'undefined' && validOptions[j].card.cardLocation == runner.identityCard.setAsideCards)
-                  useViewingGrid = true;
-              }
-            }
-          }
-          if (useViewingGrid) {
-            viewingGrid = [];
-            for (var j = 0; j < validOptions.length; j++) {
-              var includeInViewingGrid = true;
-              //don't include buttons in viewing grid
-              if (typeof validOptions[j].button !== "undefined")
-                includeInViewingGrid = false;
-              //don't include cards from root
-              if (!validOptions[j].card) includeInViewingGrid = false;
-              else {
-                var cardServer = GetServer(validOptions[j].card);
-                if (cardServer !== null) {
-                  if (validOptions[j].card.cardLocation == cardServer.root)
-                    includeInViewingGrid = false;
-                }
-              }
-              if (includeInViewingGrid) viewingGrid.push(validOptions[j].card);
-            }
-          }
-
-          useHostForAvailability = false;
-          for (
-            var j = 0;
-            j < validOptions.length;
-            j++ //highlight cards
-          ) {
-            if (typeof validOptions[j].card !== "undefined") {
-              if (validOptions[j].card !== null)
-                validOptions[j].card.renderer.UpdateGlow();
-            }
-          }
-          return; //skip render of modal
-        }
-        uniqueCard = validOptions[i].card;
-      }
-    }
-  }
-
-  //or the same card present in all and all have .host (click will choose by host)
-  var onlyCard = null;
-  var i = 0;
-  for (; i < validOptions.length; i++) {
-    if (typeof validOptions[i].button !== "undefined") continue; //already rendered as a button
-
-    if (typeof validOptions[i].host !== "undefined") {
-      if (validOptions[i].host != null) {
-        if (typeof validOptions[i].card !== "undefined") {
-          if (validOptions[i].card != null) {
-            if (onlyCard == null) onlyCard = validOptions[i].card;
-            else if (onlyCard != validOptions[i].card) break; //all must have same card
-          } else break;
-        } else break;
-      } else break;
-    } else break;
-  }
-  if (i == validOptions.length) {
-    //reached end of loop, all must have .host and same .card, skip render of modal and highlight hosts
-    useHostForAvailability = true;
-    for (
-      var j = 0;
-      j < validOptions.length;
-      j++ //highlight cards
-    ) {
-      validOptions[j].host.renderer.UpdateGlow();
-    }
-    return;
-  }
-
+  
   //modal accepted. render:
   //show choices as hrefs in a modal dialog
   $("#modal").css("display", "flex");
   var modalText = "";
   for (var i = 0; i < validOptions.length; i++) {
+	  //text mode needs to label everything
+	if (accessibilityMode != "text") {
+		if (typeof validOptions[i].button !== "undefined") validOptions[i].label = validOptions[i].button;
+		else {
+			console.log("Valid option with undefined label:");
+			console.log(JSON.stringify(validOptions[i]));
+		}
+	}
     if (typeof validOptions[i].button !== "undefined") continue; //already rendered as a button
 
 	if (validOptions[i].label == ''+parseInt(validOptions[i].label)) {

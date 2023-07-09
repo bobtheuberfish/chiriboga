@@ -462,18 +462,13 @@ div.options {
 #text-render-lists {
 	margin-top:5%;
 }
+#text-render-lists div {
+	border:1px solid grey;
+	vertical-align: text-top;
+	margin:1px;
+	padding:1px;
+	display:inline-block;
+}
 .text-card {
 	display:block;
-}
-#runner-field {
-	float:left;
-}
-#corp-field {
-	float:right;
-}
-#runner-field div {
-	display:inline-block;
-}
-#corp-field div {
-	display:inline-block;
 }

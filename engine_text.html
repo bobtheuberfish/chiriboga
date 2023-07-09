@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="robots" content="noindex">
+		<title>Chiriboga</title>
+		<link href="images/favicon.ico" rel="icon">
+		<link rel="stylesheet" type="text/css" href="style.css?">
+		<link rel="manifest" href="manifest.json">
+		<script src="jquery/jquery-3.2.1.min.js"></script>
+		<script src="cardrenderer/pixi.min.js"></script>
+		<script src="cardrenderer/pixi-particles.min.js"></script>
+		<script src="cardrenderer/particlesystems.js"></script>
+		<script src="cardrenderer/cardrenderer.js"></script>
+		<script src="deck/lz-string.min.js"></script>
+		<script src="deck/seedrandom.min.js"></script>
+		<script>
+			var cardSet = []; //prepare to receive card definitions
+			var setIdentifiers = []; //set identifiers
+		</script>
+		<link rel="stylesheet" type="text/css" href="style.css">
+		<script>var accessibilityMode="text";</script>
+		<script src="init.js"></script>
+		<script src="phase.js"></script>
+		<script src="command.js"></script>
+		<script src="checks.js"></script>
+		<script src="mechanics.js"></script>
+		<script src="utility.js"></script>
+		<script src="sets/systemgateway.js"></script>
+		<script src="sets/systemupdate2021.js"></script>
+		<script src="sets/tutorial.js"></script>
+		<script src="decks.js"></script>
+		<script src="runcalculator.js"></script>
+		<script src="ai_corp.js"></script>
+		<script src="ai_runner.js"></script>
+		<script>var versionReference='fully_offline';</script>
+	</head>
+
+	<body id="body" onload="Init();">
+		<div id="contentcontainer" class="content">
+			<div id="output"></div>
+			<form id="cmdform">
+				<input type="submit" value="Submit">
+				<span id="turnphase"></span>
+				<input id="command" type="text" value="">
+			</form>
+		</div>
+		<div id="menubar"><button id="menubutton" onclick="$('#menu').css('display','flex'); if (document.fullscreen) document.exitFullscreen(); $('.fullscreen-button').show();"><img src="images/chiriboga_withtext.png"></button></div>
+		<div id="header"></div>
+		<div id="fps"></div>
+		<div id="footer"></div>
+		<div id="modal" class="modal">
+			<div id="modalcontent" class="modal-content"></div>
+		</div>
+		<div id="history-wrapper">
+			<div id="history"></div>
+		</div>
+		<div id="loading" class="modal" style="display:flex;">
+			<div class="modal-content-inactive"><h1 id="loading-text">Deckbuilding...<h1></div>
+		</div>
+		<div id="menu" class="modal">
+			<div id="menucontent" class="modal-content-inactive">
+				<span onclick="$('#menu').css('display','none');" class="close-cross">X</span>
+				<h1>Chiriboga</h1>
+				<button id="exittomenu" onclick="window.location.href='index.php';" class="button">Exit to main menu</button>
+				<button id="editdeck" onclick="window.location.href='decklauncher.php';" class="button">Edit this deck</button>
+				<button id="randomdeck" onclick="window.location.href='decklauncher.php';" class="button">Edit new random deck</button>
+				<div style="float:right;" class="options">
+					<label for="narration"><input type="checkbox" id="narration" checked>Narrate AI</label>
+				</div>
+				<p>Chiriboga implements the game <a href="https://nullsignal.games/about/netrunner/">Android: Netrunner</a> with an AI opponent. Source is <a href="https://github.com/bobtheuberfish/chiriboga">available on GitHub</a>.</p>
+				<p>Includes all cards in Null Signal Games' <a href="https://nullsignal.games/products/system-gateway/">System Gateway</a> and <a href="https://nullsignal.games/products/system-update-2021/">System Update 2021</a> sets.<br/>
+				Card art is the property of Null Signal Games.<br/>
+				Includes <a href="https://nullsignal.games/about/nisei-visual-assets/">game symbols permitted for use by Null Signal Games</a> under CC BY-ND 4.0.<br/>
+				Chiriboga is not endorsed by Null Signal Games.</p>
+				<p class="acknowledgements">Special thanks to testers, including: <em>BadEpsilon, bowlsley, D-Smith, eniteris, Kwaice, Mentlegen, olompumpa, R41B, saff, Saintis, Ysengrin</em>.</p>
+				<p class="disclaimer">Netrunner and Android are trademarks of Fantasy Flight Publishing, Inc. and/or Wizards of the Coast LLC.<br/>
+				Chiriboga is not affiliated with Fantasy Flight Games or Wizards of the Coast.</p>
+				<p><a href="https://netrunnerdb.com/en/card/26098"><em>...but who ordered him to wear that hat?</em></a></p>
+				<button onclick="DownloadCapturedLog();" class="button">Download captured log</button> (for <a href="https://github.com/bobtheuberfish/chiriboga/issues">error reporting</a>)
+				<select id="rewind-select" style="float:right;" disabled>
+					<option value="">Rewind</option>
+				</select>
+				<br/><br/>
+			</div>
+		</div>
+	</body>
+</html>
