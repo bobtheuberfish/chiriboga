@@ -181,6 +181,29 @@ function Init() {
 	$("#footer").css("width","100%");
 	$("#loading").hide();
 	$("canvas").hide();
+	$("#card-search").on('input',function(e){
+		var found_card_def = FindCardDefWithMostSimilarTitle($('#card-search').val());
+		if (typeof found_card_def != 'undefined') {
+			var fc_out = found_card_def.title+"<br>";
+			if (typeof found_card_def.subTypes != 'undefined') {
+				fc_out += found_card_def.cardType.charAt(0).toUpperCase()+found_card_def.cardType.slice(1)+": "+found_card_def.subTypes.join(' - ')+"<br>";
+			}
+			else {
+				fc_out += found_card_def.cardType.charAt(0).toUpperCase()+found_card_def.cardType.slice(1)+"<br>";
+			}
+			var importants = ["playCost","memoryCost","installCost","rezCost","strength","deckSize","influenceLimit","link","advancementRequirement","agendaPoints","trashCost"];
+			var imp_vals = [];
+			for (var i=0; i<importants.length; i++) {
+				if (typeof found_card_def[importants[i]] != 'undefined') {
+					imp_vals.push(CamelToSentence(importants[i])+": "+found_card_def[importants[i]]);
+				}
+			}
+			fc_out += imp_vals.join(', ')+"<br>";
+			fc_out += found_card_def.cardText;
+			$('#search-result').html(fc_out);
+		}
+		else $('#search-result').html("");
+	});
 	/*
 	$("#cmdform").css("width","calc(100% - 50px)");
 	$("#cmdform").show();
@@ -192,7 +215,8 @@ function Init() {
 	  $('#cmdform input[type="text"]').val("");
 	});	
 	*/
-	$("#output").css("margin-bottom", "80px");
+	$("#output").css("margin-bottom", "10px");
+	$("#search-result").css("margin-bottom", "80px");
 	//call setup and start (since we won't wait for textures to load)
 	Setup();
 	StartGame();

@@ -3281,3 +3281,118 @@ function DeckBuild(
  
   return cardsAdded;
 }
+
+//Find card def with most similar title
+function FindCardDefWithMostSimilarTitle(str) {
+  var maxScore = 0;
+  var mostSimilarIndex = -1;
+  var str1 = str.toLowerCase().normalize();
+  for (var i = 0; i < cardSet.length; i++) {
+	if (typeof cardSet[i] != 'undefined') {
+	  var str2 = cardSet[i].title.toLowerCase().normalize();
+	  //assign a value for similarity
+	  var score = 0;
+	  var index = str2.indexOf(str1);
+	  if (index === -1) {
+		score = 0; // No match found
+	  } else if (index === 0) {
+		score = str1.length + 1; // Match found at the start
+	  } else {
+		score = str1.length / index; // Calculate the score based on the position
+	  }	  
+	  //For extra value, subtract some Levenshtein distance
+	  var m = str1.length;
+	  var n = str2.length;
+	  var dp = [];
+	  for (let i = 0; i <= m; i++) {
+		dp[i] = [];
+		dp[i][0] = i;
+	  }
+	  for (let j = 0; j <= n; j++) {
+		dp[0][j] = j;
+	  }
+	  for (let i = 1; i <= m; i++) {
+		for (let j = 1; j <= n; j++) {
+		  if (str1.charAt(i - 1) === str2.charAt(j - 1)) {
+			dp[i][j] = dp[i - 1][j - 1];
+		  } else {
+			dp[i][j] = Math.min(
+			  dp[i - 1][j - 1] + 1,
+			  dp[i][j - 1] + 1,
+			  dp[i - 1][j] + 1
+			);
+		  }
+		}
+	  }
+	  var distance = dp[m][n];	  
+	  //if (score > 0) console.log(str2+": "+score+" - "+distance);
+	  score -= 0.001*distance;
+      if (score > maxScore) {
+        maxScore = score;
+        mostSimilarIndex = i;
+      }
+	}
+  }
+  return cardSet[mostSimilarIndex];
+}
+
+function CalculateBitapScore(str1, str2) {
+  const m = str1.length;
+  const n = str2.length;
+
+  // Bitap constants
+  const MAX_BITS = 31;
+  const SCORE_THRESHOLD = 0.5;
+
+  // Initialize the score matrix
+  const scoreMatrix = Array(m + 1).fill(0);
+
+  // Initialize the bitmask
+  let bitmask = 1;
+
+  // Compute the score for each position
+  for (let i = 0; i < n; i++) {
+    let lastBitmask = 0;
+    let newScoreMatrix = scoreMatrix.slice();
+
+    // Update the score matrix
+    for (let j = 0; j < m; j++) {
+      const match = (str1[j] === str2[i]) ? 1 : 0;
+
+      // Calculate the diagonal score
+      const diagonalScore = (scoreMatrix[j] & (bitmask << 1)) || 0;
+
+      // Calculate the horizontal and vertical scores
+      const horizontalScore = scoreMatrix[j] | 0;
+      const verticalScore = (newScoreMatrix[j] | (scoreMatrix[j] >> 1)) | 0;
+
+      // Compute the new score for the current position
+      newScoreMatrix[j] = (diagonalScore | (horizontalScore >> 1) | (verticalScore >> 1) | match) | 0;
+
+      // Check if the score exceeds the threshold
+      if (newScoreMatrix[j] & (1 << (m - 1))) {
+        const score = i / m;
+        if (score >= SCORE_THRESHOLD) {
+          return score;
+        }
+      }
+    }
+
+    scoreMatrix[0] = (scoreMatrix[0] >> 1) | 0;
+
+    for (let j = 1; j <= m; j++) {
+      scoreMatrix[j] = newScoreMatrix[j - 1];
+    }
+
+    if ((scoreMatrix[m - 1] & 1) !== 0) {
+      const score = i / m;
+      if (score >= SCORE_THRESHOLD) {
+        return score;
+      }
+    }
+
+    bitmask <<= 1;
+  }
+
+  return 0;
+}
