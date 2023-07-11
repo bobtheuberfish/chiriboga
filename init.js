@@ -177,7 +177,7 @@ function Init() {
   });
 
   //Accessibility mode, as relevant
-  if (accessibilityMode = "text") {
+  if (accessibilityMode == "text") {
 	$("#footer").css("width","100%");
 	$("#loading").hide();
 	$("canvas").hide();

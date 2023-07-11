@@ -24,6 +24,7 @@
 			var cardSet = []; //prepare to receive card definitions
 			var setIdentifiers = []; //set identifiers
 		</script>
+		<script>var accessibilityMode="default";</script>
 		<?php
 		echo '<link rel="stylesheet" type="text/css" href="style.css?' . filemtime('style.css') . '" />';
 		$jsfiles = array('init','phase', 'command', 'checks', 'mechanics', 'utility');
