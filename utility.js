@@ -1214,8 +1214,13 @@ function AccessCardList() {
 		num = 1 + additional;
 	  } else if (attackedServer == corp.RnD) num = 1 + additional; //RnD: access 1 (+ effects)
 	  //take into account accesses that have already happened
-	  for (var i = 0; i < accessedCards.cards.length; i++) {
+	  if (attackedServer == corp.archives) {
+	    for (var i = 0; i < accessedCards.cards.length; i++) {
 		  if (attackedServer.cards.includes(accessedCards.cards[i])) num--;
+	    }
+	  }
+      else {
+		num -= accessedCards.cards.length;
 	  }
       if (num > 0) {
 		if (num > attackedServer.cards.length) num = attackedServer.cards.length; //don't try to access more cards than there are!
