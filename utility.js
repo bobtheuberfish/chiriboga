@@ -360,9 +360,9 @@ function ReproductionCode(full=false) {
 	  }
 	  ret += "];\n";
   }
-  if (corp.badPublicity > 0) ret += "corp.badPublicity = "+corp.badPublicity+";\n";
-  if (runner.tags > 0) ret += "runner.tags = "+runner.tags+";\n";
-  if (runner.coreDamage > 0) ret += "runner.coreDamage = "+runner.coreDamage+";\n";
+  if (full || corp.badPublicity > 0) ret += "corp.badPublicity = "+corp.badPublicity+";\n";
+  if (full || runner.tags > 0) ret += "runner.tags = "+runner.tags+";\n";
+  if (full || runner.coreDamage > 0) ret += "runner.coreDamage = "+runner.coreDamage+";\n";
   if (full) {
 	  if (playerTurn == corp) ret += "playerTurn = corp;\n";
 	  else ret += "playerTurn = runner;\n";
