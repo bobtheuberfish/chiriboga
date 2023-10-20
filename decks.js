@@ -658,6 +658,13 @@ function LoadDecks() {
       );
     }
   }
+  
+  //tutorial deck disables edit deck button
+  if (deckJson.identity == 30076 || deckJson.identity == 30077) {
+	  $('#editdeck').prop('disabled', true);
+	  $('#editdeck').prop('title', "Tutorial decks cannot be edited");
+  }
+  
   //CORP RANDOM System Gateway Deck
   if (corp.RnD.cards.length == 0) {
     var corpIdentities = [];
